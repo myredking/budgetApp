@@ -1,4 +1,9 @@
-from budget.core import add_transaction, filter_by_category, get_balance
+from budget.core import (
+    add_transaction,
+    filter_by_category,
+    get_balance,
+    monthly_summary,
+)
 
 
 def test_add_transaction_increases_length() -> None:
@@ -199,3 +204,75 @@ def test_filter_by_category_returns_independent_list() -> None:
 
     assert len(transactions) == 1
     assert len(result) == 2
+
+
+def test_monthly_summary_groups_income_expense_and_net() -> None:
+    transactions = [
+        {
+            "date": "2026-01-04",
+            "type": "지출",
+            "category": "여행",
+            "description": "항공권",
+            "amount": -1000,
+            "memo": "",
+        },
+        {
+            "date": "2026-01-05",
+            "type": "수입",
+            "category": "급여",
+            "description": "월급",
+            "amount": 3000,
+            "memo": "",
+        },
+        {
+            "date": "2026-02-01",
+            "type": "지출",
+            "category": "식비",
+            "description": "점심",
+            "amount": -500,
+            "memo": "",
+        },
+    ]
+
+    result = monthly_summary(transactions)
+
+    assert result == {
+        "2026-01": {"income": 3000, "expense": -1000, "net": 2000},
+        "2026-02": {"income": 0, "expense": -500, "net": -500},
+    }
+
+
+def test_monthly_summary_matches_step3_sample_data() -> None:
+    transactions = [
+        {"date": "2025-01-02", "amount": 405037},
+        {"date": "2025-01-03", "amount": -2886860},
+        {"date": "2025-02-01", "amount": 12940804},
+        {"date": "2025-02-10", "amount": -1832242},
+        {"date": "2026-01-15", "amount": 5140637},
+        {"date": "2026-01-20", "amount": -1283712},
+        {"date": "2026-02-01", "amount": 720569},
+        {"date": "2026-02-20", "amount": -4012456},
+    ]
+
+    result = monthly_summary(transactions)
+
+    assert result["2025-01"] == {
+        "income": 405037,
+        "expense": -2886860,
+        "net": -2481823,
+    }
+    assert result["2025-02"] == {
+        "income": 12940804,
+        "expense": -1832242,
+        "net": 11108562,
+    }
+    assert result["2026-01"] == {
+        "income": 5140637,
+        "expense": -1283712,
+        "net": 3856925,
+    }
+    assert result["2026-02"] == {
+        "income": 720569,
+        "expense": -4012456,
+        "net": -3291887,
+    }

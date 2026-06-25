@@ -1,5 +1,7 @@
 """Core business logic for the budget CLI app."""
 
+from collections import defaultdict
+
 
 def add_transaction(
     transactions: list[dict[str, object]],
@@ -11,7 +13,7 @@ def add_transaction(
     return updated_transactions
 
 
-def get_balance(transactions: list[dict]) -> int:
+def get_balance(transactions: list[dict[str, object]]) -> float:
     """Return the current balance from the given transactions."""
     if not transactions:
         return 0.0
@@ -31,6 +33,20 @@ def filter_by_category(
     ]
 
 
-def monthly_summary(transactions: list[dict]) -> dict[str, dict[str, int]]:
+def monthly_summary(
+    transactions: list[dict[str, object]],
+) -> dict[str, dict[str, int]]:
     """Return monthly income, expense, and net totals."""
-    pass
+    summary: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"income": 0, "expense": 0, "net": 0}
+    )
+    for transaction in transactions:
+        month = str(transaction["date"])[:7]
+        amount = int(transaction["amount"])
+        monthly_totals = summary[month]
+        if amount >= 0:
+            monthly_totals["income"] += amount
+        else:
+            monthly_totals["expense"] += amount
+        monthly_totals["net"] += amount
+    return dict(summary)
