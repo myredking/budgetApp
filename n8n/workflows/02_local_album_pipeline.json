@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "command": "cd /workspace && python3 -m budget.suno_pipeline --input /workspace/downloads/suno --output /workspace/outputs/albums --metadata-defaults /workspace/config/suno_automation_defaults.json --build --render-video --upload-youtube"
+        "command": "cd /workspace && python3 -m budget.suno_pipeline --input /workspace/downloads/suno --output /workspace/outputs/albums --metadata-defaults /workspace/config/suno_automation_defaults.json --preflight --non-interactive --build --render-video --upload-youtube"
       },
       "id": "run-local-pipeline",
       "name": "Run Reviewed Local Pipeline",

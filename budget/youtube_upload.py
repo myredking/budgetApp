@@ -78,6 +78,29 @@ def load_youtube_video(path: Path) -> YouTubeVideo:
     )
 
 
+def validate_youtube_token_file(path: Path) -> None:
+    """Validate the local OAuth token shape without importing Google packages."""
+    if not path.is_file():
+        raise ValueError(f"YouTube token 파일을 찾을 수 없습니다: {path}")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"YouTube token JSON을 읽을 수 없습니다: {error}") from error
+    if not isinstance(payload, dict):
+        raise ValueError("YouTube token JSON은 객체여야 합니다.")
+    required = ("token", "refresh_token", "token_uri", "client_id", "client_secret")
+    missing = [
+        name
+        for name in required
+        if not isinstance(payload.get(name), str) or not payload[name].strip()
+    ]
+    if missing:
+        raise ValueError(f"YouTube token JSON 필드가 없습니다: {', '.join(missing)}")
+    scopes = payload.get("scopes")
+    if not isinstance(scopes, list) or YOUTUBE_UPLOAD_SCOPE not in scopes:
+        raise ValueError("YouTube token에 youtube.upload 권한이 없습니다.")
+
+
 class YouTubeUploader:
     """Perform resumable, deduplicated uploads with injected or OAuth service."""
 
@@ -91,6 +114,7 @@ class YouTubeUploader:
         max_attempts: int = 5,
         sleep_fn: Callable[[float], None] = time.sleep,
         rng: random.Random | None = None,
+        allow_interactive_oauth: bool = True,
     ) -> None:
         self._service = service
         self._policy = policy or YouTubeUploadPolicy()
@@ -100,6 +124,7 @@ class YouTubeUploader:
         self._max_attempts = max_attempts
         self._sleep_fn = sleep_fn
         self._rng = rng or random.Random()
+        self._allow_interactive_oauth = allow_interactive_oauth
 
     def upload(
         self,
@@ -221,6 +246,13 @@ class YouTubeUploader:
         partial.replace(self._state_path)
 
     def _build_service(self) -> Any:
+        if not self._allow_interactive_oauth:
+            try:
+                validate_youtube_token_file(self._token_path)
+            except (OSError, ValueError) as error:
+                raise RuntimeError(
+                    f"비대화형 YouTube 업로드에는 유효한 token JSON이 필요합니다: {error}"
+                ) from error
         try:
             from google.auth.transport.requests import Request
             from google.oauth2.credentials import Credentials
@@ -230,6 +262,10 @@ class YouTubeUploader:
             raise RuntimeError("YouTube OAuth 패키지를 설치해야 합니다.") from error
         credentials = _load_credentials(self._token_path, Credentials, Request)
         if credentials is None or not credentials.valid:
+            if not self._allow_interactive_oauth:
+                raise RuntimeError(
+                    "비대화형 YouTube 업로드에는 유효한 token JSON이 필요합니다."
+                )
             flow = InstalledAppFlow.from_client_secrets_file(
                 str(self._client_secrets_path),
                 [YOUTUBE_UPLOAD_SCOPE],

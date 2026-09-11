@@ -92,7 +92,7 @@ docker compose up -d --build
 
 `sidecar 스캔 → 4곡 이상 앨범 그룹화 → 검토 통과 후보만 패키징 → FFmpeg 영상 생성 → YouTube 비공개 업로드`
 
-워크플로우는 기본 비활성화이며, `metadata-defaults`의 권리·재생·커버·아티스트 확인값이 `true`인 곡만 통과합니다. n8n을 시작하기 전에 다음 폴더와 파일을 준비합니다.
+워크플로우는 기본 비활성화이며, 매 실행마다 사전 점검을 먼저 수행합니다. `metadata-defaults`의 권리·재생·커버·아티스트 확인값이 `true`인 곡만 통과합니다. n8n을 시작하기 전에 다음 폴더와 파일을 준비합니다.
 
 ```powershell
 New-Item -ItemType Directory -Force config,downloads/suno,outputs,secrets,.state
@@ -105,6 +105,6 @@ Copy-Item examples/suno_automation_defaults.json config/suno_automation_defaults
 docker compose up -d --build
 ```
 
-`02_local_album_pipeline.json`을 가져온 뒤 테스트 실행을 하고, 검토된 앨범만 `outputs/albums/<album-id>`에 생성되는지 확인합니다. 이후 활성화하면 새 후보가 생길 때마다 재실행되며, 이미 업로드한 동일 영상은 파일 해시로 건너뜁니다. YouTube 공개 전환과 DistroKid 최종 제출은 여전히 사람이 직접 합니다.
+`02_local_album_pipeline.json`을 가져온 뒤 테스트 실행을 하고, 검토된 앨범만 `outputs/albums/<album-id>`에 생성되는지 확인합니다. 워크플로우는 `--non-interactive` 모드라 브라우저 OAuth를 실행하지 않으며, 호스트에서 먼저 만든 유효한 `.state/youtube-token.json`이 없으면 중단됩니다. 이후 활성화하면 새 후보가 생길 때마다 재실행되며, 이미 업로드한 동일 영상은 파일 해시로 건너뜁니다. YouTube 공개 전환과 DistroKid 최종 제출은 여전히 사람이 직접 합니다.
 
 이 Docker 구성은 로컬 단일 운영자용입니다. `Execute Command`를 사용하므로 `5678` 포트를 인터넷에 공개하지 마세요.

@@ -109,6 +109,18 @@ SUNO_QUOTA_STATE_FILE=.state/suno.downloads.json
 
 먼저 [examples/suno_automation_defaults.json](examples/suno_automation_defaults.json)을 복사해 실제 아티스트·법적 작곡가명·Suno 증빙 경로를 입력합니다. `rights_confirmed`, `artwork_reviewed`, `audio_reviewed`, `artist_persona_confirmed`는 실제 확인 전까지 `false`로 유지합니다.
 
+자동 실행 전에 다음 사전 점검을 실행합니다. 이 명령은 폴더를 만들거나 API를 호출하지 않습니다.
+
+```powershell
+python -m budget.suno_pipeline `
+  --input downloads/suno `
+  --output outputs/albums `
+  --metadata-defaults config/suno_automation_defaults.json `
+  --preflight-only
+```
+
+`--preflight-only`는 점검만 하고 종료합니다. `--preflight`를 빌드·영상·업로드 옵션과 함께 쓰면 점검을 통과한 뒤에만 다음 단계가 실행됩니다. FFmpeg가 필요한 영상 작업에서는 FFmpeg 설치 여부를, 실제 YouTube 업로드에서는 OAuth 파일 준비 여부를 함께 확인하며 점검이 실패하면 n8n도 해당 실행을 중단합니다.
+
 ```powershell
 python -m budget.suno_pipeline `
   --input downloads/suno `
@@ -159,6 +171,8 @@ python -m budget.suno_pipeline `
   --render-video `
   --upload-youtube
 ```
+
+n8n 예약 실행은 브라우저를 열 수 없도록 `--non-interactive` 모드로 고정되어 있습니다. 호스트에서 1회 OAuth 인증을 끝내 `.state/youtube-token.json`을 만든 뒤에만 n8n 워크플로우를 활성화하세요.
 
 YouTube 설명에는 AI 음악 사용 사실을 넣고 API의 `containsSyntheticMedia=true`를 전송합니다. 공개 전환은 YouTube Studio에서 사람이 확인한 뒤 진행합니다.
 

@@ -1,10 +1,13 @@
 import json
+import sys
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 import pytest
 
 from budget.youtube_upload import (
+    YOUTUBE_UPLOAD_SCOPE,
     YouTubeUploadPolicy,
     YouTubeVideo,
     YouTubeUploader,
@@ -138,6 +141,109 @@ def test_youtube_upload_serializes_state_access_with_lock(tmp_path: Path) -> Non
     uploader.upload(make_video(tmp_path), make_metadata())
 
     assert lock.entered == 1
+
+
+def test_noninteractive_uploader_rejects_missing_token(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    monkeypatch.setattr("budget.youtube_upload._load_credentials", lambda *args: None)
+    uploader = YouTubeUploader(
+        allow_interactive_oauth=False,
+        client_secrets_path=tmp_path / "client.json",
+        token_path=tmp_path / "token.json",
+    )
+
+    with pytest.raises(RuntimeError, match="비대화형"):
+        uploader._build_service()
+
+
+def test_noninteractive_uploader_rejects_invalid_token_json(
+    tmp_path: Path,
+) -> None:
+    token_path = tmp_path / "token.json"
+    token_path.write_text(json.dumps({"scopes": ["profile"]}), encoding="utf-8")
+    uploader = YouTubeUploader(
+        allow_interactive_oauth=False,
+        client_secrets_path=tmp_path / "client.json",
+        token_path=token_path,
+    )
+
+    with pytest.raises(RuntimeError, match="token JSON"):
+        uploader._build_service()
+
+
+def test_noninteractive_uploader_does_not_fallback_for_invalid_credentials(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    token_path = tmp_path / "token.json"
+    token_path.write_text(
+        json.dumps(
+            {
+                "token": "access",
+                "refresh_token": "refresh",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "client_id": "client",
+                "client_secret": "secret",
+                "scopes": [YOUTUBE_UPLOAD_SCOPE],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    class InvalidCredentials:
+        valid = False
+
+    class FakeFlow:
+        called = False
+
+        @classmethod
+        def from_client_secrets_file(cls, *args: Any, **kwargs: Any) -> "FakeFlow":
+            cls.called = True
+            raise AssertionError("browser OAuth must not be called")
+
+    class FakeRequest:
+        pass
+
+    class FakeCredentials:
+        pass
+
+    def fake_build(*args: Any, **kwargs: Any) -> object:
+        return object()
+
+    modules = {
+        "google": ModuleType("google"),
+        "google.auth": ModuleType("google.auth"),
+        "google.auth.transport": ModuleType("google.auth.transport"),
+        "google.auth.transport.requests": ModuleType("google.auth.transport.requests"),
+        "google.oauth2": ModuleType("google.oauth2"),
+        "google.oauth2.credentials": ModuleType("google.oauth2.credentials"),
+        "google_auth_oauthlib": ModuleType("google_auth_oauthlib"),
+        "google_auth_oauthlib.flow": ModuleType("google_auth_oauthlib.flow"),
+        "googleapiclient": ModuleType("googleapiclient"),
+        "googleapiclient.discovery": ModuleType("googleapiclient.discovery"),
+    }
+    modules["google.auth.transport.requests"].Request = FakeRequest
+    modules["google.oauth2.credentials"].Credentials = FakeCredentials
+    modules["google_auth_oauthlib.flow"].InstalledAppFlow = FakeFlow
+    modules["googleapiclient.discovery"].build = fake_build
+    for name, module in modules.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(
+        "budget.youtube_upload._load_credentials",
+        lambda *args: InvalidCredentials(),
+    )
+    uploader = YouTubeUploader(
+        allow_interactive_oauth=False,
+        client_secrets_path=tmp_path / "client.json",
+        token_path=token_path,
+    )
+
+    with pytest.raises(RuntimeError, match="비대화형"):
+        uploader._build_service()
+
+    assert FakeFlow.called is False
 
 
 def test_load_youtube_video_reads_album_metadata(tmp_path: Path) -> None:
