@@ -180,6 +180,15 @@ n8n 예약 실행은 브라우저를 열 수 없도록 `--non-interactive` 모�
 
 YouTube 설명에는 AI 음악 사용 사실을 넣고 API의 `containsSyntheticMedia=true`를 전송합니다. 공개 전환은 YouTube Studio에서 사람이 확인한 뒤 진행합니다.
 
+업로드 직후 네트워크가 끊겨 `pending` 기록이 남으면, 먼저 YouTube Studio에서 실제 영상이 생성되었는지 확인합니다. 생성된 영상의 11자리 ID를 확인한 뒤 아래 명령으로 로컬 기록만 복구합니다. 이 명령은 YouTube API를 다시 호출하지 않습니다.
+
+```powershell
+python -m budget.youtube_upload `
+  --state .state/youtube-uploads.json `
+  --resolve-pending-hash SHA256_HASH_FROM_STATE `
+  --resolve-video-id YOUTUBE_VIDEO_ID
+```
+
 ### 발매 차단 정책
 
 - Suno Basic/무료 플랜 생성물은 상업 배포 후보에서 차단합니다. Pro/Premier에서 생성·다운로드한 곡만 실제 구독 증빙과 함께 통과시킵니다.

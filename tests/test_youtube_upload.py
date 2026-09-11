@@ -13,6 +13,8 @@ from budget.youtube_upload import (
     YouTubeVideo,
     YouTubeUploader,
     load_youtube_video,
+    main as youtube_main,
+    resolve_pending_upload,
 )
 
 
@@ -171,6 +173,127 @@ def test_youtube_uploader_keeps_failed_upload_as_manual_pending(tmp_path: Path) 
         retry_uploader.upload(make_video(tmp_path), make_metadata())
 
     assert retry_service.api.request.calls == 0
+
+
+def test_resolve_pending_upload_records_existing_video_without_api_call(
+    tmp_path: Path,
+) -> None:
+    state_path = tmp_path / "youtube.json"
+    uploader = YouTubeUploader(
+        FailedService(),
+        state_path=state_path,
+        max_attempts=1,
+        now_fn=lambda: datetime(2026, 9, 11, 12, tzinfo=timezone.utc),
+    )
+    with pytest.raises(RuntimeError, match="permanent upload failure"):
+        uploader.upload(make_video(tmp_path), make_metadata())
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    file_hash = next(iter(state["pending"]))
+
+    result = resolve_pending_upload(state_path, file_hash, "reconciled1")
+
+    assert result.video_id == "reconciled1"
+    updated = json.loads(state_path.read_text(encoding="utf-8"))
+    assert file_hash not in updated["pending"]
+    assert updated["uploads"][file_hash]["reconciled"] is True
+
+
+def test_resolve_pending_upload_rejects_invalid_video_id(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="video ID"):
+        resolve_pending_upload(tmp_path / "youtube.json", "a" * 64, "short")
+
+
+def test_resolve_pending_upload_rejects_invalid_file_hash(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="SHA-256"):
+        resolve_pending_upload(tmp_path / "youtube.json", "not-a-hash", "reconciled1")
+
+
+def test_resolve_pending_upload_does_not_overwrite_completed_record(
+    tmp_path: Path,
+) -> None:
+    state_path = tmp_path / "youtube.json"
+    file_hash = "a" * 64
+    state_path.write_text(
+        json.dumps(
+            {
+                "uploads": {
+                    file_hash: {
+                        "video_id": "existing123",
+                        "url": "https://youtu.be/existing123",
+                        "title": "Existing",
+                    }
+                },
+                "pending": {file_hash: {"title": "Pending"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="이미 완료"):
+        resolve_pending_upload(state_path, file_hash, "reconciled1")
+
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["uploads"][file_hash]["video_id"] == "existing123"
+
+
+@pytest.mark.parametrize(
+    "extra_args",
+    [
+        ("--video", "video.mp4"),
+        ("--metadata", "metadata.json"),
+        ("--client-secrets", "client.json"),
+        ("--token", "token.json"),
+        ("--dry-run",),
+    ],
+)
+def test_youtube_cli_rejects_general_options_in_pending_mode(
+    tmp_path: Path,
+    extra_args: tuple[str, ...],
+) -> None:
+    state_path = tmp_path / "youtube.json"
+    state_path.write_text(
+        json.dumps({"uploads": {}, "pending": {"a" * 64: {"title": "Pending"}}}),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit):
+        youtube_main(
+            [
+                "--state",
+                str(state_path),
+                "--resolve-pending-hash",
+                "a" * 64,
+                "--resolve-video-id",
+                "reconciled1",
+                *extra_args,
+            ]
+        )
+
+
+def test_youtube_cli_resolves_pending_without_video_file(tmp_path: Path, capsys: Any) -> None:
+    state_path = tmp_path / "youtube.json"
+    uploader = YouTubeUploader(
+        FailedService(),
+        state_path=state_path,
+        max_attempts=1,
+    )
+    with pytest.raises(RuntimeError, match="permanent upload failure"):
+        uploader.upload(make_video(tmp_path), make_metadata())
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    file_hash = next(iter(state["pending"]))
+
+    exit_code = youtube_main(
+        [
+            "--state",
+            str(state_path),
+            "--resolve-pending-hash",
+            file_hash,
+            "--resolve-video-id",
+            "reconciled1",
+        ]
+    )
+
+    assert exit_code == 0
+    assert "업로드 기록을 복구했습니다" in capsys.readouterr().out
 
 
 def test_youtube_policy_rejects_public_upload_by_default(tmp_path: Path) -> None:

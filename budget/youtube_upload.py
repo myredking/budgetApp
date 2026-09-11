@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import re
 import time
 import argparse
 from dataclasses import dataclass
@@ -107,6 +108,40 @@ def validate_youtube_token_file(path: Path) -> None:
     scopes = payload.get("scopes")
     if not isinstance(scopes, list) or YOUTUBE_UPLOAD_SCOPE not in scopes:
         raise ValueError("YouTube token에 youtube.upload 권한이 없습니다.")
+
+
+def resolve_pending_upload(
+    state_path: Path,
+    file_hash: str,
+    video_id: str,
+) -> YouTubeUploadResult:
+    """Record a manually verified YouTube upload without calling the API."""
+    normalized_hash = _normalize_file_hash(file_hash)
+    normalized_video_id = _normalize_video_id(video_id)
+    with _state_file_lock(state_path):
+        payload = _read_state(state_path)
+        pending = payload.get("pending", {})
+        record = pending.get(normalized_hash)
+        if not isinstance(record, dict):
+            raise ValueError("해당 파일의 pending 업로드 기록을 찾을 수 없습니다.")
+        uploads = payload.setdefault("uploads", {})
+        if normalized_hash in uploads:
+            raise RuntimeError("해당 파일은 이미 완료된 업로드 기록을 가지고 있습니다.")
+        title = record.get("title")
+        if not isinstance(title, str) or not title.strip():
+            raise RuntimeError("pending 업로드 기록의 제목이 올바르지 않습니다.")
+        uploads[normalized_hash] = {
+            "video_id": normalized_video_id,
+            "url": f"https://youtu.be/{normalized_video_id}",
+            "title": title,
+            "reconciled": True,
+        }
+        pending.pop(normalized_hash)
+        _write_state(state_path, payload)
+    return YouTubeUploadResult(
+        normalized_video_id,
+        f"https://youtu.be/{normalized_video_id}",
+    )
 
 
 class YouTubeUploader:
@@ -227,13 +262,7 @@ class YouTubeUploader:
         return response
 
     def _state_lock(self) -> Any:
-        try:
-            from filelock import FileLock
-        except ModuleNotFoundError as error:
-            raise RuntimeError("filelock 설치가 필요합니다.") from error
-        lock_path = self._state_path.with_suffix(self._state_path.suffix + ".lock")
-        lock_path.parent.mkdir(parents=True, exist_ok=True)
-        return FileLock(str(lock_path))
+        return _state_file_lock(self._state_path)
 
     def _find_previous(
         self,
@@ -350,6 +379,16 @@ def _read_state(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _state_file_lock(path: Path) -> Any:
+    try:
+        from filelock import FileLock
+    except ModuleNotFoundError as error:
+        raise RuntimeError("filelock 설치가 필요합니다.") from error
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    return FileLock(str(lock_path))
+
+
 def _write_state(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     partial = path.with_name(path.name + ".part")
@@ -376,6 +415,20 @@ def _quota_period(now: datetime) -> str:
     return now.astimezone(ZoneInfo(YOUTUBE_QUOTA_TIMEZONE)).date().isoformat()
 
 
+def _normalize_file_hash(file_hash: str) -> str:
+    normalized = file_hash.strip().casefold()
+    if not re.fullmatch(r"[0-9a-f]{64}", normalized):
+        raise ValueError("file hash는 64자리 SHA-256 hex 값이어야 합니다.")
+    return normalized
+
+
+def _normalize_video_id(video_id: str) -> str:
+    normalized = video_id.strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]{11}", normalized):
+        raise ValueError("YouTube video ID는 11자리 형식이어야 합니다.")
+    return normalized
+
+
 def _file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as source:
@@ -400,29 +453,58 @@ def _required_text(payload: dict[str, Any], name: str) -> str:
     return value.strip()
 
 
+def _run_cli_upload(args: argparse.Namespace) -> YouTubeUploadResult:
+    if args.resolve_pending_hash or args.resolve_video_id:
+        return _resolve_cli_pending(args)
+    return _upload_cli_video(args)
+
+
+def _resolve_cli_pending(args: argparse.Namespace) -> YouTubeUploadResult:
+    if not args.resolve_pending_hash or not args.resolve_video_id:
+        raise ValueError("pending hash와 video ID를 함께 지정해야 합니다.")
+    if args.video or args.metadata or args.client_secrets or args.token or args.dry_run:
+        raise ValueError("pending 복구 모드에서는 일반 업로드 옵션을 지정하지 않습니다.")
+    return resolve_pending_upload(
+        Path(args.state),
+        args.resolve_pending_hash,
+        args.resolve_video_id,
+    )
+
+
+def _upload_cli_video(args: argparse.Namespace) -> YouTubeUploadResult:
+    if not args.video or not args.metadata:
+        raise ValueError("일반 업로드에는 --video와 --metadata가 필요합니다.")
+    return YouTubeUploader(
+        state_path=Path(args.state),
+        client_secrets_path=Path(args.client_secrets or "secrets/youtube-client.json"),
+        token_path=Path(args.token or ".state/youtube-token.json"),
+    ).upload(
+        Path(args.video),
+        load_youtube_video(Path(args.metadata)),
+        dry_run=args.dry_run,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Upload one rendered album video with safe defaults."""
     parser = argparse.ArgumentParser(description="YouTube 앨범 영상 업로드")
-    parser.add_argument("--video", required=True)
-    parser.add_argument("--metadata", required=True)
+    parser.add_argument("--video")
+    parser.add_argument("--metadata")
+    parser.add_argument("--resolve-pending-hash")
+    parser.add_argument("--resolve-video-id")
     parser.add_argument("--state", default=".state/youtube-uploads.json")
-    parser.add_argument("--client-secrets", default="secrets/youtube-client.json")
-    parser.add_argument("--token", default=".state/youtube-token.json")
+    parser.add_argument("--client-secrets")
+    parser.add_argument("--token")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
     try:
-        result = YouTubeUploader(
-            state_path=Path(args.state),
-            client_secrets_path=Path(args.client_secrets),
-            token_path=Path(args.token),
-        ).upload(
-            Path(args.video),
-            load_youtube_video(Path(args.metadata)),
-            dry_run=args.dry_run,
-        )
+        result = _run_cli_upload(args)
     except (OSError, RuntimeError, ValueError) as error:
         parser.error(str(error))
-    message = "점검 완료" if result.dry_run else f"업로드 완료: {result.url}"
+    if args.resolve_pending_hash:
+        message = f"업로드 기록을 복구했습니다: {result.url}"
+    else:
+        message = "점검 완료" if result.dry_run else f"업로드 완료: {result.url}"
     print(message)
     return 0
 
