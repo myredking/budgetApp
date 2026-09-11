@@ -8,12 +8,17 @@ import random
 import time
 import argparse
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 
 YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 RETRYABLE_HTTP_STATUSES = {408, 429, 500, 502, 503, 504}
+YOUTUBE_QUOTA_TIMEZONE = "America/Los_Angeles"
+DEFAULT_YOUTUBE_DAILY_QUOTA_UNITS = 10_000
+YOUTUBE_UPLOAD_QUOTA_UNITS = 1_600
 
 
 @dataclass(frozen=True)
@@ -26,6 +31,8 @@ class YouTubeUploadPolicy:
     made_for_kids: bool = False
     category_id: str = "10"
     allow_public: bool = False
+    daily_quota_units: int = DEFAULT_YOUTUBE_DAILY_QUOTA_UNITS
+    upload_quota_units: int = YOUTUBE_UPLOAD_QUOTA_UNITS
 
     def validate(self) -> None:
         if self.privacy_status not in {"private", "unlisted", "public"}:
@@ -34,6 +41,7 @@ class YouTubeUploadPolicy:
             raise ValueError("공개 업로드는 정책상 허용되지 않습니다. 검토 후 직접 공개하세요.")
         if not self.contains_synthetic_media:
             raise ValueError("Suno 음원은 합성 미디어 표시를 켜야 합니다.")
+        _validate_quota_settings(self.daily_quota_units, self.upload_quota_units)
 
 
 @dataclass(frozen=True)
@@ -115,6 +123,7 @@ class YouTubeUploader:
         sleep_fn: Callable[[float], None] = time.sleep,
         rng: random.Random | None = None,
         allow_interactive_oauth: bool = True,
+        now_fn: Callable[[], datetime] | None = None,
     ) -> None:
         self._service = service
         self._policy = policy or YouTubeUploadPolicy()
@@ -125,6 +134,7 @@ class YouTubeUploader:
         self._sleep_fn = sleep_fn
         self._rng = rng or random.Random()
         self._allow_interactive_oauth = allow_interactive_oauth
+        self._now_fn = now_fn or _utc_now
 
     def upload(
         self,
@@ -139,15 +149,24 @@ class YouTubeUploader:
             raise ValueError(f"YouTube 영상 파일을 찾을 수 없습니다: {video_path}")
         file_hash = _file_sha256(video_path)
         with self._state_lock():
-            previous = self._find_previous(file_hash)
+            state = _read_state(self._state_path)
+            previous = self._find_previous(state, file_hash)
             if previous:
                 return previous
+            if file_hash in state.get("pending", {}):
+                raise RuntimeError(
+                    "이 파일은 완료 기록 없이 중단된 YouTube 업로드가 있습니다. "
+                    "중복 업로드 방지를 위해 수동 확인 후 상태를 정리하세요."
+                )
             if dry_run:
                 return YouTubeUploadResult("", "", dry_run=True)
+            period = _quota_period(self._now_fn())
+            self._reserve_upload_quota(state, period, file_hash, video)
+            _write_state(self._state_path, state)
             service = self._service or self._build_service()
             body = self._video_body(video)
             result = self._send_upload(service, video_path, body)
-            self._record(file_hash, video, result)
+            self._record(state, file_hash, video, result)
             return result
 
     def _video_body(self, video: YouTubeVideo) -> dict[str, Any]:
@@ -216,8 +235,11 @@ class YouTubeUploader:
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         return FileLock(str(lock_path))
 
-    def _find_previous(self, file_hash: str) -> YouTubeUploadResult | None:
-        payload = _read_state(self._state_path)
+    def _find_previous(
+        self,
+        payload: dict[str, Any],
+        file_hash: str,
+    ) -> YouTubeUploadResult | None:
         record = payload.get("uploads", {}).get(file_hash)
         if not isinstance(record, dict):
             return None
@@ -229,21 +251,48 @@ class YouTubeUploader:
 
     def _record(
         self,
+        payload: dict[str, Any],
         file_hash: str,
         video: YouTubeVideo,
         result: YouTubeUploadResult,
     ) -> None:
-        payload = _read_state(self._state_path)
         uploads = payload.setdefault("uploads", {})
         uploads[file_hash] = {
             "video_id": result.video_id,
             "url": result.url,
             "title": video.title,
         }
-        self._state_path.parent.mkdir(parents=True, exist_ok=True)
-        partial = self._state_path.with_name(self._state_path.name + ".part")
-        partial.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        partial.replace(self._state_path)
+        payload.setdefault("pending", {}).pop(file_hash, None)
+        _write_state(self._state_path, payload)
+
+    def _reserve_upload_quota(
+        self,
+        payload: dict[str, Any],
+        period: str,
+        file_hash: str,
+        video: YouTubeVideo,
+    ) -> None:
+        quota = payload.setdefault("quota", {})
+        period_usage = quota.setdefault(period, {"used_units": 0})
+        if not isinstance(period_usage, dict):
+            raise RuntimeError("YouTube 쿼터 상태 파일 형식이 올바르지 않습니다.")
+        used_units = period_usage.get("used_units", 0)
+        if type(used_units) is not int or used_units < 0:
+            raise RuntimeError("YouTube 쿼터 사용량 상태가 올바르지 않습니다.")
+        next_usage = used_units + self._policy.upload_quota_units
+        if next_usage > self._policy.daily_quota_units:
+            raise RuntimeError(
+                "일일 YouTube API 쿼터가 부족합니다. "
+                f"사용량 {used_units}/{self._policy.daily_quota_units}, "
+                f"필요량 {self._policy.upload_quota_units}"
+            )
+        period_usage["used_units"] = next_usage
+        pending = payload.setdefault("pending", {})
+        pending[file_hash] = {
+            "title": video.title,
+            "period": period,
+            "reserved_units": self._policy.upload_quota_units,
+        }
 
     def _build_service(self) -> Any:
         if not self._allow_interactive_oauth:
@@ -295,7 +344,36 @@ def _read_state(path: Path) -> dict[str, Any]:
         raise RuntimeError(f"YouTube 상태 파일을 읽을 수 없습니다: {error}") from error
     if not isinstance(payload, dict) or not isinstance(payload.get("uploads", {}), dict):
         raise RuntimeError("YouTube 상태 파일 형식이 올바르지 않습니다.")
+    for field_name in ("pending", "quota"):
+        if field_name in payload and not isinstance(payload[field_name], dict):
+            raise RuntimeError("YouTube 상태 파일 형식이 올바르지 않습니다.")
     return payload
+
+
+def _write_state(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    partial = path.with_name(path.name + ".part")
+    partial.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    partial.replace(path)
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _validate_quota_settings(daily_quota_units: int, upload_quota_units: int) -> None:
+    if type(daily_quota_units) is not int or daily_quota_units < 1:
+        raise ValueError("YouTube 일일 쿼터는 1 이상의 정수여야 합니다.")
+    if type(upload_quota_units) is not int or upload_quota_units < 1:
+        raise ValueError("YouTube 업로드 쿼터 비용은 1 이상의 정수여야 합니다.")
+    if upload_quota_units > daily_quota_units:
+        raise ValueError("YouTube 업로드 쿼터 비용이 일일 쿼터보다 클 수 없습니다.")
+
+
+def _quota_period(now: datetime) -> str:
+    if now.tzinfo is None or now.utcoffset() is None:
+        now = now.replace(tzinfo=timezone.utc)
+    return now.astimezone(ZoneInfo(YOUTUBE_QUOTA_TIMEZONE)).date().isoformat()
 
 
 def _file_sha256(path: Path) -> str:

@@ -1,5 +1,6 @@
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -29,6 +30,29 @@ class FakeUploadRequest:
 class EmptyUploadRequest:
     def next_chunk(self) -> tuple[None, None]:
         return None, None
+
+
+class FailedUploadRequest:
+    def next_chunk(self) -> tuple[None, dict[str, str] | None]:
+        raise RuntimeError("permanent upload failure")
+
+
+class FailedVideos:
+    def __init__(self) -> None:
+        self.request = FailedUploadRequest()
+        self.insert_calls = 0
+
+    def insert(self, **kwargs: Any) -> FailedUploadRequest:
+        self.insert_calls += 1
+        return self.request
+
+
+class FailedService:
+    def __init__(self) -> None:
+        self.api = FailedVideos()
+
+    def videos(self) -> FailedVideos:
+        return self.api
 
 
 class FakeVideos:
@@ -94,6 +118,59 @@ def test_youtube_uploader_deduplicates_by_file_hash(tmp_path: Path) -> None:
     assert first == second
     assert service.api.request.calls == 2
     assert json.loads(state_path.read_text(encoding="utf-8"))["uploads"]
+
+
+def test_youtube_uploader_blocks_when_daily_quota_is_exhausted(tmp_path: Path) -> None:
+    state_path = tmp_path / "youtube.json"
+    service = FakeService()
+    policy = YouTubeUploadPolicy(daily_quota_units=1600, upload_quota_units=1600)
+    uploader = YouTubeUploader(
+        service,
+        policy=policy,
+        state_path=state_path,
+        sleep_fn=lambda _: None,
+        now_fn=lambda: datetime(2026, 9, 12, 6, tzinfo=timezone.utc),
+    )
+    first_path = make_video(tmp_path)
+    second_path = tmp_path / "second.mp4"
+    second_path.write_bytes(b"different video")
+
+    uploader.upload(first_path, make_metadata())
+
+    with pytest.raises(RuntimeError, match="일일 YouTube API 쿼터"):
+        uploader.upload(second_path, make_metadata())
+
+    assert service.api.request.calls == 2
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert state["quota"]["2026-09-11"]["used_units"] == 1600
+
+
+def test_youtube_uploader_keeps_failed_upload_as_manual_pending(tmp_path: Path) -> None:
+    state_path = tmp_path / "youtube.json"
+    failed_service = FailedService()
+    uploader = YouTubeUploader(
+        failed_service,
+        state_path=state_path,
+        max_attempts=1,
+        now_fn=lambda: datetime(2026, 9, 11, 12, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(RuntimeError, match="permanent upload failure"):
+        uploader.upload(make_video(tmp_path), make_metadata())
+
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    assert len(state["pending"]) == 1
+    retry_service = FakeService()
+    retry_uploader = YouTubeUploader(
+        retry_service,
+        state_path=state_path,
+        sleep_fn=lambda _: None,
+    )
+
+    with pytest.raises(RuntimeError, match="수동 확인"):
+        retry_uploader.upload(make_video(tmp_path), make_metadata())
+
+    assert retry_service.api.request.calls == 0
 
 
 def test_youtube_policy_rejects_public_upload_by_default(tmp_path: Path) -> None:
