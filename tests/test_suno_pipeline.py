@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -6,6 +7,7 @@ import pytest
 
 from budget.suno_pipeline import (
     AlbumCandidate,
+    build_ready_albums,
     main,
     prepare_album_candidates,
     render_ready_videos,
@@ -297,6 +299,9 @@ def test_render_ready_videos_uses_only_candidates_without_issues(tmp_path: Path)
 
     def fake_runner(command: list[str], check: bool) -> None:
         calls.append(command)
+        output_path = Path(command[-1])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"rendered")
 
     videos = render_ready_videos(
         [candidate],
@@ -306,3 +311,207 @@ def test_render_ready_videos_uses_only_candidates_without_issues(tmp_path: Path)
 
     assert videos == [tmp_path / album.album_id / "youtube" / "artist-album-01.mp4"]
     assert calls
+
+
+def test_build_ready_albums_rejects_stale_existing_package(tmp_path: Path) -> None:
+    metadata = ReleaseMetadata(
+        artist_name="Artist",
+        track_title="Track",
+        primary_genre="Electronic",
+        songwriter_name="Writer",
+        suno_plan="Pro",
+        generated_at="2026-09-08T10:00:00+09:00",
+        downloaded_at="2026-09-08T10:05:00+09:00",
+        lyrics_by_ai=True,
+        music_by_ai=True,
+        audio_scope="all",
+        artist_persona_confirmed=True,
+    )
+    track = AlbumTrackInput(metadata, tmp_path / "audio.wav", tmp_path / "lyrics.txt", "new")
+    album = AlbumSpec("artist-album-01", "Album", "Artist", "Electronic", "2026-09", (track,))
+    candidate = AlbumCandidate(album, tmp_path / "cover.jpg", ())
+    package = tmp_path / album.album_id / "metadata"
+    package.mkdir(parents=True)
+    (package / "album.json").write_text(
+        json.dumps({"album_id": album.album_id, "tracks": [{"track_id": "old"}]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="트랙 구성"):
+        build_ready_albums([candidate], tmp_path)
+
+
+def test_build_ready_albums_rejects_incomplete_matching_package(tmp_path: Path) -> None:
+    metadata = ReleaseMetadata(
+        artist_name="Artist",
+        track_title="Track",
+        primary_genre="Electronic",
+        songwriter_name="Writer",
+        suno_plan="Pro",
+        generated_at="2026-09-08T10:00:00+09:00",
+        downloaded_at="2026-09-08T10:05:00+09:00",
+        lyrics_by_ai=True,
+        music_by_ai=True,
+        audio_scope="all",
+        artist_persona_confirmed=True,
+    )
+    track = AlbumTrackInput(metadata, tmp_path / "audio.wav", tmp_path / "lyrics.txt", "track")
+    album = AlbumSpec("artist-album-01", "Album", "Artist", "Electronic", "2026-09", (track,))
+    candidate = AlbumCandidate(album, tmp_path / "cover.jpg", ())
+    package = tmp_path / album.album_id
+    (package / "metadata").mkdir(parents=True)
+    (package / "metadata" / "album.json").write_text(
+        json.dumps(
+            {
+                "album_id": album.album_id,
+                "track_count": 1,
+                "tracks": [{"track_id": "track", "audio": "tracks/audio.wav", "lyrics": "tracks/lyrics.txt"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="트랙 구성"):
+        build_ready_albums([candidate], tmp_path)
+
+
+def test_build_ready_albums_reuses_complete_matching_package(tmp_path: Path) -> None:
+    metadata = ReleaseMetadata(
+        artist_name="Artist",
+        track_title="Track",
+        primary_genre="Electronic",
+        songwriter_name="Writer",
+        suno_plan="Pro",
+        generated_at="2026-09-08T10:00:00+09:00",
+        downloaded_at="2026-09-08T10:05:00+09:00",
+        lyrics_by_ai=True,
+        music_by_ai=True,
+        audio_scope="all",
+        artist_persona_confirmed=True,
+    )
+    track = AlbumTrackInput(metadata, tmp_path / "audio.wav", tmp_path / "lyrics.txt", "track")
+    album = AlbumSpec("artist-album-01", "Album", "Artist", "Electronic", "2026-09", (track,))
+    candidate = AlbumCandidate(album, tmp_path / "cover.jpg", ())
+    package = tmp_path / album.album_id
+    rows = [{"track_id": "track", "audio": "tracks/audio.wav", "lyrics": "tracks/lyrics.txt"}]
+    for relative_path in (
+        "artwork/cover.jpg",
+        "youtube/metadata.json",
+        "youtube/concat.txt",
+        "distrokid/upload-checklist.md",
+        "tracks/audio.wav",
+        "tracks/lyrics.txt",
+        "tracks/metadata.json",
+    ):
+        path = package / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"content")
+    (package / "tracks" / "metadata.json").write_text("{}", encoding="utf-8")
+    (package / "youtube" / "metadata.json").write_text(
+        json.dumps(
+            {
+                "title": "Album",
+                "description": "Description",
+                "tags": ["Artist", "Electronic", "AI music"],
+                "category_id": "10",
+                "privacy_status": "private",
+                "contains_synthetic_media": True,
+                "notify_subscribers": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (package / "youtube" / "concat.txt").write_text(
+        "file '../tracks/audio.wav'\n",
+        encoding="utf-8",
+    )
+    metadata_path = package / "metadata" / "album.json"
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(
+        json.dumps({"album_id": album.album_id, "track_count": 1, "tracks": rows}),
+        encoding="utf-8",
+    )
+
+    assert build_ready_albums([candidate], tmp_path) == [package]
+    (package / "youtube" / "metadata.json").write_text("broken", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="트랙 구성"):
+        build_ready_albums([candidate], tmp_path)
+
+
+def test_build_ready_albums_rejects_malformed_matching_metadata(tmp_path: Path) -> None:
+    metadata = ReleaseMetadata(
+        artist_name="Artist",
+        track_title="Track",
+        primary_genre="Electronic",
+        songwriter_name="Writer",
+        suno_plan="Pro",
+        generated_at="2026-09-08T10:00:00+09:00",
+        downloaded_at="2026-09-08T10:05:00+09:00",
+        lyrics_by_ai=True,
+        music_by_ai=True,
+        audio_scope="all",
+        artist_persona_confirmed=True,
+    )
+    track = AlbumTrackInput(metadata, tmp_path / "audio.wav", tmp_path / "lyrics.txt", "track")
+    album = AlbumSpec("artist-album-01", "Album", "Artist", "Electronic", "2026-09", (track,))
+    candidate = AlbumCandidate(album, tmp_path / "cover.jpg", ())
+    package = tmp_path / album.album_id
+    rows = [{"track_id": "track", "audio": "../outside.wav", "lyrics": "tracks/lyrics.txt"}]
+    for relative_path in (
+        "artwork/cover.jpg",
+        "youtube/metadata.json",
+        "youtube/concat.txt",
+        "distrokid/upload-checklist.md",
+        "tracks/lyrics.txt",
+        "tracks/metadata.json",
+    ):
+        path = package / relative_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"content")
+    metadata_path = package / "metadata" / "album.json"
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(
+        json.dumps({"album_id": album.album_id, "track_count": True, "tracks": rows}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="트랙 구성"):
+        build_ready_albums([candidate], tmp_path)
+
+
+def test_render_ready_videos_skips_existing_nonempty_video(tmp_path: Path) -> None:
+    metadata = ReleaseMetadata(
+        artist_name="Artist",
+        track_title="Track",
+        primary_genre="Electronic",
+        songwriter_name="Writer",
+        suno_plan="Pro",
+        generated_at="2026-09-08T10:00:00+09:00",
+        downloaded_at="2026-09-08T10:05:00+09:00",
+        lyrics_by_ai=True,
+        music_by_ai=True,
+        audio_scope="all",
+        artist_persona_confirmed=True,
+    )
+    track = AlbumTrackInput(metadata, tmp_path / "audio.wav", tmp_path / "lyrics.txt")
+    album = AlbumSpec("artist-album-01", "Album", "Artist", "Electronic", "2026-09", (track,))
+    candidate = AlbumCandidate(album, tmp_path / "cover.jpg", ())
+    video = tmp_path / album.album_id / "youtube" / f"{album.album_id}.mp4"
+    video.parent.mkdir(parents=True)
+    video.write_bytes(b"rendered")
+    video_hash = hashlib.sha256(b"rendered").hexdigest()
+    (video.parent / f"{video.name}.complete").write_text(video_hash + "\n", encoding="utf-8")
+    calls: list[list[str]] = []
+
+    def fake_runner(command: list[str], check: bool) -> None:
+        calls.append(command)
+
+    videos = render_ready_videos(
+        [candidate],
+        [tmp_path / album.album_id],
+        fake_runner,
+    )
+
+    assert videos == [video]
+    assert calls == []

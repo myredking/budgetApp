@@ -159,12 +159,17 @@ def build_album_package(
     return package_path
 
 
-def build_ffmpeg_command(package_path: Path, album: AlbumSpec) -> list[str]:
+def build_ffmpeg_command(
+    package_path: Path,
+    album: AlbumSpec,
+    output_path: Path | None = None,
+) -> list[str]:
     """Return the free local FFmpeg command for an album listening video."""
     package = _posix_path(package_path)
     concat_file = f"{package}/youtube/concat.txt"
     cover_file = f"{package}/artwork/cover.jpg"
-    output_file = f"{package}/youtube/{album.album_id}.mp4"
+    final_path = output_path or package_path / "youtube" / f"{album.album_id}.mp4"
+    output_file = _posix_path(final_path)
     return [
         "ffmpeg",
         "-y",
@@ -206,8 +211,53 @@ def render_album_video(
 ) -> Path:
     """Render one listening video locally with FFmpeg."""
     output_path = package_path / "youtube" / f"{album.album_id}.mp4"
-    runner(build_ffmpeg_command(package_path, album), check=True)
+    with _video_lock(output_path):
+        return _render_album_video_locked(package_path, album, output_path, runner)
+
+
+def _render_album_video_locked(
+    package_path: Path,
+    album: AlbumSpec,
+    output_path: Path,
+    runner: Any,
+) -> Path:
+    marker_path = output_path.with_name(output_path.name + ".complete")
+    if _completed_video_exists(output_path, marker_path):
+        return output_path
+    temporary_path = output_path.with_name(f".{output_path.stem}.part{output_path.suffix}")
+    temporary_path.unlink(missing_ok=True)
+    try:
+        runner(
+            build_ffmpeg_command(package_path, album, temporary_path),
+            check=True,
+        )
+        if not temporary_path.is_file() or temporary_path.stat().st_size == 0:
+            raise RuntimeError("FFmpeg가 완성된 임시 영상 파일을 만들지 못했습니다.")
+        temporary_path.replace(output_path)
+        marker_path.write_text(_file_sha256(output_path) + "\n", encoding="utf-8")
+    except BaseException:
+        temporary_path.unlink(missing_ok=True)
+        raise
     return output_path
+
+
+def _video_lock(output_path: Path) -> Any:
+    try:
+        from filelock import FileLock
+    except ModuleNotFoundError as error:
+        raise RuntimeError("filelock 설치가 필요합니다.") from error
+    lock_path = output_path.with_name(output_path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    return FileLock(str(lock_path))
+
+
+def _completed_video_exists(output_path: Path, marker_path: Path) -> bool:
+    if not output_path.is_file() or not marker_path.is_file():
+        return False
+    try:
+        return marker_path.read_text(encoding="utf-8").strip() == _file_sha256(output_path)
+    except OSError:
+        return False
 
 
 def load_album_manifest(path: Path) -> AlbumSpec:

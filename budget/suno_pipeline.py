@@ -139,7 +139,13 @@ def build_ready_albums(
         if candidate.issues:
             continue
         package_path = output_root / candidate.album.album_id
-        if not package_path.exists():
+        if package_path.exists():
+            if not _existing_package_matches(package_path, candidate.album):
+                raise ValueError(
+                    "기존 앨범 패키지가 현재 후보의 트랙 구성과 다릅니다: "
+                    f"{package_path}"
+                )
+        else:
             package_path = build_album_package(
                 candidate.album,
                 candidate.cover_path,
@@ -311,6 +317,171 @@ def _preflight_args(args: argparse.Namespace) -> None:
 
 def _is_preflight_only(args: argparse.Namespace) -> bool:
     return args.preflight_only
+
+
+def _existing_package_matches(package_path: Path, album: AlbumSpec) -> bool:
+    if not package_path.is_dir():
+        return False
+    payload = _load_package_metadata(package_path)
+    if payload is None:
+        return False
+    rows = _package_track_rows(payload)
+    if rows is None:
+        return False
+    expected_ids = [
+        track.track_id or track.metadata.track_title for track in album.tracks
+    ]
+    if not _package_metadata_matches(payload, rows, album.album_id, expected_ids):
+        return False
+    return _package_files_are_complete(package_path, rows)
+
+
+def _load_package_metadata(package_path: Path) -> dict[str, Any] | None:
+    metadata_path = package_path / "metadata" / "album.json"
+    try:
+        payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _package_track_rows(payload: dict[str, Any]) -> list[dict[str, Any]] | None:
+    rows = payload.get("tracks")
+    if not isinstance(rows, list) or not rows:
+        return None
+    if not all(
+        isinstance(row, dict) and isinstance(row.get("track_id"), str)
+        for row in rows
+    ):
+        return None
+    return rows
+
+
+def _package_metadata_matches(
+    payload: dict[str, Any],
+    rows: list[dict[str, Any]],
+    album_id: str,
+    expected_ids: list[str],
+) -> bool:
+    track_ids = [row["track_id"] for row in rows]
+    track_count = payload.get("track_count")
+    return (
+        payload.get("album_id") == album_id
+        and type(track_count) is int
+        and track_count == len(expected_ids)
+        and track_ids == expected_ids
+    )
+
+
+def _package_files_are_complete(
+    package_path: Path,
+    rows: list[dict[str, Any]],
+) -> bool:
+    required_files = (
+        package_path / "artwork" / "cover.jpg",
+        package_path / "metadata" / "album.json",
+        package_path / "youtube" / "metadata.json",
+        package_path / "youtube" / "concat.txt",
+        package_path / "distrokid" / "upload-checklist.md",
+    )
+    if not all(_file_has_content(path) for path in required_files):
+        return False
+    if not _youtube_files_are_valid(package_path, rows):
+        return False
+    return all(_track_files_are_complete(package_path, row) for row in rows)
+
+
+def _track_files_are_complete(
+    package_path: Path,
+    row: dict[str, Any],
+) -> bool:
+    audio_value = row.get("audio")
+    lyrics_value = row.get("lyrics")
+    if not isinstance(audio_value, str) or not isinstance(lyrics_value, str):
+        return False
+    audio_path = _package_relative_path(package_path, audio_value)
+    lyrics_path = _package_relative_path(package_path, lyrics_value)
+    if audio_path is None or lyrics_path is None:
+        return False
+    metadata_path = audio_path.parent / "metadata.json"
+    return (
+        _file_has_content(audio_path)
+        and lyrics_path.is_file()
+        and _json_object_file(metadata_path)
+    )
+
+
+def _youtube_files_are_valid(
+    package_path: Path,
+    rows: list[dict[str, Any]],
+) -> bool:
+    metadata_path = package_path / "youtube" / "metadata.json"
+    try:
+        load_youtube_video(metadata_path)
+        payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("privacy_status") != "private":
+        return False
+    if payload.get("contains_synthetic_media") is not True:
+        return False
+    if payload.get("notify_subscribers") is not False:
+        return False
+    return _concat_file_matches(package_path, rows)
+
+
+def _concat_file_matches(
+    package_path: Path,
+    rows: list[dict[str, Any]],
+) -> bool:
+    concat_path = package_path / "youtube" / "concat.txt"
+    try:
+        actual_lines = [
+            line.strip()
+            for line in concat_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except OSError:
+        return False
+    expected_lines: list[str] = []
+    for row in rows:
+        audio_value = row.get("audio")
+        if not isinstance(audio_value, str):
+            return False
+        if _package_relative_path(package_path, audio_value) is None:
+            return False
+        expected_lines.append(f"file '../{audio_value}'")
+    return actual_lines == expected_lines
+
+
+def _file_has_content(path: Path) -> bool:
+    try:
+        return path.is_file() and path.stat().st_size > 0
+    except OSError:
+        return False
+
+
+def _package_relative_path(package_path: Path, value: str) -> Path | None:
+    relative_path = Path(value)
+    if relative_path.is_absolute():
+        return None
+    try:
+        package_root = package_path.resolve()
+        resolved_path = (package_root / relative_path).resolve()
+        resolved_path.relative_to(package_root)
+    except (OSError, ValueError):
+        return None
+    return resolved_path
+
+
+def _json_object_file(path: Path) -> bool:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return isinstance(payload, dict)
 
 
 def _youtube_credentials_available(client_secrets_path: Path, token_path: Path) -> bool:

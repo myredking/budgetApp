@@ -1,4 +1,5 @@
 import json
+import threading
 import wave
 from pathlib import Path
 
@@ -237,8 +238,90 @@ def test_render_album_video_executes_local_ffmpeg_command(tmp_path: Path) -> Non
     def fake_runner(command: list[str], check: bool) -> None:
         calls.append(command)
         assert check is True
+        output_path = Path(command[-1])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"rendered")
 
     output = render_album_video(tmp_path / "package", album, fake_runner)
 
     assert output.name == f"{album.album_id}.mp4"
     assert calls and calls[0][0] == "ffmpeg"
+
+
+def test_render_album_video_removes_partial_file_after_failure(tmp_path: Path) -> None:
+    tracks = [make_track(tmp_path, f"track-{number}") for number in range(1, 5)]
+    album = group_tracks_into_albums(tracks, AlbumPolicy(min_tracks=4))[0]
+
+    def failing_runner(command: list[str], check: bool) -> None:
+        output_path = Path(command[-1])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"partial")
+        raise RuntimeError("ffmpeg failed")
+
+    with pytest.raises(RuntimeError, match="ffmpeg failed"):
+        render_album_video(tmp_path / "package", album, failing_runner)
+
+    output_path = tmp_path / "package" / "youtube" / f"{album.album_id}.mp4"
+    marker_path = output_path.with_name(output_path.name + ".complete")
+    assert not output_path.exists()
+    assert not marker_path.exists()
+
+
+def test_render_album_video_serializes_concurrent_runs(tmp_path: Path) -> None:
+    tracks = [make_track(tmp_path, f"track-{number}") for number in range(1, 5)]
+    album = group_tracks_into_albums(tracks, AlbumPolicy(min_tracks=4))[0]
+    state_lock = threading.Lock()
+    first_entered = threading.Event()
+    second_entered = threading.Event()
+    release_first = threading.Event()
+    active_runs = 0
+    maximum_active_runs = 0
+    runner_calls = 0
+
+    def concurrent_runner(command: list[str], check: bool) -> None:
+        nonlocal active_runs, maximum_active_runs, runner_calls
+        output_path = Path(command[-1])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with state_lock:
+            runner_calls += 1
+            call_number = runner_calls
+            active_runs += 1
+            maximum_active_runs = max(maximum_active_runs, active_runs)
+        if call_number == 1:
+            first_entered.set()
+            if not release_first.wait(2):
+                raise AssertionError("첫 번째 렌더링 해제 신호가 없습니다.")
+        else:
+            second_entered.set()
+        output_path.write_bytes(b"rendered")
+        with state_lock:
+            active_runs -= 1
+
+    errors: list[BaseException] = []
+
+    def render_once() -> None:
+        try:
+            render_album_video(tmp_path / "package", album, concurrent_runner)
+        except BaseException as error:
+            errors.append(error)
+
+    first_thread = threading.Thread(target=render_once)
+    second_thread = threading.Thread(target=render_once)
+    first_thread.start()
+    second_started = False
+    try:
+        assert first_entered.wait(2)
+        second_thread.start()
+        second_started = True
+        assert not second_entered.wait(0.1)
+    finally:
+        release_first.set()
+        first_thread.join(3)
+        if second_started:
+            second_thread.join(3)
+
+    assert not first_thread.is_alive()
+    assert not second_started or not second_thread.is_alive()
+
+    assert errors == []
+    assert maximum_active_runs == 1

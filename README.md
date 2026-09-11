@@ -145,6 +145,8 @@ python -m budget.suno_pipeline `
 
 앨범 폴더에는 DistroKid용 `distrokid/upload-checklist.md`, 곡별 음원·가사·메타데이터, `artwork/cover.jpg`, YouTube용 `youtube/metadata.json`·`youtube/concat.txt`·MP4 경로가 생깁니다. FFmpeg가 PATH에 있어야 합니다.
 
+한번 만들어진 앨범 패키지는 불변으로 취급합니다. 이후 같은 그룹에 새 곡이 추가되어 트랙 구성이 달라지면 기존 패키지를 조용히 덮어쓰지 않고 실행을 중단하므로, 새 검토 단위로 분리해 확인해야 합니다. 이미 정상 생성된 YouTube 영상은 다시 렌더링하지 않습니다.
+
 ### 3. YouTube 전송 점검과 실제 업로드
 
 먼저 전송 없이 점검합니다.
