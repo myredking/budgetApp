@@ -1,0 +1,160 @@
+import json
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from budget.youtube_upload import (
+    YouTubeUploadPolicy,
+    YouTubeVideo,
+    YouTubeUploader,
+    load_youtube_video,
+)
+
+
+class FakeUploadRequest:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def next_chunk(self) -> tuple[None, dict[str, str] | None]:
+        self.calls += 1
+        if self.calls == 1:
+            raise OSError("temporary network failure")
+        return None, {"id": "video-123"}
+
+
+class EmptyUploadRequest:
+    def next_chunk(self) -> tuple[None, None]:
+        return None, None
+
+
+class FakeVideos:
+    def __init__(self) -> None:
+        self.body: dict[str, Any] = {}
+        self.request = FakeUploadRequest()
+
+    def insert(self, **kwargs: Any) -> FakeUploadRequest:
+        self.body = kwargs
+        return self.request
+
+
+class FakeService:
+    def __init__(self) -> None:
+        self.api = FakeVideos()
+
+    def videos(self) -> FakeVideos:
+        return self.api
+
+
+def make_video(tmp_path: Path) -> Path:
+    path = tmp_path / "album.mp4"
+    path.write_bytes(b"video")
+    return path
+
+
+def make_metadata() -> YouTubeVideo:
+    return YouTubeVideo(
+        title="Neon Harbor - September Sessions (Full Album)",
+        description="AI-generated music album.\n\nTracklist:\n1. Night Transit",
+        tags=("Neon Harbor", "Electronic", "AI music"),
+    )
+
+
+def test_youtube_policy_defaults_to_private_and_disclosed(tmp_path: Path) -> None:
+    service = FakeService()
+    uploader = YouTubeUploader(
+        service,
+        policy=YouTubeUploadPolicy(),
+        state_path=tmp_path / "youtube.json",
+        sleep_fn=lambda _: None,
+    )
+
+    result = uploader.upload(make_video(tmp_path), make_metadata())
+
+    assert result.video_id == "video-123"
+    assert result.url == "https://youtu.be/video-123"
+    body = service.api.body["body"]
+    assert body["status"]["privacyStatus"] == "private"
+    assert body["status"]["containsSyntheticMedia"] is True
+    assert service.api.body["notifySubscribers"] is False
+
+
+def test_youtube_uploader_deduplicates_by_file_hash(tmp_path: Path) -> None:
+    state_path = tmp_path / "youtube.json"
+    service = FakeService()
+    uploader = YouTubeUploader(service, state_path=state_path, sleep_fn=lambda _: None)
+    video_path = make_video(tmp_path)
+
+    first = uploader.upload(video_path, make_metadata())
+    second = uploader.upload(video_path, make_metadata())
+
+    assert first == second
+    assert service.api.request.calls == 2
+    assert json.loads(state_path.read_text(encoding="utf-8"))["uploads"]
+
+
+def test_youtube_policy_rejects_public_upload_by_default(tmp_path: Path) -> None:
+    service = FakeService()
+    policy = YouTubeUploadPolicy(privacy_status="public")
+    uploader = YouTubeUploader(service, policy=policy, state_path=tmp_path / "state.json")
+
+    with pytest.raises(ValueError, match="공개 업로드"):
+        uploader.upload(make_video(tmp_path), make_metadata())
+
+
+def test_youtube_dry_run_does_not_call_service(tmp_path: Path) -> None:
+    service = FakeService()
+    uploader = YouTubeUploader(service, state_path=tmp_path / "state.json")
+
+    result = uploader.upload(make_video(tmp_path), make_metadata(), dry_run=True)
+
+    assert result.dry_run is True
+    assert service.api.request.calls == 0
+
+
+def test_youtube_resumable_upload_rejects_empty_chunk_response(tmp_path: Path) -> None:
+    uploader = YouTubeUploader(state_path=tmp_path / "state.json")
+
+    with pytest.raises(RuntimeError, match="빈 응답"):
+        uploader._resumable_upload(EmptyUploadRequest())
+
+
+def test_youtube_upload_serializes_state_access_with_lock(tmp_path: Path) -> None:
+    class TrackingLock:
+        entered = 0
+
+        def __enter__(self) -> "TrackingLock":
+            self.entered += 1
+            return self
+
+        def __exit__(self, *args: Any) -> None:
+            return None
+
+    lock = TrackingLock()
+    service = FakeService()
+    uploader = YouTubeUploader(service, state_path=tmp_path / "state.json", sleep_fn=lambda _: None)
+    uploader._state_lock = lambda: lock  # type: ignore[method-assign]
+
+    uploader.upload(make_video(tmp_path), make_metadata())
+
+    assert lock.entered == 1
+
+
+def test_load_youtube_video_reads_album_metadata(tmp_path: Path) -> None:
+    path = tmp_path / "metadata.json"
+    path.write_text(
+        json.dumps(
+            {
+                "title": "Album",
+                "description": "Description",
+                "tags": ["one", "two"],
+                "category_id": "10",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    video = load_youtube_video(path)
+
+    assert video.title == "Album"
+    assert video.tags == ("one", "two")

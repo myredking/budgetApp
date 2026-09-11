@@ -1,0 +1,151 @@
+{
+  "name": "Suno - Pending Tracks to Album Folder",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "triggerOAuth2",
+        "documentId": { "__rl": true, "mode": "id", "value": "YOUR_GOOGLE_SHEET_ID" },
+        "sheetName": { "__rl": true, "mode": "name", "value": "Tracks" },
+        "event": "rowAdded",
+        "options": {
+          "dataLocationOnSheet": {
+            "values": { "rangeDefinition": "specifyRangeA1", "range": "A:H" }
+          }
+        }
+      },
+      "id": "sheets-trigger",
+      "name": "Google Sheets Trigger",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": { "__rl": true, "mode": "id", "value": "YOUR_GOOGLE_SHEET_ID" },
+        "sheetName": { "__rl": true, "mode": "name", "value": "Tracks" },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": { "rangeDefinition": "specifyRangeA1", "range": "A:H" }
+          }
+        }
+      },
+      "id": "read-tracks",
+      "name": "Read Tracks",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [240, 300],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const MIN_TRACKS = 4;\nconst ROOT_FOLDER_ID = 'YOUR_GOOGLE_DRIVE_ROOT_FOLDER_ID';\nconst rows = $input.all().map((item) => item.json);\nconst groups = {};\n\nfor (const row of rows) {\n  const status = String(row.Status ?? row.status ?? '').trim().toLowerCase();\n  const genre = String(row.Genre ?? row.genre ?? '').trim();\n  const trackId = String(row.Track_ID ?? row.track_id ?? '').trim();\n  if (status !== 'pending' || !genre || !trackId) continue;\n\n  const safeGenre = genre.replace(/[^\\p{L}\\p{N}\\s_-]/gu, '-').replace(/\\s+/g, ' ').trim();\n  const createdAt = String(row.Created_At ?? row.created_at ?? '').trim();\n  const month = /^\\d{4}-\\d{2}/.test(createdAt) ? createdAt.slice(0, 7) : $now.toFormat('yyyy-MM');\n  const key = `${safeGenre}::${month}`;\n  if (!groups[key]) groups[key] = { genre: safeGenre, month, tracks: [] };\n  groups[key].tracks.push({\n    trackId,\n    title: String(row.Title ?? row.title ?? '').trim(),\n    audioUrl: String(row.Audio_URL ?? row.audio_url ?? '').trim(),\n    coverUrl: String(row.Cover_URL ?? row.cover_url ?? '').trim(),\n    lyrics: String(row.Lyrics ?? row.lyrics ?? '').trim()\n  });\n}\n\nreturn Object.values(groups)\n  .filter((group) => group.tracks.length >= MIN_TRACKS)\n  .map((group) => {\n    const albumName = `Suno Album - ${group.genre} - ${group.month}`;\n    return {\n      json: {\n        genre: group.genre,\n        month: group.month,\n        albumName,\n        trackCount: group.tracks.length,\n        trackIds: group.tracks.map((track) => track.trackId),\n        tracks: group.tracks,\n        driveQuery: `'${ROOT_FOLDER_ID}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder' and name = '${albumName}'`\n      }\n    };\n  });"
+      },
+      "id": "find-albums",
+      "name": "Find Eligible Albums",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "={{ $json.driveQuery }}",
+        "returnAll": false,
+        "limit": 1,
+        "filter": {
+          "folderId": { "__rl": true, "mode": "id", "value": "YOUR_GOOGLE_DRIVE_ROOT_FOLDER_ID" },
+          "whatToSearch": "folders"
+        },
+        "options": { "fields": "id,name,mimeType,parents,webViewLink" }
+      },
+      "id": "search-album-folder",
+      "name": "Search Existing Album Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [720, 300],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const source = $('Find Eligible Albums').item.json;\nconst existing = $json;\nreturn [{\n  json: {\n    ...source,\n    folderId: String(existing.id ?? ''),\n    folderUrl: existing.id ? `https://drive.google.com/drive/folders/${existing.id}` : '',\n    folderCreated: false\n  }\n}];"
+      },
+      "id": "resolve-folder",
+      "name": "Resolve Album Folder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "folder-is-missing",
+              "leftValue": "={{ $json.folderId }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "empty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "folder-exists",
+      "name": "Album Folder Missing?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "create",
+        "name": "={{ $json.albumName }}",
+        "driveId": { "__rl": true, "mode": "list", "value": "My Drive" },
+        "folderId": { "__rl": true, "mode": "id", "value": "YOUR_GOOGLE_DRIVE_ROOT_FOLDER_ID" },
+        "options": {}
+      },
+      "id": "create-album-folder",
+      "name": "Create Album Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1440, 200]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const source = $('Resolve Album Folder').item.json;\nconst created = $json;\nreturn [{\n  json: {\n    ...source,\n    folderId: String(created.id ?? ''),\n    folderUrl: created.id ? `https://drive.google.com/drive/folders/${created.id}` : '',\n    folderCreated: Boolean(created.id),\n    nextStep: 'Create original, master, lyrics, and metadata subfolders'\n  }\n}];"
+      },
+      "id": "album-folder-ready",
+      "name": "Album Folder Ready",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, 200]
+    }
+  ],
+  "connections": {
+    "Google Sheets Trigger": { "main": [[{ "node": "Read Tracks", "type": "main", "index": 0 }]] },
+    "Read Tracks": { "main": [[{ "node": "Find Eligible Albums", "type": "main", "index": 0 }]] },
+    "Find Eligible Albums": { "main": [[{ "node": "Search Existing Album Folder", "type": "main", "index": 0 }]] },
+    "Search Existing Album Folder": { "main": [[{ "node": "Resolve Album Folder", "type": "main", "index": 0 }]] },
+    "Resolve Album Folder": { "main": [[{ "node": "Album Folder Missing?", "type": "main", "index": 0 }]] },
+    "Album Folder Missing?": {
+      "main": [[{ "node": "Create Album Folder", "type": "main", "index": 0 }], []]
+    },
+    "Create Album Folder": { "main": [[{ "node": "Album Folder Ready", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "suno-album-folder-v1",
+  "meta": { "templateCredsSetupCompleted": false },
+  "pinData": {}
+}

@@ -1,0 +1,36 @@
+services:
+  n8n:
+    build:
+      context: ..
+      dockerfile: n8n/Dockerfile
+      args:
+        N8N_IMAGE_TAG: ${N8N_IMAGE_TAG:?Set N8N_IMAGE_TAG to a pinned n8n version in .env.n8n}
+    container_name: suno-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file:
+      - .env.n8n
+    environment:
+      # n8n 2.0 기본 파일 접근 제한과 작업 폴더를 일치시킵니다.
+      N8N_RESTRICT_FILE_ACCESS_TO: /home/node/.n8n-files
+      # 로컬 단일 운영자 환경에서 Execute Command/Read-Write Files를 사용합니다.
+      NODES_EXCLUDE: "[]"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./work:/home/node/.n8n-files
+      - ..:/workspace:ro
+      - ../downloads:/workspace/downloads
+      - ../outputs:/workspace/outputs
+      - ../config:/workspace/config:ro
+      - ../secrets:/workspace/secrets:ro
+      - ../.state:/workspace/.state
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --quiet http://127.0.0.1:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  n8n_data:

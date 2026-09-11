@@ -3,3 +3,11 @@ pytest-cov
 radon
 xenon
 flake8
+Pillow
+requests
+python-dotenv
+google-api-python-client
+google-auth
+google-auth-oauthlib
+filelock
+mutagen

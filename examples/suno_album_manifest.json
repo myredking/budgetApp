@@ -1,0 +1,57 @@
+{
+  "album_id": "neon-harbor-electronic-2026-09-01",
+  "album_title": "September Sessions",
+  "artist_name": "Neon Harbor",
+  "primary_genre": "Electronic",
+  "month": "2026-09",
+  "metadata_defaults": {
+    "artist_name": "Neon Harbor",
+    "songwriter_name": "YOUR LEGAL NAME",
+    "suno_plan": "Pro",
+    "lyrics_by_ai": true,
+    "music_by_ai": true,
+    "audio_scope": "all",
+    "artist_persona": "human",
+    "artist_persona_confirmed": false,
+    "rights_confirmed": false,
+    "rights_evidence_path": "secrets/suno-plan-proof.png",
+    "artwork_reviewed": false,
+    "audio_reviewed": false,
+    "explicit": false,
+    "is_cover": false,
+    "cover_license_confirmed": false,
+    "uses_sample": false,
+    "instrumental": false,
+    "language": "Korean",
+    "producer_name": "",
+    "secondary_genre": "",
+    "release_date": "",
+    "target_stores": ["Spotify", "Apple Music", "YouTube Music", "TikTok"]
+  },
+  "tracks": [
+    {
+      "track_id": "clip-001",
+      "title": "Night Transit",
+      "audio_path": "clip-001.wav",
+      "lyrics_path": "clip-001.txt"
+    },
+    {
+      "track_id": "clip-002",
+      "title": "Afterglow Circuit",
+      "audio_path": "clip-002.wav",
+      "lyrics_path": "clip-002.txt"
+    },
+    {
+      "track_id": "clip-003",
+      "title": "Soft Frequency",
+      "audio_path": "clip-003.wav",
+      "lyrics_path": "clip-003.txt"
+    },
+    {
+      "track_id": "clip-004",
+      "title": "Dawn Protocol",
+      "audio_path": "clip-004.wav",
+      "lyrics_path": "clip-004.txt"
+    }
+  ]
+}

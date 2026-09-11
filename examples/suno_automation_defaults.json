@@ -1,0 +1,29 @@
+{
+  "artist_name": "YOUR ARTIST NAME",
+  "songwriter_name": "YOUR LEGAL NAME",
+  "suno_plan": "Pro",
+  "lyrics_by_ai": true,
+  "music_by_ai": true,
+  "audio_scope": "all",
+  "artist_persona": "human",
+  "artist_persona_confirmed": false,
+  "rights_confirmed": false,
+  "rights_evidence_path": "secrets/suno-plan-proof.png",
+  "artwork_reviewed": false,
+  "audio_reviewed": false,
+  "explicit": false,
+  "is_cover": false,
+  "cover_license_confirmed": false,
+  "uses_sample": false,
+  "instrumental": false,
+  "language": "Korean",
+  "producer_name": "",
+  "secondary_genre": "",
+  "release_date": "",
+  "target_stores": [
+    "Spotify",
+    "Apple Music",
+    "YouTube Music",
+    "TikTok"
+  ]
+}

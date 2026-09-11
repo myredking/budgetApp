@@ -1,0 +1,12 @@
+.env
+.env.n8n
+secrets/
+downloads/
+n8n/work/*
+!n8n/work/.gitkeep
+*.key.json
+__pycache__/
+.pytest_cache/
+.coverage
+.state/
+config/
