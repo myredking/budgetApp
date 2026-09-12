@@ -6,9 +6,11 @@ import argparse
 import json
 import shutil
 import subprocess
-from dataclasses import dataclass
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .suno_album import (
     AlbumPolicy,
@@ -43,6 +45,16 @@ class PreflightIssue:
 
     code: str
     message: str
+
+
+@dataclass
+class PipelineRunState:
+    """Partial results retained for success and failure reports."""
+
+    candidates: list[AlbumCandidate] = field(default_factory=list)
+    packages: list[Path] = field(default_factory=list)
+    videos: list[Path] = field(default_factory=list)
+    uploads: list[YouTubeUploadResult] = field(default_factory=list)
 
 
 def run_preflight(
@@ -132,6 +144,7 @@ def prepare_album_candidates(
 def build_ready_albums(
     candidates: list[AlbumCandidate],
     output_root: Path,
+    on_package: Callable[[Path], None] | None = None,
 ) -> list[Path]:
     """Build only candidates with no blocking policy issues."""
     packages: list[Path] = []
@@ -152,6 +165,8 @@ def build_ready_albums(
                 output_root,
             )
         packages.append(package_path)
+        if on_package:
+            on_package(package_path)
     return packages
 
 
@@ -159,6 +174,7 @@ def render_ready_videos(
     candidates: list[AlbumCandidate],
     package_paths: list[Path],
     runner: Any = subprocess.run,
+    on_video: Callable[[Path], None] | None = None,
 ) -> list[Path]:
     """Render local listening videos for successfully packaged albums."""
     package_by_id = {path.name: path for path in package_paths}
@@ -167,7 +183,10 @@ def render_ready_videos(
         package_path = package_by_id.get(candidate.album.album_id)
         if candidate.issues or package_path is None:
             continue
-        videos.append(render_album_video(package_path, candidate.album, runner))
+        video_path = render_album_video(package_path, candidate.album, runner)
+        videos.append(video_path)
+        if on_video:
+            on_video(video_path)
     return videos
 
 
@@ -176,6 +195,7 @@ def upload_ready_videos(
     package_paths: list[Path],
     uploader: YouTubeUploader,
     dry_run: bool = False,
+    on_upload: Callable[[YouTubeUploadResult], None] | None = None,
 ) -> list[YouTubeUploadResult]:
     """Upload rendered videos using the official API and local manifest state."""
     package_by_id = {path.name: path for path in package_paths}
@@ -186,10 +206,118 @@ def upload_ready_videos(
             continue
         metadata_path = package_path / "youtube" / "metadata.json"
         video_path = package_path / "youtube" / f"{candidate.album.album_id}.mp4"
-        results.append(
-            uploader.upload(video_path, load_youtube_video(metadata_path), dry_run=dry_run)
+        result = uploader.upload(
+            video_path,
+            load_youtube_video(metadata_path),
+            dry_run=dry_run,
         )
+        results.append(result)
+        if on_upload:
+            on_upload(result)
     return results
+
+
+def write_pipeline_report(
+    path: Path,
+    candidates: list[AlbumCandidate],
+    package_paths: list[Path],
+    video_paths: list[Path],
+    uploads: list[YouTubeUploadResult],
+    *,
+    run_status: str | None = None,
+    error: str = "",
+) -> Path:
+    """Write one local, machine-readable report for an automation run."""
+    package_by_id = {package.name: package for package in package_paths}
+    video_by_id = {video.stem: video for video in video_paths}
+    upload_by_id = {
+        video.stem: upload for video, upload in zip(video_paths, uploads)
+    }
+    albums = [
+        _report_album(candidate, package_by_id, video_by_id, upload_by_id)
+        for candidate in candidates
+    ]
+    review_count = sum(album["status"] == "review_required" for album in albums)
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "run_status": run_status or _report_run_status(len(albums), review_count),
+        "summary": {
+            "candidate_count": len(candidates),
+            "review_required_count": review_count,
+            "package_count": len(package_paths),
+            "video_count": len(video_paths),
+            "youtube_result_count": len(uploads),
+        },
+        "albums": albums,
+    }
+    if error:
+        payload["error"] = error
+    with _report_lock(path):
+        _write_json_file(path, payload)
+    return path
+
+
+def _run_pipeline(
+    args: argparse.Namespace,
+    state: PipelineRunState,
+) -> None:
+    defaults = _load_defaults(Path(args.metadata_defaults))
+    policy = AlbumPolicy(args.min_tracks, args.max_tracks)
+    state.candidates = prepare_album_candidates(
+        Path(args.input),
+        Path(args.output),
+        defaults,
+        policy,
+    )
+    needs_build = args.build or args.render_video or args.upload_youtube
+    state.packages = (
+        build_ready_albums(
+            state.candidates,
+            Path(args.output),
+            on_package=state.packages.append,
+        )
+        if needs_build
+        else []
+    )
+    state.videos = (
+        render_ready_videos(
+            state.candidates,
+            state.packages,
+            on_video=state.videos.append,
+        )
+        if args.render_video or args.upload_youtube
+        else []
+    )
+    state.uploads = _upload_if_requested(args, state)
+    if args.report:
+        write_pipeline_report(
+            Path(args.report),
+            state.candidates,
+            state.packages,
+            state.videos,
+            state.uploads,
+        )
+
+
+def _upload_if_requested(
+    args: argparse.Namespace,
+    state: PipelineRunState,
+) -> list[YouTubeUploadResult]:
+    if not args.upload_youtube:
+        return []
+    uploader = YouTubeUploader(
+        state_path=Path(args.youtube_state),
+        client_secrets_path=Path(args.youtube_client_secrets),
+        token_path=Path(args.youtube_token),
+        allow_interactive_oauth=not args.non_interactive,
+    )
+    return upload_ready_videos(
+        state.candidates,
+        state.packages,
+        uploader,
+        args.dry_run,
+        on_upload=state.uploads.append,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -210,35 +338,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--youtube-state", default=".state/youtube-uploads.json")
     parser.add_argument("--youtube-client-secrets", default="secrets/youtube-client.json")
     parser.add_argument("--youtube-token", default=".state/youtube-token.json")
+    parser.add_argument("--report", help="운영 보고서 JSON 경로")
     args = parser.parse_args(argv)
+    state = PipelineRunState()
     try:
         _preflight_args(args)
         if _is_preflight_only(args):
             print("사전 점검 통과: 로컬 파일과 실행 조건이 준비되었습니다.")
             return 0
-        defaults = _load_defaults(Path(args.metadata_defaults))
-        policy = AlbumPolicy(args.min_tracks, args.max_tracks)
-        candidates = prepare_album_candidates(
-            Path(args.input),
-            Path(args.output),
-            defaults,
-            policy,
-        )
-        needs_build = args.build or args.render_video or args.upload_youtube
-        packages = build_ready_albums(candidates, Path(args.output)) if needs_build else []
-        videos = render_ready_videos(candidates, packages) if args.render_video or args.upload_youtube else []
-        uploads = []
-        if args.upload_youtube:
-            uploader = YouTubeUploader(
-                state_path=Path(args.youtube_state),
-                client_secrets_path=Path(args.youtube_client_secrets),
-                token_path=Path(args.youtube_token),
-                allow_interactive_oauth=not args.non_interactive,
-            )
-            uploads = upload_ready_videos(candidates, packages, uploader, args.dry_run)
-    except (OSError, RuntimeError, ValueError) as error:
+        _run_pipeline(args, state)
+    except Exception as error:
+        _write_failed_report(args.report, state, error)
         parser.error(str(error))
-    _print_summary(candidates, packages, videos, uploads)
+    _print_summary(state.candidates, state.packages, state.videos, state.uploads)
     return 0
 
 
@@ -247,6 +359,91 @@ def _ensure_cover(album: AlbumSpec, covers_dir: Path) -> Path:
     if not path.is_file():
         generate_album_cover(album.album_title, album.artist_name, path)
     return path
+
+
+def _report_album(
+    candidate: AlbumCandidate,
+    package_by_id: dict[str, Path],
+    video_by_id: dict[str, Path],
+    upload_by_id: dict[str, YouTubeUploadResult],
+) -> dict[str, Any]:
+    album_id = candidate.album.album_id
+    upload = upload_by_id.get(album_id)
+    return {
+        "album_id": album_id,
+        "album_title": candidate.album.album_title,
+        "status": "review_required" if candidate.issues else "ready",
+        "track_count": len(candidate.album.tracks),
+        "track_ids": [track.track_id for track in candidate.album.tracks],
+        "issues": list(candidate.issues),
+        "cover_path": str(candidate.cover_path),
+        "package_path": str(package_by_id[album_id]) if album_id in package_by_id else "",
+        "video_path": str(video_by_id[album_id]) if album_id in video_by_id else "",
+        "youtube": _report_upload(upload),
+    }
+
+
+def _report_upload(upload: YouTubeUploadResult | None) -> dict[str, Any] | None:
+    if upload is None:
+        return None
+    return {
+        "video_id": upload.video_id,
+        "url": upload.url,
+        "dry_run": upload.dry_run,
+    }
+
+
+def _report_run_status(album_count: int, review_count: int) -> str:
+    if album_count == 0:
+        return "no_eligible_albums"
+    if review_count:
+        return "review_required"
+    return "completed"
+
+
+def _write_json_file(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    partial = path.with_name(f"{path.name}.{uuid.uuid4().hex}.part")
+    try:
+        partial.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        partial.replace(path)
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise
+
+
+def _report_lock(path: Path) -> Any:
+    try:
+        from filelock import FileLock
+    except ModuleNotFoundError as error:
+        raise RuntimeError("filelock 설치가 필요합니다.") from error
+    lock_path = path.with_name(path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    return FileLock(str(lock_path))
+
+
+def _write_failed_report(
+    report_value: str | None,
+    state: PipelineRunState,
+    error: Exception,
+) -> None:
+    if not report_value:
+        return
+    try:
+        write_pipeline_report(
+            Path(report_value),
+            state.candidates,
+            state.packages,
+            state.videos,
+            state.uploads,
+            run_status="failed",
+            error=str(error),
+        )
+    except OSError:
+        return
 
 
 def _write_plan(path: Path, candidate: AlbumCandidate) -> None:

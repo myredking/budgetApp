@@ -1,5 +1,7 @@
 import hashlib
 import json
+import subprocess
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -12,10 +14,91 @@ from budget.suno_pipeline import (
     prepare_album_candidates,
     render_ready_videos,
     run_preflight,
+    upload_ready_videos,
+    write_pipeline_report,
 )
 from budget.suno_album import AlbumPolicy, AlbumSpec, AlbumTrackInput
 from budget.suno_release import ReleaseMetadata
-from budget.youtube_upload import YOUTUBE_UPLOAD_SCOPE
+from budget.youtube_upload import (
+    YOUTUBE_UPLOAD_SCOPE,
+    YouTubeUploadResult,
+    YouTubeVideo,
+)
+
+
+def write_valid_defaults(path: Path) -> None:
+    path.write_text(
+        json.dumps(
+            {
+                "artist_name": "Artist",
+                "songwriter_name": "Writer",
+                "suno_plan": "Pro",
+                "lyrics_by_ai": True,
+                "music_by_ai": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def make_empty_candidate(tmp_path: Path, album_id: str = "album-01") -> AlbumCandidate:
+    album = AlbumSpec(album_id, "Album", "Artist", "Electronic", "2026-09", ())
+    return AlbumCandidate(album, tmp_path / f"{album_id}-cover.jpg", ())
+
+
+def make_report_candidates(tmp_path: Path) -> list[AlbumCandidate]:
+    return [
+        make_empty_candidate(tmp_path, "ready-album"),
+        AlbumCandidate(
+            AlbumSpec("review-album", "Review Album", "Artist", "Electronic", "2026-09", ()),
+            tmp_path / "review-cover.jpg",
+            ({"code": "rights_not_confirmed", "message": "검토 필요"},),
+        ),
+    ]
+
+
+def make_report_video(tmp_path: Path) -> tuple[Path, Path]:
+    package_path = tmp_path / "ready-album"
+    video_path = package_path / "youtube" / "ready-album.mp4"
+    video_path.parent.mkdir(parents=True)
+    video_path.write_bytes(b"video")
+    return package_path, video_path
+
+
+def write_youtube_metadata(package_path: Path) -> None:
+    metadata_path = package_path / "youtube" / "metadata.json"
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(
+        json.dumps({"title": "Album", "description": "Description"}),
+        encoding="utf-8",
+    )
+
+
+def make_two_candidates(tmp_path: Path) -> list[AlbumCandidate]:
+    return [
+        make_empty_candidate(tmp_path, "album-01"),
+        make_empty_candidate(tmp_path, "album-02"),
+    ]
+
+
+def make_pipeline_args(
+    input_dir: Path,
+    output_dir: Path,
+    defaults_path: Path,
+    report_path: Path,
+    *flags: str,
+) -> list[str]:
+    return [
+        "--input",
+        str(input_dir),
+        "--output",
+        str(output_dir),
+        "--metadata-defaults",
+        str(defaults_path),
+        *flags,
+        "--report",
+        str(report_path),
+    ]
 
 
 def test_run_preflight_reports_missing_paths_without_creating_output(
@@ -159,6 +242,7 @@ def test_run_preflight_accepts_upload_token_with_required_scope(tmp_path: Path) 
 
 def test_main_preflight_failure_stops_before_pipeline(tmp_path: Path, monkeypatch: Any) -> None:
     called = False
+    report_path = tmp_path / "report.json"
 
     def forbidden_prepare(*args: Any, **kwargs: Any) -> list[Any]:
         nonlocal called
@@ -178,10 +262,185 @@ def test_main_preflight_failure_stops_before_pipeline(tmp_path: Path, monkeypatc
                 str(tmp_path / "missing-defaults.json"),
                 "--build",
                 "--preflight",
+                "--report",
+                str(report_path),
             ]
         )
 
     assert not called
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["run_status"] == "failed"
+    assert "사전 점검 실패" in report["error"]
+
+
+def test_main_writes_failed_report_after_pipeline_error(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    defaults_path = tmp_path / "defaults.json"
+    write_valid_defaults(defaults_path)
+    candidate = make_empty_candidate(tmp_path)
+
+    monkeypatch.setattr(
+        "budget.suno_pipeline.prepare_album_candidates",
+        lambda *args, **kwargs: [candidate],
+    )
+
+    def fail_build(*args: Any, **kwargs: Any) -> list[Path]:
+        kwargs["on_package"](tmp_path / "output" / "album-01")
+        raise subprocess.CalledProcessError(1, ["ffmpeg"])
+
+    monkeypatch.setattr("budget.suno_pipeline.build_ready_albums", fail_build)
+    report_path = tmp_path / "report.json"
+
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "--input",
+                str(input_dir),
+                "--output",
+                str(tmp_path / "output"),
+                "--metadata-defaults",
+                str(defaults_path),
+                "--build",
+                "--report",
+                str(report_path),
+            ]
+        )
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["run_status"] == "failed"
+    assert "returned non-zero" in report["error"]
+    assert report["summary"]["candidate_count"] == 1
+    assert report["summary"]["package_count"] == 1
+
+
+def test_main_report_preserves_video_before_render_failure(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    defaults_path = tmp_path / "defaults.json"
+    write_valid_defaults(defaults_path)
+    candidates = make_two_candidates(tmp_path)
+    packages = [tmp_path / "output" / "album-01", tmp_path / "output" / "album-02"]
+    videos = [packages[0] / "youtube" / "album-01.mp4"]
+    monkeypatch.setattr("budget.suno_pipeline.shutil.which", lambda _: "ffmpeg")
+    monkeypatch.setattr(
+        "budget.suno_pipeline.prepare_album_candidates",
+        lambda *args, **kwargs: candidates,
+    )
+    monkeypatch.setattr(
+        "budget.suno_pipeline.build_ready_albums",
+        lambda *args, **kwargs: packages,
+    )
+
+    def fail_render(*args: Any, **kwargs: Any) -> list[Path]:
+        kwargs["on_video"](videos[0])
+        raise subprocess.CalledProcessError(1, ["ffmpeg"])
+
+    monkeypatch.setattr("budget.suno_pipeline.render_ready_videos", fail_render)
+    report_path = tmp_path / "report.json"
+
+    with pytest.raises(SystemExit):
+        main(
+            make_pipeline_args(
+                input_dir,
+                tmp_path / "output",
+                defaults_path,
+                report_path,
+                "--render-video",
+            )
+        )
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["run_status"] == "failed"
+    assert report["summary"]["package_count"] == 2
+    assert report["summary"]["video_count"] == 1
+    assert report["albums"][0]["video_path"] == str(videos[0])
+    assert report["albums"][1]["video_path"] == ""
+    assert "returned non-zero" in report["error"]
+
+
+def test_main_report_preserves_upload_before_upload_failure(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    defaults_path = tmp_path / "defaults.json"
+    write_valid_defaults(defaults_path)
+    candidates = make_two_candidates(tmp_path)
+    packages = [tmp_path / "output" / "album-01", tmp_path / "output" / "album-02"]
+    videos = [package / "youtube" / f"{package.name}.mp4" for package in packages]
+    monkeypatch.setattr("budget.suno_pipeline.shutil.which", lambda _: "ffmpeg")
+    monkeypatch.setattr(
+        "budget.suno_pipeline.prepare_album_candidates",
+        lambda *args, **kwargs: candidates,
+    )
+    monkeypatch.setattr(
+        "budget.suno_pipeline.build_ready_albums",
+        lambda *args, **kwargs: packages,
+    )
+    monkeypatch.setattr(
+        "budget.suno_pipeline.render_ready_videos",
+        lambda *args, **kwargs: videos,
+    )
+
+    def fail_upload(*args: Any, **kwargs: Any) -> list[YouTubeUploadResult]:
+        kwargs["on_upload"](YouTubeUploadResult("video123456", "https://youtu.be/video123456"))
+        raise RuntimeError("upload failed")
+    monkeypatch.setattr("budget.suno_pipeline.upload_ready_videos", fail_upload)
+    report_path = tmp_path / "report.json"
+
+    with pytest.raises(SystemExit):
+        main(
+            make_pipeline_args(
+                input_dir,
+                tmp_path / "output",
+                defaults_path,
+                report_path,
+                "--upload-youtube",
+                "--dry-run",
+            )
+        )
+
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["run_status"] == "failed"
+    assert report["summary"]["video_count"] == 2
+    assert report["summary"]["youtube_result_count"] == 1
+    assert report["albums"][0]["youtube"]["video_id"] == "video123456"
+    assert report["albums"][1]["youtube"] is None
+    assert report["error"] == "upload failed"
+
+
+def test_write_pipeline_report_is_safe_for_concurrent_runs(tmp_path: Path) -> None:
+    candidate = make_empty_candidate(tmp_path)
+    report_path = tmp_path / "report.json"
+    barrier = threading.Barrier(6)
+    errors: list[BaseException] = []
+
+    def write_report() -> None:
+        try:
+            barrier.wait()
+            write_pipeline_report(report_path, [candidate], [], [], [])
+        except BaseException as error:
+            errors.append(error)
+
+    threads = [threading.Thread(target=write_report) for _ in range(6)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(3)
+
+    assert errors == []
+    assert all(not thread.is_alive() for thread in threads)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["run_status"] == "completed"
+    assert not list(tmp_path.glob("report.json*.part"))
 
 
 def test_main_preflight_only_stops_after_successful_check(
@@ -225,6 +484,37 @@ def test_main_preflight_only_stops_after_successful_check(
     )
 
     assert result == 0
+
+
+def test_write_pipeline_report_summarizes_review_and_upload_results(
+    tmp_path: Path,
+) -> None:
+    candidates = make_report_candidates(tmp_path)
+    package_path, video_path = make_report_video(tmp_path)
+    report_path = tmp_path / "reports" / "pipeline.json"
+
+    result = write_pipeline_report(
+        report_path,
+        candidates,
+        [package_path],
+        [video_path],
+        [YouTubeUploadResult("video123456", "https://youtu.be/video123456")],
+    )
+
+    assert result == report_path
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+    assert payload["run_status"] == "review_required"
+    assert payload["summary"] == {
+        "candidate_count": 2,
+        "review_required_count": 1,
+        "package_count": 1,
+        "video_count": 1,
+        "youtube_result_count": 1,
+    }
+    assert payload["albums"][0]["video_path"] == str(video_path)
+    assert payload["albums"][0]["youtube"]["video_id"] == "video123456"
+    assert payload["albums"][1]["status"] == "review_required"
+    assert not report_path.with_name("pipeline.json.part").exists()
 
 
 def test_prepare_album_candidates_creates_cover_and_review_report(tmp_path: Path) -> None:
@@ -311,6 +601,80 @@ def test_render_ready_videos_uses_only_candidates_without_issues(tmp_path: Path)
 
     assert videos == [tmp_path / album.album_id / "youtube" / "artist-album-01.mp4"]
     assert calls
+
+
+def test_render_ready_videos_preserves_completed_callbacks_on_failure(
+    tmp_path: Path,
+) -> None:
+    candidates = [
+        make_empty_candidate(tmp_path, "album-01"),
+        make_empty_candidate(tmp_path, "album-02"),
+    ]
+    package_paths = [tmp_path / "album-01", tmp_path / "album-02"]
+    completed: list[Path] = []
+    calls = 0
+
+    def runner(command: list[str], check: bool) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise subprocess.CalledProcessError(1, command)
+        output_path = Path(command[-1])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"rendered")
+
+    with pytest.raises(subprocess.CalledProcessError):
+        render_ready_videos(
+            candidates,
+            package_paths,
+            runner,
+            on_video=completed.append,
+        )
+
+    assert len(completed) == 1
+    assert completed[0].name == "album-01.mp4"
+
+
+def test_upload_ready_videos_preserves_completed_callbacks_on_failure(
+    tmp_path: Path,
+) -> None:
+    candidates = [
+        make_empty_candidate(tmp_path, "album-01"),
+        make_empty_candidate(tmp_path, "album-02"),
+    ]
+    package_paths = [tmp_path / "album-01", tmp_path / "album-02"]
+    for package_path in package_paths:
+        write_youtube_metadata(package_path)
+    completed: list[YouTubeUploadResult] = []
+
+    class FakeUploader:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def upload(
+            self,
+            video_path: Path,
+            video: YouTubeVideo,
+            *,
+            dry_run: bool = False,
+        ) -> YouTubeUploadResult:
+            self.calls += 1
+            if self.calls == 2:
+                raise RuntimeError("upload failed")
+            return YouTubeUploadResult("video123456", "https://youtu.be/video123456")
+
+    uploader = FakeUploader()
+
+    with pytest.raises(RuntimeError, match="upload failed"):
+        upload_ready_videos(
+            candidates,
+            package_paths,
+            uploader,
+            on_upload=completed.append,
+        )
+
+    assert len(completed) == 1
+    assert completed[0].video_id == "video123456"
 
 
 def test_build_ready_albums_rejects_stale_existing_package(tmp_path: Path) -> None:

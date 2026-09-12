@@ -14,6 +14,7 @@ def test_n8n_pipeline_workflow_runs_complete_reviewed_flow() -> None:
     assert "--build" in command
     assert "--render-video" in command
     assert "--upload-youtube" in command
+    assert "--report" in command
     assert "--preflight" in command
     assert "--non-interactive" in command
     assert payload["active"] is False
