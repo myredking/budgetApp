@@ -90,16 +90,19 @@ docker compose up -d --build
 
 전체 로컬 파이프라인은 `workflows/02_local_album_pipeline.json`입니다. 15분마다 다음 흐름을 실행합니다.
 
-`sidecar 스캔 → 4곡 이상 앨범 그룹화 → 검토 통과 후보만 패키징 → FFmpeg 영상 생성 → YouTube 비공개 업로드`
+`생성 큐 확인 → Suno 음원 생성·로컬 저장 → sidecar 스캔 → 4곡 이상 앨범 그룹화 → 검토 통과 후보만 패키징 → FFmpeg 영상 생성 → YouTube 비공개 업로드`
 
 워크플로우는 기본 비활성화이며, 매 실행마다 사전 점검을 먼저 수행합니다. `metadata-defaults`의 권리·재생·커버·아티스트 확인값이 `true`인 곡만 통과합니다. n8n을 시작하기 전에 다음 폴더와 파일을 준비합니다.
 
 ```powershell
 New-Item -ItemType Directory -Force config,downloads/suno,outputs,secrets,.state
 Copy-Item examples/suno_automation_defaults.json config/suno_automation_defaults.json
+Copy-Item examples/suno_generation_queue.json config/suno_generation_queue.json
 ```
 
 `config/suno_automation_defaults.json`에 실제 아티스트명, 법적 작곡가명, Suno Pro/Premier 증빙 경로를 넣고, 모든 곡의 재생·권리·커버 검토를 마친 뒤에만 확인값을 `true`로 바꿉니다. YouTube OAuth는 먼저 호스트에서 CLI로 한 번 인증해 `.state/youtube-token.json`을 만든 뒤 n8n을 활성화하는 편이 안전합니다.
+
+`.env.n8n`에는 `SUNO_API_KEY`와 사용 중인 문서화된 Suno 호환 API의 `SUNO_API_BASE_URL`도 입력합니다. `config/suno_generation_queue.json`에 `job_id`, `title`, `genre`, `prompt`를 넣으면 워크플로우가 생성 결과를 `/workspace/downloads/suno`에 저장합니다. 큐가 비어 있으면 생성 API를 호출하지 않습니다. 생성 단계가 실패하면 같은 `automation-report.json`에 실패 상태와 pending 작업을 남기므로, `&&` 뒤의 앨범 단계가 실행되지 않아도 원인을 확인할 수 있습니다. 웹 쿠키나 브라우저 스크래핑은 사용하지 않습니다.
 
 ```powershell
 docker compose up -d --build

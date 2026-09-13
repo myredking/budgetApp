@@ -95,6 +95,53 @@ SUNO_QUOTA_STATE_FILE=.state/suno.downloads.json
 
 `Suno 생성/다운로드 → 로컬 sidecar 저장 → 4곡 이상 단위 앨범 후보 → 무료 로컬 커버 생성 → 사람 검토 → DistroKid 패키지 → FFmpeg 영상 → YouTube 비공개 업로드`
 
+### 0. Suno 음원 자동 생성 및 로컬 저장
+
+`suno_generate`는 사용자가 권한을 가진 문서화된 Suno 호환 API에 생성 요청을 보내고, 완료된 모든 클립을 `downloads/suno`에 음원·커버·가사·`*.track.json` sidecar로 저장합니다. Suno 웹 쿠키, 내부 엔드포인트, 브라우저 스크래핑은 사용하지 않습니다. API 제공자의 상업 이용·다운로드 권리와 약관은 별도로 확인해야 합니다.
+
+먼저 환경 파일과 생성 큐를 준비합니다.
+
+```powershell
+Copy-Item .env.example .env
+Copy-Item examples/suno_generation_queue.json config/suno_generation_queue.json
+notepad .env
+notepad config/suno_generation_queue.json
+```
+
+`.env`에는 `SUNO_API_KEY`와 사용 중인 문서화된 API의 `SUNO_API_BASE_URL`을 입력합니다. 생성 큐는 다음처럼 작성합니다. `job_id`는 한 번 처리한 작업을 다시 생성하지 않도록 고정합니다.
+
+```json
+{
+  "jobs": [
+    {
+      "job_id": "electronic-2026-09-001",
+      "title": "Midnight Signal",
+      "genre": "Electronic",
+      "prompt": "Warm nocturnal synths with emotional Korean vocals",
+      "custom_mode": true,
+      "instrumental": false,
+      "model": "V4_5ALL"
+    }
+  ]
+}
+```
+
+생성 큐를 실행합니다.
+
+```powershell
+python -m budget.suno_generate `
+  --queue config/suno_generation_queue.json `
+  --output downloads/suno `
+  --state .state/suno-generation.json `
+  --report outputs/albums/automation-report.json
+```
+
+성공한 `job_id`는 상태 파일에 기록되어 재실행해도 API를 다시 호출하지 않습니다. 생성 중 네트워크가 끊기면 `pending`으로 남겨 중복 생성을 차단합니다. Suno 다운로드 한도는 `SUNO_MONTHLY_DOWNLOAD_LIMIT`로 보호하며 기본값은 월 20곡입니다. `pending` 작업은 실제 저장 파일을 확인한 후 수동 복구해야 합니다.
+
+생성 단계에서 오류가 나도 지정한 리포트에 `failed` 상태와 `pending_job_ids`가 기록됩니다. 이 리포트는 생성 이후 앨범 파이프라인이 성공하면 앨범별 운영 리포트로 갱신됩니다.
+
+이 단계는 Suno 생성 API 비용 또는 Suno 구독과 별개로 추가 요금을 만들지 않지만, API 제공자의 과금 정책은 확인해야 합니다.
+
 ### 비용을 낮추는 기본 구성
 
 - 음원·가사·커버·메타데이터·YouTube 업로드 상태는 로컬 디스크에 저장합니다.

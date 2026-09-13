@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "command": "cd /workspace && python3 -m budget.suno_pipeline --input /workspace/downloads/suno --output /workspace/outputs/albums --metadata-defaults /workspace/config/suno_automation_defaults.json --preflight --non-interactive --build --render-video --upload-youtube --report /workspace/outputs/albums/automation-report.json"
+        "command": "cd /workspace && python3 -m budget.suno_generate --queue /workspace/config/suno_generation_queue.json --output /workspace/downloads/suno --state /workspace/.state/suno-generation.json --report /workspace/outputs/albums/automation-report.json && python3 -m budget.suno_pipeline --input /workspace/downloads/suno --output /workspace/outputs/albums --metadata-defaults /workspace/config/suno_automation_defaults.json --preflight --non-interactive --build --render-video --upload-youtube --report /workspace/outputs/albums/automation-report.json"
       },
       "id": "run-local-pipeline",
       "name": "Run Reviewed Local Pipeline",

@@ -17,4 +17,8 @@ def test_n8n_pipeline_workflow_runs_complete_reviewed_flow() -> None:
     assert "--report" in command
     assert "--preflight" in command
     assert "--non-interactive" in command
+    assert "python3 -m budget.suno_generate" in command
+    assert "--queue /workspace/config/suno_generation_queue.json" in command
+    assert "--state /workspace/.state/suno-generation.json" in command
+    assert "--report /workspace/outputs/albums/automation-report.json" in command
     assert payload["active"] is False
