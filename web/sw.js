@@ -1,5 +1,5 @@
-const ASSET_VERSION = '19';
-const CACHE_NAME = 'courseon-shell-v8';
+const ASSET_VERSION = '20';
+const CACHE_NAME = 'courseon-shell-v9';
 const APP_SHELL = [
   `./?v=${ASSET_VERSION}`,
   `./index.html?v=${ASSET_VERSION}`,

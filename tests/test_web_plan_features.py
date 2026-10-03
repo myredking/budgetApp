@@ -31,9 +31,9 @@ def test_plan_history_and_route_edit_controls_are_present() -> None:
     assert 'name="theme-color"' in html
     assert 'name="mobile-web-app-capable"' in html
     assert 'name="apple-mobile-web-app-capable"' in html
-    assert 'styles.css?v=19' in html
-    assert 'plan_logic.js?v=19' in html
-    assert 'app.js?v=19' in html
+    assert 'styles.css?v=20' in html
+    assert 'plan_logic.js?v=20' in html
+    assert 'app.js?v=20' in html
     assert "navigator.serviceWorker" in read_asset("app.js")
 
 
@@ -101,6 +101,6 @@ def test_brand_copy_reflects_live_integrations() -> None:
 def test_service_worker_caches_the_planner_shell_without_caching_api_responses() -> None:
     service_worker = read_asset("sw.js")
 
-    assert "const CACHE_NAME = 'courseon-shell-v8'" in service_worker
+    assert "const CACHE_NAME = 'courseon-shell-v9'" in service_worker
     assert "cache.put" in service_worker
     assert "/api/" in service_worker

@@ -186,10 +186,10 @@ test('평점·거리 정렬이 잠길 때 사용자에게 이유를 안내한다
 });
 
 test('새 배포본은 버전이 붙은 정적 파일을 요청한다', () => {
-  assert.match(htmlSource, /styles\.css\?v=19/);
-  assert.match(htmlSource, /plan_logic\.js\?v=19/);
-  assert.match(htmlSource, /app\.js\?v=19/);
-  assert.match(appSource, /register\('\.\/sw\.js\?v=19'\)/);
+  assert.match(htmlSource, /styles\.css\?v=20/);
+  assert.match(htmlSource, /plan_logic\.js\?v=20/);
+  assert.match(htmlSource, /app\.js\?v=20/);
+  assert.match(appSource, /register\('\.\/sw\.js\?v=20'\)/);
 });
 
 test('여행지 변경은 메인 맞춤 코스를 즉시 다시 렌더링한다', () => {
@@ -205,6 +205,12 @@ test('현재 위치 좌표를 안전하게 검증한다', () => {
   assert.equal(logic.isValidLocation({ latitude: 37.5665, longitude: 126.978 }), true);
   assert.equal(logic.isValidLocation({ latitude: 95, longitude: 126.978 }), false);
   assert.equal(logic.isValidLocation(null), false);
+});
+
+test('주소 변환이 없어도 현재 좌표에서 가까운 도시 권역을 추정한다', () => {
+  assert.equal(logic.getLocationRegionHint({ latitude: 37.5665, longitude: 126.978 }), '서울');
+  assert.equal(logic.getLocationRegionHint({ latitude: 35.8714, longitude: 128.6014 }), '대구');
+  assert.equal(logic.getLocationRegionHint({ latitude: 0, longitude: 0 }), '');
 });
 
 test('주변 장소를 평점순과 거리순으로 정렬한다', () => {
@@ -293,8 +299,8 @@ test('공개용 Site 파일은 원본 웹 파일과 동기화된다', () => {
 
 test('서비스워커 캐시 버전은 새 배포본으로 갱신된다', () => {
   const sourceWorker = fs.readFileSync(path.join(__dirname, '..', 'web', 'sw.js'), 'utf8');
-      assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v8'/);
-  assert.match(sourceWorker, /ASSET_VERSION = '19'/);
+      assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v9'/);
+  assert.match(sourceWorker, /ASSET_VERSION = '20'/);
   assert.match(sourceWorker, /`\.\/app\.js\?v=\$\{ASSET_VERSION\}`/);
   assert.match(sourceWorker, /caches\.match\(`\.\/index\.html\?v=\$\{ASSET_VERSION\}`\)/);
 });

@@ -202,10 +202,40 @@
     };
   }
 
+  const LOCATION_REGION_HINTS = [
+    { label: '서울', latitude: 37.5665, longitude: 126.978 },
+    { label: '인천', latitude: 37.4563, longitude: 126.7052 },
+    { label: '수원', latitude: 37.2636, longitude: 127.0286 },
+    { label: '춘천', latitude: 37.8813, longitude: 127.7298 },
+    { label: '강릉', latitude: 37.7519, longitude: 128.8761 },
+    { label: '대전', latitude: 36.3504, longitude: 127.3845 },
+    { label: '전주', latitude: 35.8242, longitude: 127.148 },
+    { label: '광주', latitude: 35.1595, longitude: 126.8526 },
+    { label: '대구', latitude: 35.8714, longitude: 128.6014 },
+    { label: '포항', latitude: 36.019, longitude: 129.3435 },
+    { label: '부산', latitude: 35.1796, longitude: 129.0756 },
+    { label: '울산', latitude: 35.5384, longitude: 129.3114 },
+    { label: '제주', latitude: 33.4996, longitude: 126.5312 },
+  ];
+
   function isValidLocation(location) {
     if (!location || !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)) return false;
     return location.latitude >= -90 && location.latitude <= 90
       && location.longitude >= -180 && location.longitude <= 180;
+  }
+
+  function getLocationRegionHint(location) {
+    if (!isValidLocation(location)) return '';
+    const nearest = LOCATION_REGION_HINTS
+      .map((region) => ({
+        region,
+        distance: Math.hypot(
+          location.latitude - region.latitude,
+          (location.longitude - region.longitude) * Math.cos(location.latitude * Math.PI / 180),
+        ),
+      }))
+      .sort((left, right) => left.distance - right.distance)[0];
+    return nearest && nearest.distance <= 0.45 ? nearest.region.label : '';
   }
 
   function distanceMeters(value) {
@@ -304,6 +334,7 @@
     getIntegrationStatus,
     getNearbySearchContext,
     isValidLocation,
+    getLocationRegionHint,
     sortNearbyItems,
     getTransportMinutes,
     formatEventDateRange,

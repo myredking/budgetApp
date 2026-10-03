@@ -797,7 +797,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=19').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=20').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }
@@ -1571,10 +1571,22 @@ async function resolveCurrentAddress(position) {
       loadLiveNearby();
       return;
     }
-    resetLocationRecommendationState('현재 위치는 확인했지만 주소를 확인하지 못했어요. 선택한 여행지 기준으로 추천해요.');
+    useLocationRegionFallback();
   } catch (error) {
-    resetLocationRecommendationState('현재 위치는 확인했지만 주소를 확인하지 못했어요. 선택한 여행지 기준으로 추천해요.');
+    useLocationRegionFallback();
   }
+}
+
+function useLocationRegionFallback() {
+  const region = planLogic.getLocationRegionHint(currentLocation);
+  if (!region) {
+    resetLocationRecommendationState('현재 위치 주소를 확인하지 못했어요. 여행지를 직접 선택해 주세요.');
+    return;
+  }
+  currentAddress = region;
+  locationStatus.textContent = `${region} 인근에서 현재 위치를 확인했어요. 주변 장소를 불러오는 중이에요.`;
+  renderNearby();
+  loadLiveNearby();
 }
 
 function resetLocationRecommendationState(message) {
