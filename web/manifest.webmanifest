@@ -1,0 +1,20 @@
+{
+  "name": "코스온 | 국내 여행 코스 플래너",
+  "short_name": "코스온",
+  "description": "예산과 취향을 반영해 국내 여행 코스를 만드는 여행 일정 플래너",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#18263d",
+  "background_color": "#f7f4ed",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

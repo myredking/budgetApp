@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#18263d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="description"
+      content="예산과 취향을 반영해 국내 여행 코스를 만드는 여행 일정 플래너"
+    />
+    <title>코스온 | 국내 여행 코스 플래너</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2318263d'/%3E%3Cpath d='M18 43 30 18l6 13 10-7' fill='none' stroke='%23f5c36b' stroke-linecap='round' stroke-linejoin='round' stroke-width='6'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles.css?v=19" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <script src="plan_logic.js?v=19" defer></script>
+    <script src="app.js?v=19" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="코스온 홈">
+        <span class="brand-mark">↗</span>
+        <span>코스온</span>
+      </a>
+      <div class="topbar-note"><span class="live-dot"></span> 나에게 맞는 국내 여행</div>
+    </header>
+
+    <main id="top" class="page-shell">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">TRIP CURATOR · BETA</p>
+          <h1 id="page-title">이번 여행,<br /><em>동선까지</em> 가볍게.</h1>
+          <p class="intro-copy">
+            예산과 취향을 알려주면 이동시간을 고려한 하루 코스를 만들어드려요.
+            급하게 다음 장소를 고를 때는 현재 위치 주변 추천부터 확인할 수 있어요.
+          </p>
+        </div>
+        <div class="intro-stamp" aria-label="국내 여행 코스 베타 서비스">
+          <span>CURATED</span>
+          <strong>KR<br />TRIP</strong>
+          <span>01 / 04</span>
+        </div>
+      </section>
+
+      <section class="planner-grid" aria-label="여행 코스 플래너">
+        <form id="planner-form" class="panel planner-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">01 · PLAN YOUR DAY</p>
+              <h2>여행 조건</h2>
+            </div>
+            <span class="heading-icon">✦</span>
+          </div>
+
+          <div class="form-grid">
+            <label class="field field-wide">
+              <span>어디로 떠날까요?</span>
+              <select id="destination" name="destination">
+                <option value="nationwide">전국 · 오늘 추천</option>
+                <optgroup label="특별시·광역시·특별자치시">
+                  <option value="seoul">서울특별시</option>
+                  <option value="busan">부산광역시</option>
+                  <option value="daegu">대구광역시</option>
+                  <option value="incheon">인천광역시</option>
+                  <option value="gwangju">광주광역시</option>
+                  <option value="daejeon">대전광역시</option>
+                  <option value="ulsan">울산광역시</option>
+                  <option value="sejong">세종특별자치시</option>
+                  <option value="jeju">제주특별자치도</option>
+                </optgroup>
+                <optgroup label="경기도">
+                  <option value="suwon">수원시</option>
+                  <option value="seongnam">성남시</option>
+                  <option value="goyang">고양시</option>
+                  <option value="yongin">용인시</option>
+                  <option value="hwaseong">화성시</option>
+                  <option value="pyeongtaek">평택시</option>
+                  <option value="anyang">안양시</option>
+                  <option value="bucheon">부천시</option>
+                  <option value="namyangju">남양주시</option>
+                  <option value="paju">파주시</option>
+                </optgroup>
+                <optgroup label="강원특별자치도">
+                  <option value="chuncheon">춘천시</option>
+                  <option value="wonju">원주시</option>
+                  <option value="gangneung">강릉시</option>
+                  <option value="sokcho">속초시</option>
+                  <option value="donghae">동해시</option>
+                  <option value="samcheok">삼척시</option>
+                </optgroup>
+                <optgroup label="충청권">
+                  <option value="cheongju">청주시</option>
+                  <option value="chungju">충주시</option>
+                  <option value="jecheon">제천시</option>
+                  <option value="cheonan">천안시</option>
+                  <option value="asan">아산시</option>
+                  <option value="gongju">공주시</option>
+                  <option value="boryeong">보령시</option>
+                  <option value="seosan">서산시</option>
+                  <option value="dangjin">당진시</option>
+                </optgroup>
+                <optgroup label="전라권">
+                  <option value="jeonju">전주시</option>
+                  <option value="gunsan">군산시</option>
+                  <option value="iksan">익산시</option>
+                  <option value="namwon">남원시</option>
+                  <option value="mokpo">목포시</option>
+                  <option value="yeosu">여수시</option>
+                  <option value="suncheon">순천시</option>
+                  <option value="naju">나주시</option>
+                  <option value="gwangyang">광양시</option>
+                </optgroup>
+                <optgroup label="경상권">
+                  <option value="pohang">포항시</option>
+                  <option value="gyeongju">경주시</option>
+                  <option value="gumi">구미시</option>
+                  <option value="andong">안동시</option>
+                  <option value="gimcheon">김천시</option>
+                  <option value="yeongju">영주시</option>
+                  <option value="changwon">창원시</option>
+                  <option value="jinju">진주시</option>
+                  <option value="tongyeong">통영시</option>
+                  <option value="gimhae">김해시</option>
+                  <option value="geoje">거제시</option>
+                  <option value="yangsan">양산시</option>
+                </optgroup>
+              </select>
+            </label>
+
+            <label class="field field-wide">
+              <span>여행 테마</span>
+              <select id="theme" name="theme">
+                <option value="auto">계절·시간 맞춤</option>
+                <option value="date">데이트·감성</option>
+                <option value="food">미식 여행</option>
+                <option value="nature">자연·힐링</option>
+                <option value="culture">역사·문화</option>
+                <option value="cafe">카페·사진</option>
+                <option value="activity">액티비티</option>
+                <option value="family">가족 여행</option>
+                <option value="night">야경·야간</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>출발일</span>
+              <input id="trip-date" name="trip-date" type="date" required />
+            </label>
+
+            <label class="field">
+              <span>도착일</span>
+              <input id="trip-end-date" name="trip-end-date" type="date" required />
+            </label>
+
+            <label class="field">
+              <span>하루 시작 시간</span>
+              <input id="start-time" name="start-time" type="time" value="10:00" required />
+            </label>
+
+            <label class="field">
+              <span>하루 종료 시간</span>
+              <input id="end-time" name="end-time" type="time" value="20:00" required />
+            </label>
+
+            <label class="time-toggle field-wide">
+              <input id="no-time-limit" name="no-time-limit" type="checkbox" />
+              <span>하루 시작·종료 시간 선택 없음 <small>여유 있는 하루 전체 기준으로 추천</small></span>
+            </label>
+
+            <label class="field">
+              <span>동행 인원</span>
+              <div class="input-with-suffix">
+                <input id="people" name="people" type="number" min="1" max="12" value="2" required />
+                <span>명</span>
+              </div>
+            </label>
+
+            <label class="field">
+              <span>이동 수단</span>
+              <select id="transport" name="transport">
+                <option value="public">대중교통</option>
+                <option value="car">자가용</option>
+                <option value="rental">렌터카</option>
+              </select>
+            </label>
+
+            <label class="field field-wide">
+              <span>총 예산 <small>선택사항</small></span>
+              <div class="input-with-suffix">
+                <input id="budget" name="budget" type="number" min="0" step="1000" placeholder="예: 300000" />
+                <span>원</span>
+              </div>
+            </label>
+          </div>
+
+          <div class="form-actions">
+            <button class="button button-primary" type="submit">내 코스 만들기 <span>↗</span></button>
+            <button class="button button-secondary" id="locate-button" type="button">
+              <span class="pin-icon">⌖</span> 현재 위치에서 추천
+            </button>
+          </div>
+          <p id="location-status" class="helper-text" role="status"></p>
+        </form>
+
+        <aside class="tip-card">
+          <div class="tip-card-top"><span>QUICK TIP</span><span>✦</span></div>
+          <p>예산을 먼저 넣으면<br /><strong>“이 코스, 내 예산에 맞을까?”</strong>까지 바로 확인할 수 있어요.</p>
+          <div class="tip-line"></div>
+          <p class="tip-foot">이동수단별 예상 이동시간까지 포함해 코스를 계산해요. 실제 경로시간은 지도에서 확인할 수 있어요.</p>
+        </aside>
+      </section>
+
+      <section id="result-section" class="result-section" aria-labelledby="result-title">
+        <div class="result-heading">
+          <div>
+            <p class="section-kicker">02 · YOUR CURATED ROUTE</p>
+            <h2 id="result-title">서울에서 보내는 하루</h2>
+            <p id="result-subtitle" class="muted-copy">샘플 리뷰 데이터로 먼저 코스를 살펴보고 있어요.</p>
+          </div>
+          <div class="result-actions">
+            <button id="save-plan-button" class="icon-button" type="button" title="코스 저장" aria-label="코스 저장">♡</button>
+            <button id="history-button" class="share-button" type="button">저장 계획</button>
+            <button id="refresh-plan-button" class="share-button" type="button">새로 추천 <span>↻</span></button>
+            <button id="share-plan-button" class="share-button" type="button">공유하기 <span>↗</span></button>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <article class="summary-card summary-main">
+            <p>예상 총비용</p>
+            <strong id="estimated-total">₩ 0</strong>
+            <span id="budget-message" class="summary-note">예산을 입력하면 잔액을 계산해드려요.</span>
+            <button id="budget-fit-button" class="budget-fit-button" type="button" hidden>예산 안에서 다시 짜기</button>
+          </article>
+          <article class="summary-card">
+            <p>1인 · 1일 기준</p>
+            <strong id="daily-budget">₩ 0</strong>
+            <span class="summary-note">식사·체험·이동 포함</span>
+          </article>
+          <article class="summary-card rating-card">
+            <p>코스 평균 평점</p>
+            <strong id="average-rating">4.7 <span>★</span></strong>
+            <span class="summary-note">샘플 리뷰 1,240개 기준</span>
+          </article>
+        </div>
+
+        <div class="route-layout">
+          <div class="route-list-wrap">
+            <div class="route-list-heading">
+              <h3 id="route-heading">오늘의 동선</h3>
+              <span id="route-count">4 places</span>
+            </div>
+            <div id="itinerary" class="itinerary" aria-live="polite"></div>
+            <div id="alternate-picker" class="alternate-picker" hidden aria-labelledby="alternate-picker-title">
+              <div class="alternate-picker-heading">
+                <div>
+                  <p class="section-kicker">EDIT THIS STOP</p>
+                  <h4 id="alternate-picker-title">이 장소를 다른 추천지로 바꿀까요?</h4>
+                </div>
+                <button id="close-alternate-button" class="text-button" type="button">닫기</button>
+              </div>
+              <div id="alternate-list" class="alternate-list"></div>
+            </div>
+          </div>
+          <aside id="recommendation-map-card" class="map-card" aria-label="추천 장소 지도">
+            <div class="map-surface">
+              <div id="naver-map" class="naver-map" hidden aria-label="네이버 지도"></div>
+              <div id="map-fallback" class="map-fallback" aria-label="지도 미리보기">
+                <div class="map-grid-lines"></div>
+                <div class="map-river"></div>
+                <div class="map-route route-one"></div>
+                <div class="map-route route-two"></div>
+                <div id="map-points" class="map-points"></div>
+                <div class="map-label map-label-one">성수</div>
+                <div class="map-label map-label-two">서울숲</div>
+                <div class="map-label map-label-three">한강</div>
+                <div class="map-compass">N</div>
+              </div>
+              <div class="map-provider">NAVER MAP · <span id="map-destination">서울</span><br /><span id="map-provider-status">실시간 지도 연결 대기 중</span></div>
+            </div>
+            <div class="map-footer"><span>↗</span> <span id="map-footer-text">실시간 추천 장소가 지도에 표시돼요</span></div>
+          </aside>
+        </div>
+
+        <div class="integration-note">
+          <div class="integration-icon">N</div>
+          <div>
+            <strong id="integration-title">실시간 추천 데이터 상태를 확인하고 있어요.</strong>
+            <p id="integration-copy">장소·행사 검색과 지도 연결 상태를 확인하고 있어요.</p>
+          </div>
+          <span id="integration-status" class="integration-status">확인 중</span>
+        </div>
+      </section>
+
+      <section id="saved-plans-panel" class="saved-plans-panel" hidden aria-labelledby="saved-plans-title">
+        <div class="result-heading saved-plans-heading">
+          <div>
+            <p class="section-kicker">YOUR TRIP ARCHIVE</p>
+            <h2 id="saved-plans-title">저장된 여행 계획</h2>
+            <p class="muted-copy">저장한 코스를 다시 열어보고, 필요한 장소만 바꿔보세요.</p>
+          </div>
+          <button id="close-history-button" class="text-button" type="button">닫기</button>
+        </div>
+        <div id="saved-plans-list" class="saved-plans-list" aria-live="polite"></div>
+      </section>
+
+      <section class="discovery-section" aria-labelledby="discovery-title">
+        <div class="result-heading discovery-heading">
+          <div>
+            <p class="section-kicker">03 · DISCOVER NEARBY</p>
+            <h2 id="discovery-title">지금 갈 곳을 찾고 있나요?</h2>
+            <p class="muted-copy">현재 위치 주변의 식당·카페부터 오늘 전국 추천과 행사까지 한 번에 확인해요.</p>
+          </div>
+          <span id="data-mode-pill" class="demo-pill">실시간 API 상태 표시</span>
+        </div>
+
+        <div class="discovery-grid">
+          <article class="discovery-card nearby-card">
+            <div class="discovery-card-heading">
+              <div>
+                <p class="section-kicker">NEARBY NOW</p>
+                <h3 id="nearby-title">서울 주변 추천</h3>
+              </div>
+              <div class="card-heading-tools">
+                <span id="nearby-source-status" class="source-pill">데모 모드</span>
+                <span class="nearby-marker">⌖</span>
+              </div>
+            </div>
+            <div class="filter-row" role="group" aria-label="주변 추천 유형">
+              <button class="filter-chip active" type="button" aria-pressed="true" data-nearby-filter="all">전체</button>
+              <button class="filter-chip" type="button" aria-pressed="false" data-nearby-filter="restaurant">식당</button>
+              <button class="filter-chip" type="button" aria-pressed="false" data-nearby-filter="cafe">카페</button>
+              <button class="filter-chip" type="button" aria-pressed="false" data-nearby-filter="attraction">볼거리</button>
+            </div>
+            <div class="nearby-actions">
+              <button id="nearby-location-button" class="nearby-action-button" type="button">⌖ 내 주변으로 갱신</button>
+              <button id="nearby-map-button" class="nearby-action-button" type="button">지도에서 보기 ↗</button>
+            </div>
+            <label class="nearby-sort">
+              <span>정렬 기준</span>
+              <select id="nearby-sort" aria-label="주변 장소 정렬 기준">
+                <option value="recommended">추천순</option>
+                <option value="rating">평점순</option>
+                <option value="distance">거리순</option>
+              </select>
+              <span id="nearby-sort-hint" class="nearby-sort-hint" aria-live="polite"></span>
+            </label>
+            <p id="nearby-map-note" class="nearby-map-note">추천 장소가 위 지도에 번호로 표시돼요.</p>
+            <div id="food-search" class="food-search" hidden>
+              <input id="food-query" type="search" placeholder="메뉴 검색 · 예: 삼겹살, 파스타" aria-label="메뉴 검색" />
+              <select id="food-type" aria-label="음식 종류">
+                <option value="">음식 종류 전체</option>
+                <option value="한식">한식</option>
+                <option value="중식">중식</option>
+                <option value="일식">일식</option>
+                 <option value="양식">양식</option>
+                 <option value="분식">분식</option>
+                 <option value="해산물">해산물</option>
+               </select>
+              <button id="food-search-button" type="button">검색</button>
+            </div>
+            <div id="nearby-list" class="recommendation-list" aria-live="polite"></div>
+          </article>
+
+          <article class="discovery-card today-card">
+            <div class="discovery-card-heading">
+              <div>
+                <p class="section-kicker">TODAY IN KOREA</p>
+                <h3>오늘의 전국 추천</h3>
+              </div>
+              <span class="today-date" id="today-label">오늘</span>
+            </div>
+            <div id="today-list" class="today-list"></div>
+          </article>
+        </div>
+
+        <article class="event-card">
+          <div class="discovery-card-heading">
+            <div>
+              <p class="section-kicker">EVENTS & FESTIVALS</p>
+              <h3 id="event-heading">오늘 근처에 행사가 있나요?</h3>
+            </div>
+            <div class="card-heading-tools">
+              <span id="event-source-status" class="source-pill">데모 모드</span>
+              <span class="event-calendar">▣</span>
+            </div>
+          </div>
+          <div id="event-list" class="event-list"></div>
+          <p class="data-source-note">행사 일정은 한국관광공사 행사정보 API에서 날짜와 지역을 기준으로 조회합니다. 도시 선택 시 해당 도시가 속한 권역 기준으로 검색됩니다.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>코스온 © 2026</span>
+      <span>Plan less. Feel more.</span>
+    </footer>
+  </body>
+</html>
