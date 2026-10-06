@@ -97,10 +97,21 @@ def test_site_metadata_and_asset_versions_are_present() -> None:
     assert 'name="theme-color"' in html
     assert 'name="mobile-web-app-capable"' in html
     assert 'name="apple-mobile-web-app-capable"' in html
-    assert 'styles.css?v=25' in html
-    assert 'plan_logic.js?v=25' in html
-    assert 'app.js?v=25' in html
+    assert 'styles.css?v=26' in html
+    assert 'plan_logic.js?v=26' in html
+    assert 'app.js?v=26' in html
     assert "navigator.serviceWorker" in read_asset("app.js")
+
+
+def test_premium_travel_visuals_are_present() -> None:
+    html = read_asset("index.html")
+    styles = read_asset("styles.css")
+
+    assert 'src="hero-travel.png"' in html
+    assert (WEB_ROOT / "hero-travel.png").exists()
+    assert ".intro-visual" in styles
+    assert "@keyframes courseon-rise" in styles
+    assert "prefers-reduced-motion: reduce" in styles
 
 
 def test_plan_storage_and_edit_behaviors_are_wired() -> None:
@@ -210,7 +221,7 @@ def test_brand_copy_reflects_live_integrations() -> None:
 def test_service_worker_caches_the_planner_shell_without_caching_api_responses() -> None:
     service_worker = read_asset("sw.js")
 
-    assert "const CACHE_NAME = 'courseon-shell-v14'" in service_worker
+    assert "const CACHE_NAME = 'courseon-shell-v15'" in service_worker
     assert "cache.put" in service_worker
     assert "/api/" in service_worker
 
@@ -222,3 +233,12 @@ def test_map_card_keeps_the_map_footer_visible() -> None:
     assert ".map-surface { background: #e7f0ec; flex: 1 1 auto; height: auto;" in styles
     assert "@media (max-width: 800px)" in styles
     assert ".map-card { min-height: 330px; }.map-surface { min-height: 330px; }" in styles
+
+
+def test_public_visual_asset_matches_the_source_asset() -> None:
+    source_asset = WEB_ROOT / "hero-travel.png"
+    public_asset = WEB_ROOT.parent / "travel-site" / "public" / "hero-travel.png"
+
+    assert source_asset.exists()
+    assert public_asset.exists()
+    assert source_asset.read_bytes() == public_asset.read_bytes()

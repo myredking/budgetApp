@@ -1023,7 +1023,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=25').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=26').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }

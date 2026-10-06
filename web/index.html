@@ -13,10 +13,10 @@
     />
     <title>코스온 | 국내 여행 코스 플래너</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2318263d'/%3E%3Cpath d='M18 43 30 18l6 13 10-7' fill='none' stroke='%23f5c36b' stroke-linecap='round' stroke-linejoin='round' stroke-width='6'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=25" />
+    <link rel="stylesheet" href="styles.css?v=26" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <script src="plan_logic.js?v=25" defer></script>
-    <script src="app.js?v=25" defer></script>
+    <script src="plan_logic.js?v=26" defer></script>
+    <script src="app.js?v=26" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -52,18 +52,35 @@
       </nav>
 
       <section class="intro" aria-labelledby="page-title">
-        <div>
+        <div class="intro-copy-block">
           <p class="eyebrow">TRIP CURATOR · BETA</p>
-          <h1 id="page-title">이번 여행,<br /><em>동선까지</em> 가볍게.</h1>
-          <p class="intro-copy">
-            예산과 취향을 알려주면 이동시간을 고려한 하루 코스를 만들어드려요.
-            급하게 다음 장소를 고를 때는 현재 위치 주변 추천부터 확인할 수 있어요.
-          </p>
+          <div class="intro-title-row">
+            <div>
+              <h1 id="page-title">이번 여행,<br /><em>동선까지</em> 가볍게.</h1>
+              <p class="intro-copy">
+                예산과 취향을 알려주면 이동시간을 고려한 하루 코스를 만들어드려요.
+                급하게 다음 장소를 고를 때는 현재 위치 주변 추천부터 확인할 수 있어요.
+              </p>
+            </div>
+            <span class="intro-route-badge">WEEKEND<br />ROUTE</span>
+          </div>
+          <div class="intro-highlights" aria-label="코스온 주요 장점">
+            <span><b>01</b> 내 취향에 맞는 코스</span>
+            <span><b>02</b> 지도와 리뷰로 확인</span>
+            <span><b>03</b> 예산까지 한 번에</span>
+          </div>
         </div>
-        <div class="intro-stamp" aria-label="국내 여행 코스 베타 서비스">
-          <span>CURATED</span>
-          <strong>KR<br />TRIP</strong>
-          <span>01 / 04</span>
+        <div class="intro-visual">
+          <img src="hero-travel.png" alt="해 질 무렵 바닷가 도시를 따라 이어지는 여행 코스 일러스트" />
+          <div class="intro-visual-shade" aria-hidden="true"></div>
+          <div class="visual-route-label"><span>COASTAL ROUTE</span><strong>오늘의 여행을<br />한 장면처럼</strong></div>
+          <div class="visual-pin visual-pin-one" aria-hidden="true">01</div>
+          <div class="visual-pin visual-pin-two" aria-hidden="true">02</div>
+          <div class="intro-stamp" aria-label="국내 여행 코스 베타 서비스">
+            <span>CURATED</span>
+            <strong>KR<br />TRIP</strong>
+            <span>01 / 04</span>
+          </div>
         </div>
       </section>
 
