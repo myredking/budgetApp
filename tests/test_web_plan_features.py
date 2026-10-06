@@ -22,6 +22,20 @@ def test_plan_archive_and_edit_controls_are_present() -> None:
     assert 'id="share-plan-button"' in html
 
 
+def test_route_place_review_controls_are_present() -> None:
+    html = read_asset("index.html")
+
+    for element_id in (
+        "place-review-panel",
+        "place-review-title",
+        "place-review-list",
+        "place-review-form",
+        "place-review-rating",
+        "place-review-text",
+    ):
+        assert f'id="{element_id}"' in html
+
+
 def test_quick_navigation_tabs_link_to_each_major_feature() -> None:
     html = read_asset("index.html")
 
@@ -57,9 +71,9 @@ def test_site_metadata_and_asset_versions_are_present() -> None:
     assert 'name="theme-color"' in html
     assert 'name="mobile-web-app-capable"' in html
     assert 'name="apple-mobile-web-app-capable"' in html
-    assert 'styles.css?v=23' in html
-    assert 'plan_logic.js?v=23' in html
-    assert 'app.js?v=23' in html
+    assert 'styles.css?v=24' in html
+    assert 'plan_logic.js?v=24' in html
+    assert 'app.js?v=24' in html
     assert "navigator.serviceWorker" in read_asset("app.js")
 
 
@@ -74,6 +88,13 @@ def test_plan_storage_and_edit_behaviors_are_wired() -> None:
     assert "data-place-change-index" in javascript
     assert "loadSharedPlan" in javascript
     assert "sharePlan" in javascript
+
+
+def test_route_map_and_review_behaviors_are_wired() -> None:
+    javascript = read_asset("app.js")
+
+    assert "selectItineraryPlace" in javascript
+    assert "placeReviews" in javascript
 
 
 def test_quick_navigation_updates_active_section_and_opens_saved_plans() -> None:
@@ -154,7 +175,7 @@ def test_brand_copy_reflects_live_integrations() -> None:
 def test_service_worker_caches_the_planner_shell_without_caching_api_responses() -> None:
     service_worker = read_asset("sw.js")
 
-    assert "const CACHE_NAME = 'courseon-shell-v12'" in service_worker
+    assert "const CACHE_NAME = 'courseon-shell-v13'" in service_worker
     assert "cache.put" in service_worker
     assert "/api/" in service_worker
 

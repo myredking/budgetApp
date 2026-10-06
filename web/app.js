@@ -203,6 +203,17 @@ const mapProviderStatus = document.querySelector('#map-provider-status');
 const integrationTitle = document.querySelector('#integration-title');
 const integrationCopy = document.querySelector('#integration-copy');
 const integrationStatus = document.querySelector('#integration-status');
+const placeReviewPanel = document.querySelector('#place-review-panel');
+const placeReviewTitle = document.querySelector('#place-review-title');
+const placeReviewMeta = document.querySelector('#place-review-meta');
+const placeReviewRecommendation = document.querySelector('#place-review-recommendation');
+const placeReviewRatingSummary = document.querySelector('#place-review-rating-summary');
+const placeReviewList = document.querySelector('#place-review-list');
+const placeReviewForm = document.querySelector('#place-review-form');
+const placeReviewRating = document.querySelector('#place-review-rating');
+const placeReviewText = document.querySelector('#place-review-text');
+const placeReviewStatus = document.querySelector('#place-review-status');
+const closePlaceReviewButton = document.querySelector('#close-place-review-button');
 const quickNavigationLinks = Array.from(document.querySelectorAll('[data-quick-nav]'));
 let currentPlaces = [];
 let currentNearbyItems = [];
@@ -220,12 +231,17 @@ let eventsRequestId = 0;
 let naverMapInstance = null;
 let naverMapMarkers = [];
 let naverMapUserMarker = null;
+let mapViewMode = 'route';
+let selectedPlaceIndex = null;
+let selectedPlaceTrigger = null;
 const PLAN_STORAGE_KEY = 'travel-planner-plans-v1';
+const PLACE_REVIEW_STORAGE_KEY = 'courseon-place-reviews-v1';
 let savedPlans = [];
 let currentPlanId = null;
 let routeOverride = null;
 let planGeneration = 0;
 let replacementIndex = null;
+let placeReviews = readPlaceReviews();
 
 function setActiveQuickTab(sectionId) {
   quickNavigationLinks.forEach((link) => {
@@ -272,6 +288,99 @@ function isSafeExternalUrl(value) {
   } catch (error) {
     return false;
   }
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[character]));
+}
+
+function readPlaceReviews() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(PLACE_REVIEW_STORAGE_KEY) || '[]');
+    return Array.isArray(stored) ? stored.filter((review) => review?.key && review?.text) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function persistPlaceReviews() {
+  try {
+    localStorage.setItem(PLACE_REVIEW_STORAGE_KEY, JSON.stringify(placeReviews.slice(0, 200)));
+    return true;
+  } catch (error) {
+    placeReviewStatus.textContent = '브라우저 저장공간을 사용할 수 없어 리뷰를 저장하지 못했어요.';
+    return false;
+  }
+}
+
+function getPlaceReviewKey(place) {
+  return [destinationInput.value, locationQueryInput.value.trim(), place.title, place.link || ''].join('|');
+}
+
+function getPlaceReviews(place) {
+  const key = getPlaceReviewKey(place);
+  return placeReviews.filter((review) => review.key === key);
+}
+
+function formatReviewDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '최근 작성' : date.toLocaleDateString('ko-KR');
+}
+
+function appendReviewItem(container, label, text, rating, date, className = '') {
+  const article = document.createElement('article');
+  article.className = `review-item ${className}`.trim();
+  const heading = document.createElement('div');
+  heading.className = 'review-item-heading';
+  const badge = document.createElement('span');
+  badge.className = 'review-badge';
+  badge.textContent = label;
+  const score = document.createElement('span');
+  score.textContent = `${rating ? `★ ${Number(rating).toFixed(1)}` : ''}${date ? ` · ${date}` : ''}`;
+  heading.append(badge, score);
+  const copy = document.createElement('p');
+  copy.textContent = text;
+  article.append(heading, copy);
+  container.append(article);
+}
+
+function renderPlaceReviewPanel(place, index) {
+  if (!place) return;
+  placeReviewPanel.hidden = false;
+  placeReviewTitle.textContent = `${index + 1}. ${place.title}`;
+  placeReviewMeta.textContent = `${place.category || '추천 장소'} · ${place.duration || '머무는 시간 확인'} · ${place.address || place.road_address || '지도에서 위치 확인'}`;
+  placeReviewRecommendation.textContent = place.review ? `“${place.review}”` : '코스온이 추천한 장소예요.';
+  placeReviewRatingSummary.textContent = hasNumericRating(place.rating)
+    ? `★ ${Number(place.rating).toFixed(1)}${place.reviews ? ` · ${place.reviews}개 리뷰` : ''}`
+    : '네이버 지도에서 확인';
+  placeReviewList.replaceChildren();
+  appendReviewItem(placeReviewList, '코스온 추천', place.review || '여행 취향에 잘 맞는 장소예요.', place.rating, '추천 리뷰', 'review-item-recommendation');
+  const reviews = getPlaceReviews(place);
+  if (!reviews.length) {
+    const empty = document.createElement('p');
+    empty.className = 'review-empty';
+    empty.textContent = '아직 작성된 리뷰가 없어요. 첫 리뷰를 남겨보세요.';
+    placeReviewList.append(empty);
+  } else {
+    reviews.forEach((review) => appendReviewItem(placeReviewList, '내 리뷰', review.text, review.rating, formatReviewDate(review.createdAt)));
+  }
+  placeReviewStatus.textContent = '';
+}
+
+function hidePlaceReviewPanel(restoreFocus = true) {
+  const focusTarget = selectedPlaceTrigger;
+  selectedPlaceIndex = null;
+  selectedPlaceTrigger = null;
+  placeReviewPanel.hidden = true;
+  placeReviewList.replaceChildren();
+  placeReviewStatus.textContent = '';
+  if (restoreFocus) focusTarget?.focus?.();
 }
 
 function hasNumericRating(value) {
@@ -504,7 +613,7 @@ function showMapFallback() {
     : '미리보기 · 지도 키 설정 후 실제 지도';
 }
 
-function renderNaverMap(items) {
+function renderNaverMap(items, markerClick = focusRecommendation, selectedIndex = null) {
   const coordinates = getNaverCoordinates(items);
   const hasCurrentLocation = planLogic.isValidLocation(currentLocation);
   if (!window.naver?.maps || (!coordinates.length && !hasCurrentLocation)) {
@@ -537,14 +646,24 @@ function renderNaverMap(items) {
   ));
   naverMapInstance.setZoom(coordinates.length <= 1 ? 16 : 14);
   naverMapMarkers = coordinates.map(({ place, index, position }) => {
+    const isSelected = index === selectedIndex;
     const marker = new naver.maps.Marker({
       map: naverMapInstance,
       position: new naver.maps.LatLng(position.latitude, position.longitude),
       title: place.title,
+      icon: {
+        content: `<span class="naver-number-marker${isSelected ? ' is-selected' : ''}" role="img" aria-label="${index + 1}번 ${escapeHtml(place.title)}">${index + 1}</span>`,
+        anchor: new naver.maps.Point(16, 16),
+      },
     });
-    naver.maps.Event.addListener(marker, 'click', () => focusRecommendation(index));
+    naver.maps.Event.addListener(marker, 'click', () => markerClick(index));
     return marker;
   });
+  const selectedPosition = coordinates.find((item) => item.index === selectedIndex)?.position;
+  if (selectedPosition) {
+    naverMapInstance.setCenter(new naver.maps.LatLng(selectedPosition.latitude, selectedPosition.longitude));
+    naverMapInstance.setZoom(16);
+  }
   if (hasCurrentLocation) {
     naverMapUserMarker = new naver.maps.Marker({
       map: naverMapInstance,
@@ -580,8 +699,8 @@ function getCoordinateMapPositions(items) {
     : getStaticMapPositions(items.length)[index]);
 }
 
-function renderMapMarkers(items, sourceLabel = '데모 추천 장소') {
-  if (renderNaverMap(items)) {
+function renderMapMarkers(items, sourceLabel = '데모 추천 장소', markerClick = focusRecommendation, selectedIndex = null) {
+  if (renderNaverMap(items, markerClick, selectedIndex)) {
     mapFooterText.textContent = `${items.length}곳 · 실제 네이버 지도 · 번호를 누르면 목록으로 이동해요`;
     return;
   }
@@ -596,7 +715,8 @@ function renderMapMarkers(items, sourceLabel = '데모 추천 장소') {
     marker.style.top = `${positions[index][1]}%`;
     marker.title = place.title;
     marker.setAttribute('aria-label', `${index + 1}번 ${place.title}`);
-    marker.addEventListener('click', () => focusRecommendation(index));
+    marker.classList.toggle('is-selected', index === selectedIndex);
+    marker.addEventListener('click', () => markerClick(index));
     const number = document.createElement('span');
     number.textContent = String(index + 1);
     marker.append(number);
@@ -628,7 +748,7 @@ function renderNearby() {
   currentNearbySource = 'demo';
   setNearbySortAvailability(false, true);
   updateDataSourceStatus();
-  updateNearbyMapContext(recommendations);
+  if (mapViewMode === 'nearby') updateNearbyMapContext(recommendations);
   foodSearch.hidden = nearbyFilter !== 'restaurant';
   nearbyTitle.textContent = locationMode === 'current'
     ? '현재 위치 주변 추천'
@@ -654,7 +774,7 @@ function renderNearby() {
     article.append(icon, content);
     nearbyList.append(article);
   });
-  renderMapMarkers(recommendations);
+  if (mapViewMode === 'nearby') renderMapMarkers(recommendations);
 }
 
 function createLiveNearbyCard(place) {
@@ -721,9 +841,9 @@ function renderLiveNearby(items) {
   currentNearbyItems = sortedItems;
   currentNearbySource = 'naver';
   updateDataSourceStatus();
-  updateNearbyMapContext(sortedItems);
+  if (mapViewMode === 'nearby') updateNearbyMapContext(sortedItems);
   nearbyList.replaceChildren();
-  renderMapMarkers(sortedItems, '네이버 검색 결과');
+  if (mapViewMode === 'nearby') renderMapMarkers(sortedItems, '네이버 검색 결과');
   sortedItems.forEach((place) => nearbyList.append(createLiveNearbyCard(place)));
 }
 
@@ -775,9 +895,11 @@ function renderNoLiveNearby() {
   currentNearbySource = 'naver_empty';
   setNearbySortAvailability(true, false);
   updateDataSourceStatus();
-  updateNearbyMapContext([]);
-  nearbyMapNote.textContent = '조건에 맞는 네이버 장소가 없어 지도에 표시할 결과가 없어요.';
-  renderMapMarkers([], '네이버 검색 결과');
+  if (mapViewMode === 'nearby') updateNearbyMapContext([]);
+  if (mapViewMode === 'nearby') {
+    nearbyMapNote.textContent = '조건에 맞는 네이버 장소가 없어 지도에 표시할 결과가 없어요.';
+    renderMapMarkers([], '네이버 검색 결과');
+  }
   nearbyList.replaceChildren();
   const article = document.createElement('article');
   article.className = 'recommendation-empty';
@@ -793,7 +915,7 @@ function renderNoLiveNearby() {
 function renderNearbyLiveError() {
   currentNearbySource = 'naver_error';
   updateDataSourceStatus();
-  nearbyMapNote.textContent = '실시간 검색에 실패해 예시 추천을 보여드려요.';
+  if (mapViewMode === 'nearby') nearbyMapNote.textContent = '실시간 검색에 실패해 예시 추천을 보여드려요.';
 }
 
 async function loadLiveNearby() {
@@ -857,7 +979,11 @@ async function loadNaverMapSdk() {
       return;
     }
     await loadNaverMapScript(config.map_client_id);
-    renderMapMarkers(currentNearbyItems, currentNearbySource === 'naver' ? '네이버 검색 결과' : '데모 추천 장소');
+    if (mapViewMode === 'route') {
+      renderRouteMapMarkers(currentPlaces, selectedPlaceIndex);
+    } else {
+      renderMapMarkers(currentNearbyItems, currentNearbySource === 'naver' ? '네이버 검색 결과' : '데모 추천 장소');
+    }
     updateIntegrationStatus();
   } catch (error) {
     showMapFallback();
@@ -867,7 +993,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=23').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=24').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }
@@ -1116,17 +1242,40 @@ function getBudgetFitPlaces(places, days, people, transport, budget) {
   return adjusted;
 }
 
+function getPlaceSelectButton(index) {
+  return itinerary.children[index]?.querySelector?.('button') || null;
+}
+
+function selectItineraryPlace(index, trigger = null) {
+  const place = currentPlaces[index];
+  if (!place) return;
+  mapViewMode = 'route';
+  selectedPlaceIndex = index;
+  selectedPlaceTrigger = trigger || getPlaceSelectButton(index);
+  Array.from(itinerary.children).forEach((card, cardIndex) => {
+    card.classList.toggle('is-selected', cardIndex === index);
+  });
+  renderRouteMapMarkers(currentPlaces, index);
+  renderPlaceReviewPanel(place, index);
+  const scrollTarget = window.innerWidth <= 800 ? placeReviewPanel : document.querySelector('#recommendation-map-card');
+  scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function renderItinerary(places) {
   itinerary.replaceChildren();
   places.forEach((place, index) => {
     const article = document.createElement('article');
     article.className = 'place-card';
+    article.dataset.placeSelectIndex = String(index);
     const time = document.createElement('div');
     time.className = 'place-time';
+    const order = document.createElement('span');
+    order.className = 'place-order';
+    order.textContent = String(index + 1);
     const dayLabel = document.createElement('small');
     const dateLabel = planLogic.getDayDateLabel(dateInput.value, place.day);
     dayLabel.textContent = `DAY ${place.day}${dateLabel ? ` · ${dateLabel}` : ''}`;
-    time.append(dayLabel);
+    time.append(order, dayLabel);
     time.append(document.createTextNode(place.time));
     const info = document.createElement('div');
     info.className = 'place-info';
@@ -1134,12 +1283,21 @@ function renderItinerary(places) {
     titleRow.className = 'place-title-row';
     const title = document.createElement('h4');
     title.textContent = place.title;
+    const placeActions = document.createElement('div');
+    placeActions.className = 'place-actions';
+    const selectButton = document.createElement('button');
+    selectButton.className = 'place-select-button';
+    selectButton.type = 'button';
+    selectButton.dataset.placeSelectIndex = String(index);
+    selectButton.setAttribute('aria-label', `${index + 1}번 ${place.title} 지도와 리뷰 보기`);
+    selectButton.textContent = '지도·리뷰';
     const changeButton = document.createElement('button');
     changeButton.className = 'place-change-button';
     changeButton.type = 'button';
     changeButton.dataset.placeChangeIndex = String(index);
     changeButton.textContent = '장소 변경';
-    titleRow.append(title, changeButton);
+    placeActions.append(selectButton, changeButton);
+    titleRow.append(title, placeActions);
     const meta = document.createElement('p');
     meta.className = 'place-meta';
     const distanceLabel = destinationInput.value === 'nationwide' ? '도시 선택 후 이동 계산' : place.distance;
@@ -1210,7 +1368,21 @@ function normalizeSavedPlace(place) {
     time: sanitizeSavedText(place.time, '시간 확인'),
     live: Boolean(place.live),
     link: isSafeExternalUrl(place.link) ? place.link : '',
+    mapx: place.mapx || '',
+    mapy: place.mapy || '',
+    address: sanitizeSavedText(place.address, ''),
+    road_address: sanitizeSavedText(place.road_address, ''),
   };
+}
+
+function updateRouteMapContext(items) {
+  mapDestination.textContent = getSelectedLocationLabel();
+  nearbyMapNote.textContent = `추천 동선 ${items.length}곳이 지도에 같은 순번으로 표시돼요. 장소를 선택하면 상세 리뷰를 확인할 수 있어요.`;
+}
+
+function renderRouteMapMarkers(items, selectedIndex = null) {
+  updateRouteMapContext(items);
+  renderMapMarkers(items, '추천 동선', selectItineraryPlace, selectedIndex);
 }
 
 function hasOptionValue(select, value) {
@@ -1446,6 +1618,10 @@ function createLiveAlternative(place, previous) {
     time: previous.time,
     live: true,
     link: place.link || '',
+    mapx: place.mapx || '',
+    mapy: place.mapy || '',
+    address: place.address || '',
+    road_address: place.road_address || '',
   };
 }
 
@@ -1512,6 +1688,7 @@ function startFreshPlan() {
 
 function clearInvalidPlan() {
   currentPlaces = [];
+  hidePlaceReviewPanel(false);
   locationStatus.textContent = '출발일·도착일, 하루 시간, 인원, 예산을 올바르게 입력해 주세요.';
   document.querySelector('#result-title').textContent = '시간을 확인해 주세요';
   document.querySelector('#result-subtitle').textContent = '하루 시작 시간은 종료 시간보다 앞서야 해요.';
@@ -1613,8 +1790,11 @@ function renderPlan({ budgetAware = false, placesOverride = null } = {}) {
     : candidates;
   const estimate = calculateEstimate(places, days, people, transport);
   currentPlaces = places;
+  mapViewMode = 'route';
+  hidePlaceReviewPanel(false);
   updatePlanSummary(destination, destinationData, days, people, transport, budget, budgetAware, themePlan, places, estimate);
   renderItinerary(places);
+  renderRouteMapMarkers(places);
   renderNearby();
   loadLiveNearby();
 }
@@ -1687,6 +1867,11 @@ function requestCurrentLocation() {
       currentAddress = '';
       locationStatus.textContent = '현재 위치를 확인했어요. 주변 장소를 불러오는 중이에요.';
       renderPlan();
+      mapViewMode = 'nearby';
+      if (currentNearbyItems.length) {
+        updateNearbyMapContext(currentNearbyItems);
+        renderMapMarkers(currentNearbyItems, currentNearbySource === 'naver' ? '네이버 검색 결과' : '데모 추천 장소');
+      }
       resolveCurrentAddress(position);
     },
     () => {
@@ -1706,10 +1891,21 @@ form.addEventListener('submit', (event) => {
   document.querySelector('#result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
-document.querySelector('#locate-button').addEventListener('click', requestCurrentLocation);
-nearbyLocationButton.addEventListener('click', requestCurrentLocation);
+document.querySelector('#locate-button').addEventListener('click', () => {
+  mapViewMode = 'nearby';
+  requestCurrentLocation();
+});
+nearbyLocationButton.addEventListener('click', () => {
+  mapViewMode = 'nearby';
+  requestCurrentLocation();
+});
 nearbyMapButton.addEventListener('click', () => {
   document.querySelector('#recommendation-map-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  mapViewMode = 'nearby';
+  if (currentNearbyItems.length) {
+    updateNearbyMapContext(currentNearbyItems);
+    renderMapMarkers(currentNearbyItems, currentNearbySource === 'naver' ? '네이버 검색 결과' : '데모 추천 장소');
+  }
 });
 budgetFitButton.addEventListener('click', () => {
   clearShareHash();
@@ -1739,7 +1935,53 @@ todayList.addEventListener('click', (event) => {
 });
 itinerary.addEventListener('click', (event) => {
   const button = event.target.closest('[data-place-change-index]');
-  if (button) openAlternatePicker(Number(button.dataset.placeChangeIndex));
+  if (button) {
+    openAlternatePicker(Number(button.dataset.placeChangeIndex));
+    return;
+  }
+  if (event.target.closest('a')) return;
+  const card = event.target.closest('[data-place-select-index]');
+  if (card) selectItineraryPlace(Number(card.dataset.placeSelectIndex));
+});
+itinerary.addEventListener('keydown', (event) => {
+  if (!['Enter', ' '].includes(event.key)) return;
+  const card = event.target.closest('[data-place-select-index]');
+  if (!card) return;
+  const interactive = event.target.closest('button, a, input, select, textarea');
+  if (interactive && interactive !== card) return;
+  event.preventDefault();
+  selectItineraryPlace(Number(card.dataset.placeSelectIndex));
+});
+placeReviewForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const place = selectedPlaceIndex === null ? null : currentPlaces[selectedPlaceIndex];
+  const rating = Number(placeReviewRating.value);
+  const text = placeReviewText.value.trim();
+  if (!place || !Number.isInteger(rating) || rating < 1 || rating > 5 || !text) {
+    placeReviewStatus.textContent = '평점과 리뷰 내용을 입력해 주세요.';
+    return;
+  }
+  const review = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    key: getPlaceReviewKey(place),
+    rating,
+    text: text.slice(0, 300),
+    createdAt: new Date().toISOString(),
+  };
+  const previousReviews = placeReviews;
+  placeReviews = [review, ...placeReviews].slice(0, 200);
+  if (!persistPlaceReviews()) {
+    placeReviews = previousReviews;
+    return;
+  }
+  renderPlaceReviewPanel(place, selectedPlaceIndex);
+  placeReviewRating.value = '';
+  placeReviewText.value = '';
+  placeReviewStatus.textContent = '리뷰를 저장했어요. 이 기기에서 다시 확인할 수 있어요.';
+});
+closePlaceReviewButton.addEventListener('click', hidePlaceReviewPanel);
+placeReviewPanel.addEventListener('click', (event) => {
+  if (event.target === placeReviewPanel) hidePlaceReviewPanel();
 });
 savedPlansList.addEventListener('click', (event) => {
   const button = event.target.closest('[data-plan-action]');

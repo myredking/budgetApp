@@ -13,10 +13,10 @@
     />
     <title>코스온 | 국내 여행 코스 플래너</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2318263d'/%3E%3Cpath d='M18 43 30 18l6 13 10-7' fill='none' stroke='%23f5c36b' stroke-linecap='round' stroke-linejoin='round' stroke-width='6'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=23" />
+    <link rel="stylesheet" href="styles.css?v=24" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <script src="plan_logic.js?v=23" defer></script>
-    <script src="app.js?v=23" defer></script>
+    <script src="plan_logic.js?v=24" defer></script>
+    <script src="app.js?v=24" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -325,6 +325,42 @@
               </div>
               <div id="alternate-list" class="alternate-list"></div>
             </div>
+            <section id="place-review-panel" class="place-review-panel" hidden aria-labelledby="place-review-title">
+              <div class="place-review-heading">
+                <div>
+                  <p class="section-kicker">PLACE DETAILS</p>
+                  <h4 id="place-review-title">장소를 선택해 주세요</h4>
+                  <p id="place-review-meta" class="muted-copy"></p>
+                </div>
+                <button id="close-place-review-button" class="text-button" type="button">닫기</button>
+              </div>
+              <div class="place-review-summary">
+                <div><span>코스온 추천</span><strong id="place-review-recommendation"></strong></div>
+                <div><span>평점</span><strong id="place-review-rating-summary"></strong></div>
+              </div>
+              <div id="place-review-list" class="place-review-list" aria-live="polite"></div>
+              <form id="place-review-form" class="place-review-form">
+                <label>
+                  <span>내 평점</span>
+                  <select id="place-review-rating" required>
+                    <option value="">평점 선택</option>
+                    <option value="5">5점 · 최고예요</option>
+                    <option value="4">4점 · 좋아요</option>
+                    <option value="3">3점 · 괜찮아요</option>
+                    <option value="2">2점 · 아쉬워요</option>
+                    <option value="1">1점 · 다시 방문하지 않을래요</option>
+                  </select>
+                </label>
+                <label>
+                  <span>리뷰</span>
+                  <textarea id="place-review-text" rows="3" maxlength="300" placeholder="이 장소에 대한 경험을 남겨주세요." required></textarea>
+                </label>
+                <div class="place-review-form-actions">
+                  <button class="button button-secondary" type="submit">리뷰 저장</button>
+                  <p id="place-review-status" class="helper-text" role="status"></p>
+                </div>
+              </form>
+            </section>
           </div>
           <aside id="recommendation-map-card" class="map-card" aria-label="추천 장소 지도">
             <div class="map-surface">

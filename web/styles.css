@@ -163,12 +163,15 @@ button { cursor: pointer; }
 .route-list-heading h3 { font-size: 15px; letter-spacing: -0.04em; margin: 0; }
 .route-list-heading span { color: var(--muted); font-size: 10px; }
 .itinerary { padding-top: 4px; }
-.place-card { align-items: flex-start; border-bottom: 1px solid var(--line); display: grid; gap: 14px; grid-template-columns: 48px 1fr auto; padding: 19px 0; }
+.place-card { align-items: flex-start; border-bottom: 1px solid var(--line); cursor: pointer; display: grid; gap: 14px; grid-template-columns: 48px 1fr auto; padding: 19px 0; transition: background .2s ease, box-shadow .2s ease; }
 .place-card:last-child { border-bottom: 0; padding-bottom: 2px; }
+.place-card:hover, .place-card:focus-visible, .place-card.is-selected { background: #fffaf0; box-shadow: inset 3px 0 var(--coral); outline: 0; }
 .place-time { color: var(--coral); display: flex; flex-direction: column; font-family: 'DM Mono', monospace; font-size: 11px; gap: 4px; padding-top: 4px; }
 .place-time small { color: var(--muted); font-size: 8px; letter-spacing: 0; }
-.place-title-row { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
+.place-order { align-items: center; background: var(--coral); border-radius: 50%; color: white; display: flex; font-family: 'DM Mono', monospace; font-size: 10px; height: 24px; justify-content: center; width: 24px; }
+.place-title-row { align-items: center; display: flex; gap: 8px; justify-content: space-between; }.place-actions { display: flex; flex-shrink: 0; gap: 5px; }
 .place-info h4 { font-size: 15px; letter-spacing: -0.04em; margin: 0 0 5px; }
+.place-select-button { background: var(--teal-soft); border: 0; border-radius: 999px; color: #347b78; font-size: 9px; padding: 5px 8px; white-space: nowrap; }.place-select-button:hover { background: #c9e8e4; }
 .place-change-button { background: var(--yellow-soft); border: 0; border-radius: 999px; color: #87692d; font-size: 9px; padding: 5px 8px; white-space: nowrap; }
 .place-change-button:hover { background: var(--yellow); }
 .place-meta { color: var(--muted); font-size: 11px; margin: 0; }
@@ -189,6 +192,8 @@ button { cursor: pointer; }
 .map-point:hover, .map-point:focus-visible { box-shadow: 0 0 0 4px rgba(234, 134, 109, .25), 0 3px 8px rgba(24,38,61,.18); outline: 0; transform: translate(-50%, -50%) scale(1.08); }
 .map-point span { align-items: center; background: var(--coral); border-radius: 50%; color: white; display: flex; font-family: 'DM Mono', monospace; font-size: 10px; height: 18px; justify-content: center; width: 18px; }
 .map-points { inset: 0; position: absolute; }.map-point-dynamic { transform: translate(-50%, -50%); transition: left .25s ease, top .25s ease; }
+.map-point.is-selected { background: var(--ink); border-color: var(--ink); transform: translate(-50%, -50%) scale(1.16); z-index: 3; }.map-point.is-selected span { background: var(--yellow); color: var(--ink); }
+.naver-number-marker { align-items: center; background: var(--coral); border: 2px solid white; border-radius: 50%; box-shadow: 0 3px 8px rgba(24,38,61,.25); color: white; cursor: pointer; display: inline-flex; font: 700 11px/1 'DM Mono', monospace; height: 28px; justify-content: center; padding: 0; width: 28px; }.naver-number-marker:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }.naver-number-marker.is-selected { background: var(--ink); color: var(--yellow); transform: scale(1.16); }
 .map-user-point { align-items: center; background: var(--ink); border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(24,38,61,.3); color: white; display: flex; font-size: 15px; height: 30px; justify-content: center; position: absolute; transform: translate(-50%, -50%); width: 30px; z-index: 3; }
 .point-one { left: 22%; top: 32%; }.point-two { left: 53%; top: 37%; }.point-three { left: 70%; top: 52%; }.point-four { left: 42%; top: 63%; }
 .map-label { color: #78918c; font-family: 'DM Mono', monospace; font-size: 10px; position: absolute; }.map-label-one { left: 17%; top: 24%; }.map-label-two { left: 55%; top: 29%; }.map-label-three { left: 71%; top: 66%; }
@@ -206,6 +211,12 @@ button { cursor: pointer; }
 .alternate-item:hover { border-color: var(--teal); background: var(--teal-soft); }
 .alternate-item strong { font-size: 12px; }
 .alternate-item span { color: var(--muted); font-size: 10px; }
+.place-review-panel { background: #fffaf0; border: 1px solid #eadfc9; border-radius: 16px; margin-top: 14px; padding: 18px; }
+.place-review-panel[hidden] { display: none; }
+.place-review-heading { align-items: flex-start; display: flex; gap: 16px; justify-content: space-between; }.place-review-heading h4 { font-size: 17px; letter-spacing: -0.04em; margin: 0; }.place-review-heading .muted-copy { line-height: 1.5; }
+.place-review-summary { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 15px; }.place-review-summary div { background: white; border: 1px solid #eadfc9; border-radius: 9px; padding: 10px; }.place-review-summary span { color: var(--muted); display: block; font-size: 9px; }.place-review-summary strong { display: block; font-size: 11px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place-review-list { display: grid; gap: 7px; margin-top: 13px; }.review-item { background: white; border: 1px solid #eadfc9; border-radius: 9px; padding: 10px 11px; }.review-item-heading { align-items: center; display: flex; justify-content: space-between; }.review-item-heading > span:last-child { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 9px; }.review-badge { color: #347b78; font-size: 10px; font-weight: 800; }.review-item p { color: var(--ink-soft); font-size: 11px; line-height: 1.55; margin: 6px 0 0; }.review-empty { color: var(--muted); font-size: 10px; margin: 3px 0; }
+.place-review-form { border-top: 1px solid #eadfc9; display: grid; gap: 9px; margin-top: 14px; padding-top: 14px; }.place-review-form label { color: var(--muted); display: grid; font-size: 10px; gap: 5px; }.place-review-form select, .place-review-form textarea { background: white; border: 1px solid #eadfc9; border-radius: 8px; color: var(--ink); font: inherit; font-size: 11px; outline: 0; padding: 9px 10px; }.place-review-form textarea { line-height: 1.5; resize: vertical; }.place-review-form select:focus, .place-review-form textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(63,143,137,.12); }.place-review-form-actions { align-items: center; display: flex; gap: 10px; }.place-review-form-actions .button { min-height: 35px; padding: 0 13px; }.place-review-form-actions .helper-text { margin: 0; }
 .saved-plans-panel { box-shadow: var(--shadow); margin-top: 18px; }
 .saved-plans-heading { margin-bottom: 10px; }
 .saved-plans-list { display: grid; gap: 8px; }
@@ -255,5 +266,5 @@ button { cursor: pointer; }
   .quick-navigation-inner { display: flex; overflow-x: auto; scrollbar-width: none; }.quick-navigation-inner::-webkit-scrollbar { display: none; }.quick-tab { flex: 0 0 126px; min-height: 54px; padding: 8px 11px; }
   .planner-panel { padding: 24px 19px 21px; }.form-grid { gap: 15px 9px; }.field input, .field select { font-size: 13px; }.form-actions { align-items: stretch; flex-direction: column; }.button { width: 100%; }
   .result-section, .discovery-section { margin-top: 52px; }.result-heading { align-items: flex-start; flex-direction: column; gap: 17px; }.result-heading h2 { font-size: 26px; }.result-actions { align-self: flex-end; }.demo-pill { align-self: flex-start; }.place-title-row { align-items: flex-start; }.saved-plan-item { align-items: flex-start; flex-direction: column; }.saved-plan-actions { align-self: flex-end; }
-  .summary-card { min-height: 116px; }.place-card { gap: 8px; grid-template-columns: 41px 1fr; }.place-rating { grid-column: 2; grid-row: 1; justify-self: end; margin-bottom: -4px; }.place-info { grid-column: 2; }.integration-note { align-items: flex-start; }.integration-status { display: none; }
+  .summary-card { min-height: 116px; }.place-card { gap: 8px; grid-template-columns: 41px 1fr; }.place-rating { grid-column: 2; grid-row: 1; justify-self: end; margin-bottom: -4px; }.place-info { grid-column: 2; }.place-review-summary { grid-template-columns: 1fr; }.place-review-form-actions { align-items: flex-start; flex-direction: column; }.integration-note { align-items: flex-start; }.integration-status { display: none; }
 }

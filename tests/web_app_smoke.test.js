@@ -19,6 +19,8 @@ class FakeElement {
     this.value = '';
     this.options = [];
     this.attributes = {};
+    this.parentNode = null;
+    this.scrollCount = 0;
     this.classList = {
       values: new Set(),
       add: (...names) => names.forEach((name) => this.classList.values.add(name)),
@@ -34,11 +36,18 @@ class FakeElement {
   }
 
   append(...items) {
-    this.children.push(...items.filter(Boolean));
+    const nextItems = items.filter(Boolean);
+    nextItems.forEach((item) => {
+      if (item instanceof FakeElement) item.parentNode = this;
+    });
+    this.children.push(...nextItems);
   }
 
   replaceChildren(...items) {
     this.children = items.filter(Boolean);
+    this.children.forEach((item) => {
+      if (item instanceof FakeElement) item.parentNode = this;
+    });
   }
 
   addEventListener(type, handler) {
@@ -51,9 +60,20 @@ class FakeElement {
   }
 
   closest(selector) {
-    if (selector === '[data-today-destination]' && this.dataset.todayDestination) return this;
-    if (selector === '[data-place-change-index]' && this.dataset.placeChangeIndex) return this;
-    if (selector === '[data-plan-action]' && this.dataset.planAction) return this;
+    const selectors = selector.split(',').map((item) => item.trim());
+    let current = this;
+    while (current) {
+      if (selectors.includes('[data-today-destination]') && current.dataset.todayDestination) return current;
+      if (selectors.includes('[data-place-change-index]') && current.dataset.placeChangeIndex) return current;
+      if (selectors.includes('[data-place-select-index]') && current.dataset.placeSelectIndex !== undefined) return current;
+      if (selectors.includes('[data-plan-action]') && current.dataset.planAction) return current;
+      if (selectors.includes('button') && current.tagName === 'button') return current;
+      if (selectors.includes('a') && current.tagName === 'a') return current;
+      if (selectors.includes('input') && current.tagName === 'input') return current;
+      if (selectors.includes('select') && current.tagName === 'select') return current;
+      if (selectors.includes('textarea') && current.tagName === 'textarea') return current;
+      current = current.parentNode;
+    }
     return null;
   }
 
@@ -79,7 +99,7 @@ class FakeElement {
     return this.attributes[name] ?? null;
   }
 
-  scrollIntoView() {}
+  scrollIntoView() { this.scrollCount += 1; }
 
   find(predicate) {
     for (const child of this.children) {
@@ -106,10 +126,13 @@ function buildElements() {
     'integration-title', 'integration-copy', 'integration-status', 'result-title', 'result-subtitle',
     'average-rating', 'route-heading', 'route-count', 'estimated-total', 'daily-budget', 'budget-message',
     'planner-grid', 'result-section', 'discovery-section', 'events-section', 'recommendation-map-card',
-    'locate-button', 'food-search-button', 'share-plan-button',
+    'locate-button', 'food-search-button', 'share-plan-button', 'place-review-panel', 'place-review-title',
+    'place-review-meta', 'place-review-recommendation', 'place-review-rating-summary', 'place-review-list',
+    'place-review-form', 'place-review-rating', 'place-review-text', 'place-review-status', 'close-place-review-button',
   ];
   const elements = new Map(ids.map((id) => [`#${id}`, new FakeElement('div')]));
   elements.get('#saved-plans-panel').hidden = true;
+  elements.get('#place-review-panel').hidden = true;
   elements.get('#destination').value = 'nationwide';
   elements.get('#theme').value = 'auto';
   elements.get('#start-time').value = '10:00';
@@ -146,7 +169,7 @@ function buildElements() {
   return elements;
 }
 
-function createHarness({ hash = '', nearbyItems = [], failLocation = false, locationAddress = '서울특별시 서울시' } = {}) {
+function createHarness({ hash = '', nearbyItems = [], failLocation = false, locationAddress = '서울특별시 서울시', innerWidth = 1024 } = {}) {
   const elements = buildElements();
   let eventCalls = 0;
   let failEvents = false;
@@ -196,6 +219,7 @@ function createHarness({ hash = '', nearbyItems = [], failLocation = false, loca
     Event: class { constructor(type) { this.type = type; this.target = null; } },
     location: { hash, href: `https://courseon.test/${hash}`, pathname: '/', search: '' },
     history: { replaceState: () => {} },
+    innerWidth,
   };
   context.window = context;
   context.TravelPlanLogic = logic;
@@ -250,6 +274,60 @@ test('전국 후보 화면은 실제 도시 동선과 다른 안내를 보여준
   assert.match(harness.elements.get('#result-subtitle').textContent, /전국 후보예요/);
   assert.match(harness.elements.get('#route-heading').textContent, /오늘의 전국 후보/);
   assert.match(textFrom(harness.elements.get('#itinerary')), /도시 선택 후 이동 계산/);
+});
+
+test('추천 동선 장소를 선택하면 순번 지도와 리뷰 패널을 표시한다', async () => {
+  const harness = createHarness();
+  await settle();
+  const itinerary = harness.elements.get('#itinerary');
+  const firstPlace = itinerary.children[0];
+  assert.ok(firstPlace);
+  await itinerary.dispatchEvent({ type: 'click', target: firstPlace });
+  await settle();
+  assert.equal(harness.elements.get('#place-review-panel').hidden, false);
+  assert.match(harness.elements.get('#place-review-title').textContent, /산책|카페|추천/);
+  assert.equal(textFrom(harness.elements.get('#map-points').children[0]).trim(), '1');
+  assert.match(textFrom(harness.elements.get('#place-review-list')), /코스온 추천/);
+});
+
+test('장소 리뷰 입력은 선택한 장소의 리뷰 목록에 즉시 반영된다', async () => {
+  const harness = createHarness();
+  await settle();
+  const itinerary = harness.elements.get('#itinerary');
+  await itinerary.dispatchEvent({ type: 'click', target: itinerary.children[0] });
+  harness.elements.get('#place-review-rating').value = '5';
+  harness.elements.get('#place-review-text').value = '분위기가 좋아서 다시 가고 싶어요.';
+  await harness.elements.get('#place-review-form').dispatchEvent({
+    type: 'submit',
+    target: harness.elements.get('#place-review-form'),
+    preventDefault: () => {},
+  });
+  assert.match(textFrom(harness.elements.get('#place-review-list')), /분위기가 좋아서 다시 가고 싶어요/);
+  assert.match(harness.elements.get('#place-review-status').textContent, /저장했어요/);
+});
+
+test('모바일에서 지도·리뷰 버튼을 누르면 리뷰 패널이 화면에 맞춰진다', async () => {
+  const harness = createHarness({ innerWidth: 390 });
+  await settle();
+  const firstPlace = harness.elements.get('#itinerary').children[0];
+  const selectButton = firstPlace.find((node) => node.tagName === 'button' && node.dataset.placeSelectIndex !== undefined);
+  await harness.elements.get('#itinerary').dispatchEvent({ type: 'click', target: selectButton });
+  assert.ok(harness.elements.get('#place-review-panel').scrollCount > 0);
+  assert.equal(harness.elements.get('#recommendation-map-card').scrollCount, 0);
+});
+
+test('장소 변경 버튼의 키보드 입력은 장소 선택 동작에 가로막히지 않는다', async () => {
+  const harness = createHarness();
+  await settle();
+  const firstPlace = harness.elements.get('#itinerary').children[0];
+  const changeButton = firstPlace.find((node) => node.tagName === 'button' && node.dataset.placeChangeIndex !== undefined);
+  await harness.elements.get('#itinerary').dispatchEvent({
+    type: 'keydown',
+    target: changeButton,
+    key: 'Enter',
+    preventDefault: () => { throw new Error('중첩 컨트롤의 기본 동작을 막으면 안 됩니다.'); },
+  });
+  assert.equal(harness.elements.get('#place-review-panel').hidden, true);
 });
 
 test('실시간 주변 데이터에 평점·현재 위치가 없으면 정렬 조건을 설명하고 잠근다', async () => {
