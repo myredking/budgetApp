@@ -1,7 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 const logic = require('../web/plan_logic.js');
 
 const appSource = fs.readFileSync(path.join(__dirname, '..', 'web', 'app.js'), 'utf8');
@@ -195,16 +197,32 @@ assert.match(appSource, /register\('\.\/sw\.js\?v=26'\)/);
 });
 
 test('프리미엄 여행 비주얼은 이미지와 접근성 모션 기준을 갖춘다', () => {
+  assert.match(htmlSource, /srcset="hero-travel\.webp"/);
   assert.match(htmlSource, /src="hero-travel\.png"/);
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'web', 'styles.css'), 'utf8'), /prefers-reduced-motion: reduce/);
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'web', 'hero-travel.png')));
+  assert.ok(fs.existsSync(path.join(__dirname, '..', 'web', 'hero-travel.webp')));
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'travel-site', 'public', 'hero-travel.png')));
+  assert.ok(fs.existsSync(path.join(__dirname, '..', 'travel-site', 'public', 'hero-travel.webp')));
 });
 
 test('공개 Worker 빌드는 대표 PNG를 바이너리 자산으로 제공한다', () => {
   assert.match(buildSource, /hero-travel\.png/);
+  assert.match(buildSource, /hero-travel\.webp/);
   assert.match(buildSource, /readFileSync\(path\.join\(publicDir, 'hero-travel\.png'\), 'base64'\)/);
   assert.match(workerSource, /Uint8Array\.from\(atob\(asset\.body\)/);
+});
+
+test('공개 Worker는 빌드 후 WebP를 이미지 응답으로 제공한다', async () => {
+  const siteRoot = path.join(__dirname, '..', 'travel-site');
+  execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: siteRoot, stdio: 'pipe' });
+  const worker = await import(`${pathToFileURL(path.join(siteRoot, 'dist', 'server', 'index.js')).href}?test=${Date.now()}`);
+  const response = await worker.default.fetch(new Request('https://courseon.test/hero-travel.webp'));
+  const bytes = await response.arrayBuffer();
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'image/webp');
+  assert.equal(bytes.byteLength, fs.statSync(path.join(siteRoot, 'public', 'hero-travel.webp')).size);
 });
 
 test('여행지 변경은 메인 맞춤 코스를 즉시 다시 렌더링한다', () => {
@@ -316,12 +334,17 @@ test('공개용 Site 파일은 원본 웹 파일과 동기화된다', () => {
   assert.equal(publicHtmlSource, sourceHtml);
   assert.equal(publicStylesSource, sourceStyles);
   assert.equal(publicWorker, sourceWorker);
+  assert.deepEqual(
+    fs.readFileSync(path.join(__dirname, '..', 'travel-site', 'public', 'hero-travel.webp')),
+    fs.readFileSync(path.join(__dirname, '..', 'web', 'hero-travel.webp')),
+  );
 });
 
 test('서비스워커 캐시 버전은 새 배포본으로 갱신된다', () => {
   const sourceWorker = fs.readFileSync(path.join(__dirname, '..', 'web', 'sw.js'), 'utf8');
       assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v15'/);
   assert.match(sourceWorker, /ASSET_VERSION = '26'/);
+  assert.match(sourceWorker, /'\.\/hero-travel\.png'/);
   assert.match(sourceWorker, /`\.\/app\.js\?v=\$\{ASSET_VERSION\}`/);
   assert.match(sourceWorker, /caches\.match\(`\.\/index\.html\?v=\$\{ASSET_VERSION\}`\)/);
 });

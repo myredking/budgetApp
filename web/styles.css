@@ -320,7 +320,7 @@ button { cursor: pointer; }
 :root {
   --ink: #10263d;
   --ink-soft: #466075;
-  --muted: #7a8b98;
+  --muted: #5f7482;
   --cream: #f4f8f7;
   --paper: #ffffff;
   --line: #dce8e7;
@@ -328,7 +328,7 @@ button { cursor: pointer; }
   --yellow-soft: #fff3d5;
   --teal: #41b8b1;
   --teal-soft: #e1f5f1;
-  --coral: #ef7965;
+  --coral: #b84f3d;
   --shadow: 0 22px 65px rgba(16, 38, 61, 0.1);
 }
 

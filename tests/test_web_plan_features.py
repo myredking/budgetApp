@@ -107,8 +107,10 @@ def test_premium_travel_visuals_are_present() -> None:
     html = read_asset("index.html")
     styles = read_asset("styles.css")
 
+    assert 'srcset="hero-travel.webp"' in html
     assert 'src="hero-travel.png"' in html
     assert (WEB_ROOT / "hero-travel.png").exists()
+    assert (WEB_ROOT / "hero-travel.webp").exists()
     assert ".intro-visual" in styles
     assert "@keyframes courseon-rise" in styles
     assert "prefers-reduced-motion: reduce" in styles
@@ -222,6 +224,7 @@ def test_service_worker_caches_the_planner_shell_without_caching_api_responses()
     service_worker = read_asset("sw.js")
 
     assert "const CACHE_NAME = 'courseon-shell-v15'" in service_worker
+    assert "'./hero-travel.png'" in service_worker
     assert "cache.put" in service_worker
     assert "/api/" in service_worker
 
@@ -236,9 +239,15 @@ def test_map_card_keeps_the_map_footer_visible() -> None:
 
 
 def test_public_visual_asset_matches_the_source_asset() -> None:
+    public_root = WEB_ROOT.parent / "travel-site" / "public"
     source_asset = WEB_ROOT / "hero-travel.png"
-    public_asset = WEB_ROOT.parent / "travel-site" / "public" / "hero-travel.png"
+    public_asset = public_root / "hero-travel.png"
+    source_webp = WEB_ROOT / "hero-travel.webp"
+    public_webp = public_root / "hero-travel.webp"
 
     assert source_asset.exists()
     assert public_asset.exists()
     assert source_asset.read_bytes() == public_asset.read_bytes()
+    assert source_webp.exists()
+    assert public_webp.exists()
+    assert source_webp.read_bytes() == public_webp.read_bytes()

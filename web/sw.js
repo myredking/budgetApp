@@ -8,7 +8,8 @@ const APP_SHELL = [
   `./app.js?v=${ASSET_VERSION}`,
   `./manifest.webmanifest?v=${ASSET_VERSION}`,
   `./icon.svg?v=${ASSET_VERSION}`,
-  `./hero-travel.png?v=${ASSET_VERSION}`,
+  './hero-travel.webp',
+  './hero-travel.png',
 ];
 
 self.addEventListener('install', (event) => {
