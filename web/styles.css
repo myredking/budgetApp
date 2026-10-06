@@ -513,3 +513,28 @@ body::before {
     transition-duration: .01ms !important;
   }
 }
+
+/* Photo-led discovery cards keep live and demo recommendations visually consistent. */
+.card-photo { background: #e7f0ec; border: 1px solid rgba(220,232,231,.9); display: block; object-fit: cover; overflow: hidden; }
+.card-photo.is-failed { opacity: .35; }
+.recommendation-item.has-photo { grid-template-columns: 78px 33px minmax(0, 1fr); }
+.recommendation-photo { border-radius: 13px; height: 78px; width: 78px; }
+.today-item.has-photo { align-items: start; display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; }
+.today-photo { border-radius: 12px; height: 58px; width: 58px; }
+.event-item.has-photo { display: grid; gap: 12px; grid-template-columns: 86px minmax(0, 1fr); min-height: 0; }
+.event-photo { border-radius: 14px; height: 86px; width: 86px; }
+.event-item.has-photo time { grid-column: 2; margin-top: -5px; }
+.place-photo { aspect-ratio: 16 / 7; border-radius: 14px; margin-bottom: 13px; max-height: 120px; width: 100%; }
+.community-post-photo { aspect-ratio: 16 / 7; border-radius: 14px; margin-bottom: 12px; max-height: 150px; width: 100%; }
+
+@media (max-width: 520px) {
+  .recommendation-item.has-photo { grid-template-columns: 64px 28px minmax(0, 1fr); }
+  .recommendation-photo { height: 64px; width: 64px; }
+  .today-item.has-photo { grid-template-columns: 54px minmax(0, 1fr); }
+  .today-photo { height: 54px; width: 54px; }
+  .today-item.has-photo .today-plan-button { grid-column: 2; justify-self: start; margin-top: 7px; }
+  .event-item.has-photo { grid-template-columns: 68px minmax(0, 1fr); }
+  .event-photo { height: 68px; width: 68px; }
+  .event-item.has-photo time { grid-column: 2; }
+  .place-photo, .community-post-photo { aspect-ratio: 16 / 8; max-height: 138px; }
+}

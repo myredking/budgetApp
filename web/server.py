@@ -205,6 +205,7 @@ def normalize_naver_item(item: dict[str, Any]) -> dict[str, str]:
         "reviews": first_optional_text(item.get("reviewCount"), item.get("reviews")),
         "opening_hours": first_optional_text(item.get("openingHours"), item.get("opening_hours")),
         "parking": first_optional_text(item.get("parking"), item.get("parkingInfo")),
+        "image": first_optional_text(item.get("image"), item.get("imageUrl"), item.get("image_url")),
         "source": "naver",
     }
 

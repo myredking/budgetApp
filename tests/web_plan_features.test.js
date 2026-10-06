@@ -190,10 +190,10 @@ test('평점·거리 정렬이 잠길 때 사용자에게 이유를 안내한다
 });
 
 test('새 배포본은 버전이 붙은 정적 파일을 요청한다', () => {
-assert.match(htmlSource, /styles\.css\?v=26/);
-assert.match(htmlSource, /plan_logic\.js\?v=26/);
-assert.match(htmlSource, /app\.js\?v=26/);
-assert.match(appSource, /register\('\.\/sw\.js\?v=26'\)/);
+assert.match(htmlSource, /styles\.css\?v=27/);
+assert.match(htmlSource, /plan_logic\.js\?v=27/);
+assert.match(htmlSource, /app\.js\?v=27/);
+assert.match(appSource, /register\('\.\/sw\.js\?v=27'\)/);
 });
 
 test('프리미엄 여행 비주얼은 이미지와 접근성 모션 기준을 갖춘다', () => {
@@ -204,6 +204,37 @@ test('프리미엄 여행 비주얼은 이미지와 접근성 모션 기준을 �
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'web', 'hero-travel.webp')));
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'travel-site', 'public', 'hero-travel.png')));
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'travel-site', 'public', 'hero-travel.webp')));
+});
+
+test('여행 카드와 글은 장소 유형별 사진과 API 사진 fallback을 준비한다', () => {
+  assert.match(appSource, /travel-food\.webp/);
+  assert.match(appSource, /travel-culture\.webp/);
+  assert.match(appSource, /travel-nature\.webp/);
+  assert.match(appSource, /createPhotoElement/);
+  assert.match(appSource, /getPlaceImage/);
+  assert.match(appSource, /getEventImage/);
+  assert.match(appSource, /getCommunityImage/);
+  assert.match(appSource, /card-photo/);
+  assert.match(appSource, /appendPhotoIfAvailable/);
+  assert.match(appSource, /if \(!photo\?\.src\) return null/);
+  assert.match(appSource, /container\.classList\.add\('has-photo'\)/);
+  ['travel-food.webp', 'travel-culture.webp', 'travel-nature.webp'].forEach((asset) => {
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'web', asset)));
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'travel-site', 'public', asset)));
+  });
+});
+
+test('사진이 없는 데이터는 이미지 없이 텍스트 카드로 유지한다', () => {
+  assert.match(appSource, /function createPhotoElement\(photo/);
+  assert.match(appSource, /parentNode\?\.classList\?\.remove\('has-photo'\)/);
+  assert.match(appSource, /return null;/);
+});
+
+test('공개 Worker 빌드는 카드용 WebP 자산을 바이너리로 포함한다', () => {
+  ['travel-food.webp', 'travel-culture.webp', 'travel-nature.webp'].forEach((asset) => {
+    assert.match(buildSource, new RegExp(asset.replace('.', '\\.') ));
+    assert.match(workerSource, /Uint8Array\.from\(atob\(asset\.body\)/);
+  });
 });
 
 test('공개 Worker 빌드는 대표 PNG를 바이너리 자산으로 제공한다', () => {
@@ -223,6 +254,19 @@ test('공개 Worker는 빌드 후 WebP를 이미지 응답으로 제공한다', 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('content-type'), 'image/webp');
   assert.equal(bytes.byteLength, fs.statSync(path.join(siteRoot, 'public', 'hero-travel.webp')).size);
+});
+
+test('공개 Worker는 카드용 WebP를 이미지 응답으로 제공한다', async () => {
+  const siteRoot = path.join(__dirname, '..', 'travel-site');
+  execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: siteRoot, stdio: 'pipe' });
+  const worker = await import(`${pathToFileURL(path.join(siteRoot, 'dist', 'server', 'index.js')).href}?cards=${Date.now()}`);
+  for (const asset of ['travel-food.webp', 'travel-culture.webp', 'travel-nature.webp']) {
+    const response = await worker.default.fetch(new Request(`https://courseon.test/${asset}`));
+    const bytes = await response.arrayBuffer();
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'image/webp');
+    assert.equal(bytes.byteLength, fs.statSync(path.join(siteRoot, 'public', asset)).size);
+  }
 });
 
 test('여행지 변경은 메인 맞춤 코스를 즉시 다시 렌더링한다', () => {
@@ -342,8 +386,8 @@ test('공개용 Site 파일은 원본 웹 파일과 동기화된다', () => {
 
 test('서비스워커 캐시 버전은 새 배포본으로 갱신된다', () => {
   const sourceWorker = fs.readFileSync(path.join(__dirname, '..', 'web', 'sw.js'), 'utf8');
-      assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v15'/);
-  assert.match(sourceWorker, /ASSET_VERSION = '26'/);
+      assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v17'/);
+  assert.match(sourceWorker, /ASSET_VERSION = '27'/);
   assert.match(sourceWorker, /'\.\/hero-travel\.png'/);
   assert.match(sourceWorker, /`\.\/app\.js\?v=\$\{ASSET_VERSION\}`/);
   assert.match(sourceWorker, /caches\.match\(`\.\/index\.html\?v=\$\{ASSET_VERSION\}`\)/);

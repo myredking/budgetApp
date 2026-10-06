@@ -1,5 +1,5 @@
-const ASSET_VERSION = '26';
-const CACHE_NAME = 'courseon-shell-v15';
+const ASSET_VERSION = '27';
+const CACHE_NAME = 'courseon-shell-v17';
 const APP_SHELL = [
   `./?v=${ASSET_VERSION}`,
   `./index.html?v=${ASSET_VERSION}`,
@@ -10,6 +10,9 @@ const APP_SHELL = [
   `./icon.svg?v=${ASSET_VERSION}`,
   './hero-travel.webp',
   './hero-travel.png',
+  './travel-food.webp',
+  './travel-culture.webp',
+  './travel-nature.webp',
 ];
 
 self.addEventListener('install', (event) => {

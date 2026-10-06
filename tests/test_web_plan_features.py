@@ -97,9 +97,9 @@ def test_site_metadata_and_asset_versions_are_present() -> None:
     assert 'name="theme-color"' in html
     assert 'name="mobile-web-app-capable"' in html
     assert 'name="apple-mobile-web-app-capable"' in html
-    assert 'styles.css?v=26' in html
-    assert 'plan_logic.js?v=26' in html
-    assert 'app.js?v=26' in html
+    assert 'styles.css?v=27' in html
+    assert 'plan_logic.js?v=27' in html
+    assert 'app.js?v=27' in html
     assert "navigator.serviceWorker" in read_asset("app.js")
 
 
@@ -114,6 +114,28 @@ def test_premium_travel_visuals_are_present() -> None:
     assert ".intro-visual" in styles
     assert "@keyframes courseon-rise" in styles
     assert "prefers-reduced-motion: reduce" in styles
+
+
+def assert_photo_asset_is_synced(asset: str, javascript: str, service_worker: str) -> None:
+    assert asset in javascript
+    assert asset in service_worker
+    assert (WEB_ROOT / asset).exists()
+    assert (WEB_ROOT.parent / "travel-site" / "public" / asset).exists()
+
+
+def test_travel_cards_have_related_photo_assets_and_fallbacks() -> None:
+    javascript = read_asset("app.js")
+    service_worker = read_asset("sw.js")
+
+    assert_photo_asset_is_synced("travel-food.webp", javascript, service_worker)
+    assert_photo_asset_is_synced("travel-culture.webp", javascript, service_worker)
+    assert_photo_asset_is_synced("travel-nature.webp", javascript, service_worker)
+    assert "createPhotoElement" in javascript
+    assert "getPlaceImage" in javascript
+    assert "getEventImage" in javascript
+    assert "getCommunityImage" in javascript
+    assert "appendPhotoIfAvailable" in javascript
+    assert "if (!photo?.src) return null" in javascript
 
 
 def test_plan_storage_and_edit_behaviors_are_wired() -> None:
@@ -223,7 +245,7 @@ def test_brand_copy_reflects_live_integrations() -> None:
 def test_service_worker_caches_the_planner_shell_without_caching_api_responses() -> None:
     service_worker = read_asset("sw.js")
 
-    assert "const CACHE_NAME = 'courseon-shell-v15'" in service_worker
+    assert "const CACHE_NAME = 'courseon-shell-v17'" in service_worker
     assert "'./hero-travel.png'" in service_worker
     assert "cache.put" in service_worker
     assert "/api/" in service_worker

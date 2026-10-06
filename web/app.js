@@ -112,31 +112,31 @@ const NATIONAL_ROUTE = {
 };
 
 const NEARBY_TEMPLATES = [
-  { type: 'restaurant', foodType: '한식', label: '한식', title: '오늘의 로컬 밥상', rating: 4.8, reviews: '1,240', distance: '650m', reason: '지금 식사하기 좋은 곳', menu: '제육·찌개·비빔밥' },
-  { type: 'restaurant', foodType: '중식', label: '중식', title: '동네 중화요리집', rating: 4.7, reviews: '856', distance: '820m', reason: '빠르게 식사하기 좋은 곳', menu: '짜장·짬뽕·딤섬' },
-  { type: 'restaurant', foodType: '일식', label: '일식', title: '오늘의 사시미 식당', rating: 4.8, reviews: '974', distance: '1.1km', reason: '가볍고 깔끔한 메뉴', menu: '초밥·우동·사시미' },
-  { type: 'restaurant', foodType: '양식', label: '양식', title: '로컬 파스타 키친', rating: 4.6, reviews: '612', distance: '1.3km', reason: '분위기 있는 저녁 장소', menu: '파스타·스테이크·샐러드' },
-  { type: 'cafe', foodType: '카페·디저트', label: '카페', title: '동네 로스터리', rating: 4.7, reviews: '856', distance: '820m', reason: '조용히 쉬어가기 좋은 곳', menu: '커피·케이크·차' },
-  { type: 'attraction', label: '볼거리', title: '가까운 산책 명소', rating: 4.9, reviews: '2,018', distance: '1.2km', reason: '다음 코스로 이어가기 좋은 곳' },
+  { type: 'restaurant', foodType: '한식', label: '한식', title: '오늘의 로컬 밥상', rating: 4.8, reviews: '1,240', distance: '650m', reason: '지금 식사하기 좋은 곳', menu: '제육·찌개·비빔밥', photoAsset: 'food' },
+  { type: 'restaurant', foodType: '중식', label: '중식', title: '동네 중화요리집', rating: 4.7, reviews: '856', distance: '820m', reason: '빠르게 식사하기 좋은 곳', menu: '짜장·짬뽕·딤섬', photoAsset: 'food' },
+  { type: 'restaurant', foodType: '일식', label: '일식', title: '오늘의 사시미 식당', rating: 4.8, reviews: '974', distance: '1.1km', reason: '가볍고 깔끔한 메뉴', menu: '초밥·우동·사시미', photoAsset: 'food' },
+  { type: 'restaurant', foodType: '양식', label: '양식', title: '로컬 파스타 키친', rating: 4.6, reviews: '612', distance: '1.3km', reason: '분위기 있는 저녁 장소', menu: '파스타·스테이크·샐러드', photoAsset: 'food' },
+  { type: 'cafe', foodType: '카페·디저트', label: '카페', title: '동네 로스터리', rating: 4.7, reviews: '856', distance: '820m', reason: '조용히 쉬어가기 좋은 곳', menu: '커피·케이크·차', photoAsset: 'food' },
+  { type: 'attraction', label: '볼거리', title: '가까운 산책 명소', rating: 4.9, reviews: '2,018', distance: '1.2km', reason: '다음 코스로 이어가기 좋은 곳', photoAsset: 'nature' },
 ];
 
 const TODAY_RECOMMENDATIONS = [
-  { destination: 'gyeongju', region: '경주', title: '황리단길과 대릉원', tag: '역사·산책', reason: '짧은 시간에도 여행 기분을 내기 좋아요.' },
-  { destination: 'gangneung', region: '강릉', title: '안목해변과 초당동', tag: '바다·카페', reason: '카페와 해변을 한 동선으로 묶을 수 있어요.' },
-  { destination: 'jeonju', region: '전주', title: '한옥마을과 객리단길', tag: '골목·미식', reason: '식사와 산책을 함께 즐기기 좋은 조합이에요.' },
+  { destination: 'gyeongju', region: '경주', title: '황리단길과 대릉원', tag: '역사·산책', reason: '짧은 시간에도 여행 기분을 내기 좋아요.', photoAsset: 'culture' },
+  { destination: 'gangneung', region: '강릉', title: '안목해변과 초당동', tag: '바다·카페', reason: '카페와 해변을 한 동선으로 묶을 수 있어요.', photoAsset: 'nature' },
+  { destination: 'jeonju', region: '전주', title: '한옥마을과 객리단길', tag: '골목·미식', reason: '식사와 산책을 함께 즐기기 좋은 조합이에요.', photoAsset: 'food' },
 ];
 
 const EVENT_SAMPLES = [
-  { region: '전국', title: '오늘의 지역 문화행사', type: '공연·전시', date: '오늘 확인', note: '관광공사 행사정보에서 실시간 조회 예정' },
-  { region: '내 주변', title: '주말 로컬 마켓·플리마켓', type: '마켓', date: '이번 주말', note: '현재 위치와 날짜로 필터링 예정' },
-  { region: '전국', title: '계절 축제와 야간 개장', type: '축제', date: '날짜 맞춤', note: '지역·기간·운영시간을 반영 예정' },
+  { region: '전국', title: '오늘의 지역 문화행사', type: '공연·전시', date: '오늘 확인', note: '관광공사 행사정보에서 실시간 조회 예정', photoAsset: 'culture' },
+  { region: '내 주변', title: '주말 로컬 마켓·플리마켓', type: '마켓', date: '이번 주말', note: '현재 위치와 날짜로 필터링 예정', photoAsset: 'culture' },
+  { region: '전국', title: '계절 축제와 야간 개장', type: '축제', date: '날짜 맞춤', note: '지역·기간·운영시간을 반영 예정', photoAsset: 'nature' },
 ];
 
 const COMMUNITY_SEEDS = [
-  { id: 'sample-seongsu', title: '토요일 성수동 카페와 서울숲 산책', region: 'seoul-seongsu', startDate: '2026-10-10', endDate: '2026-10-10', theme: 'date', members: 4, joined: 2, intro: '사진 찍고 맛있는 점심 먹으며 천천히 걸어요. 밝은 분위기의 동행을 기다려요.', planTitle: '성수에서 보내는 하루', source: 'sample', planAttached: true },
-  { id: 'sample-gwangalli', title: '부산 광안리 노을부터 야경까지', region: 'busan-gwangan', startDate: '2026-10-17', endDate: '2026-10-17', theme: 'nature', members: 4, joined: 1, intro: '광안리 해변 산책과 바다 앞 식사를 함께할 분을 찾아요.', source: 'sample' },
-  { id: 'sample-jeonju', title: '전주 한옥마을 주말 미식 여행', region: 'jeonju', startDate: '2026-10-24', endDate: '2026-10-25', theme: 'food', members: 6, joined: 3, intro: '객리단길과 한옥마을을 여유롭게 둘러보고 맛집을 나눠서 가봐요.', source: 'sample' },
-  { id: 'sample-jeju', title: '제주 애월 사진 스팟 하루 코스', region: 'jeju', startDate: '2026-11-01', endDate: '2026-11-02', theme: 'cafe', members: 3, joined: 1, intro: '렌터카로 애월과 곽지 주변 카페, 바다를 둘러볼 예정이에요.', source: 'sample', planAttached: true },
+  { id: 'sample-seongsu', title: '토요일 성수동 카페와 서울숲 산책', region: 'seoul-seongsu', startDate: '2026-10-10', endDate: '2026-10-10', theme: 'date', members: 4, joined: 2, intro: '사진 찍고 맛있는 점심 먹으며 천천히 걸어요. 밝은 분위기의 동행을 기다려요.', planTitle: '성수에서 보내는 하루', source: 'sample', planAttached: true, photoAsset: 'food' },
+  { id: 'sample-gwangalli', title: '부산 광안리 노을부터 야경까지', region: 'busan-gwangan', startDate: '2026-10-17', endDate: '2026-10-17', theme: 'nature', members: 4, joined: 1, intro: '광안리 해변 산책과 바다 앞 식사를 함께할 분을 찾아요.', source: 'sample', photoAsset: 'nature' },
+  { id: 'sample-jeonju', title: '전주 한옥마을 주말 미식 여행', region: 'jeonju', startDate: '2026-10-24', endDate: '2026-10-25', theme: 'food', members: 6, joined: 3, intro: '객리단길과 한옥마을을 여유롭게 둘러보고 맛집을 나눠서 가봐요.', source: 'sample', photoAsset: 'food' },
+  { id: 'sample-jeju', title: '제주 애월 사진 스팟 하루 코스', region: 'jeju', startDate: '2026-11-01', endDate: '2026-11-02', theme: 'cafe', members: 3, joined: 1, intro: '렌터카로 애월과 곽지 주변 카페, 바다를 둘러볼 예정이에요.', source: 'sample', planAttached: true, photoAsset: 'nature' },
 ];
 
 const THEME_PROFILES = {
@@ -330,6 +330,78 @@ function escapeHtml(value) {
   }[character]));
 }
 
+const PHOTO_ASSETS = {
+  food: 'travel-food.webp',
+  culture: 'travel-culture.webp',
+  nature: 'travel-nature.webp',
+};
+
+function createPhotoElement(photo, alt, className = 'card-photo') {
+  if (!photo?.src) return null;
+  const image = document.createElement('img');
+  image.className = className;
+  image.alt = alt;
+  image.loading = 'lazy';
+  image.decoding = 'async';
+  image.referrerPolicy = 'no-referrer';
+  image.src = photo.src;
+  image.addEventListener('error', () => {
+    image.parentNode?.classList?.remove('has-photo');
+    image.remove();
+  }, { once: true });
+  return image;
+}
+
+function appendPhotoIfAvailable(container, photo, alt, className) {
+  const image = createPhotoElement(photo, alt, className);
+  if (image) {
+    container.classList.add('has-photo');
+    container.append(image);
+  }
+  return image;
+}
+
+function getDemoPhotoAsset(place) {
+  const text = `${place?.foodType || ''} ${place?.category || ''} ${place?.title || ''} ${place?.menu || ''}`;
+  return /식당|한식|중식|일식|양식|카페|브런치|디저트|food/i.test(text)
+    ? 'food'
+    : /역사|문화|전시|골목|체험|공연|축제|시장|culture/i.test(text)
+      ? 'culture'
+      : 'nature';
+}
+
+function getPlaceImage(place) {
+  const external = place?.image || place?.image_url;
+  if (isSafeExternalUrl(external)) {
+    return { src: external, alt: `${place.title} 관련 사진` };
+  }
+  const asset = PHOTO_ASSETS[place?.photoAsset];
+  return asset ? { src: asset, alt: `${place?.title || '추천 장소'} 관련 사진` } : null;
+}
+
+function getEventImage(event) {
+  const external = event?.image || event?.image_url;
+  if (isSafeExternalUrl(external)) {
+    return { src: external, alt: `${event.title} 행사 사진` };
+  }
+  const asset = PHOTO_ASSETS[event?.photoAsset];
+  return asset ? { src: asset, alt: `${event?.title || '지역 행사'} 관련 사진` } : null;
+}
+
+function getTodayImage(recommendation) {
+  const asset = PHOTO_ASSETS[recommendation?.photoAsset];
+  return asset ? { src: asset, alt: `${recommendation.title} 추천 사진` } : null;
+}
+
+function getCommunityImage(post) {
+  const external = post?.image || post?.image_url;
+  if (isSafeExternalUrl(external)) {
+    return { src: external, alt: `${post.title} 동행 사진` };
+  }
+  const asset = PHOTO_ASSETS[post?.photoAsset];
+  return asset ? { src: asset, alt: `${post?.title || '여행 동행'} 관련 사진` } : null;
+}
+
 function readPlaceReviews() {
   try {
     const stored = JSON.parse(localStorage.getItem(PLACE_REVIEW_STORAGE_KEY) || '[]');
@@ -443,17 +515,21 @@ function appendPlaceLink(container, place, className = '') {
 
 function getDestinationData(destination) {
   if (destination === 'nationwide') {
-    return NATIONAL_ROUTE;
+    return { ...NATIONAL_ROUTE, places: NATIONAL_ROUTE.places.map((place) => ({ ...place, photoAsset: getDemoPhotoAsset(place) })) };
   }
   const profile = CITY_PROFILES[destination] || CITY_PROFILES.seoul;
   if (DESTINATIONS[destination]) {
-    return { ...DESTINATIONS[destination], label: profile.label, area: profile.area };
+    return {
+      ...DESTINATIONS[destination], label: profile.label, area: profile.area,
+      places: DESTINATIONS[destination].places.map((place) => ({ ...place, photoAsset: getDemoPhotoAsset(place) })),
+    };
   }
   const times = ['10:30', '12:20', '14:20', '16:00', '18:00', '20:00'];
   const places = GENERIC_PLACE_TEMPLATES.map((place, index) => ({
     ...place,
     time: times[index],
     title: `${profile.label} ${place.title}`,
+    photoAsset: getDemoPhotoAsset(place),
   }));
   return { ...profile, places };
 }
@@ -801,6 +877,7 @@ function renderNearby() {
     detail.textContent = `${place.menu || '산책·전시·체험'} · ★ ${place.rating} (${place.reviews}) · 데모 리뷰`;
     content.append(title, meta, detail);
     appendNaverSearchLink(content, place.title);
+    appendPhotoIfAvailable(article, getPlaceImage(place), `${place.title} 추천 사진`, 'recommendation-photo');
     article.append(icon, content);
     nearbyList.append(article);
   });
@@ -849,6 +926,7 @@ function createLiveNearbyCard(place) {
   } else {
     appendNaverSearchLink(content, place.title);
   }
+  appendPhotoIfAvailable(article, getPlaceImage(place), `${place.title} 추천 사진`, 'recommendation-photo');
   article.append(icon, content);
   return article;
 }
@@ -1023,7 +1101,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=26').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=27').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }
@@ -1056,6 +1134,7 @@ function renderTodayRecommendations() {
     button.type = 'button';
     button.dataset.todayDestination = recommendation.destination;
     button.textContent = '이 지역 코스 만들기';
+    appendPhotoIfAvailable(article, getTodayImage(recommendation), `${recommendation.title} 오늘 추천 사진`, 'today-photo');
     article.append(content, button);
     todayList.append(article);
   });
@@ -1101,6 +1180,7 @@ function renderDemoEvents() {
     appendEventSearchLink(content, event.title, scope);
     const period = document.createElement('time');
     period.textContent = dateLabel;
+    appendPhotoIfAvailable(article, getEventImage(event), `${event.title} 행사 사진`, 'event-photo');
     article.append(content, period);
     eventList.append(article);
   });
@@ -1124,6 +1204,7 @@ function renderLiveEvents(items) {
     appendEventSearchLink(content, event.title, event.place || event.address);
     const period = document.createElement('time');
     period.textContent = planLogic.formatEventDateRange(event.start_date, event.end_date) || '일정 확인';
+    appendPhotoIfAvailable(article, getEventImage(event), `${event.title} 행사 사진`, 'event-photo');
     article.append(content, period);
     eventList.append(article);
   });
@@ -1309,6 +1390,7 @@ function renderItinerary(places) {
     time.append(document.createTextNode(place.time));
     const info = document.createElement('div');
     info.className = 'place-info';
+    appendPhotoIfAvailable(info, getPlaceImage(place), `${place.title} 일정 사진`, 'place-photo');
     const titleRow = document.createElement('div');
     titleRow.className = 'place-title-row';
     const title = document.createElement('h4');
@@ -1380,6 +1462,8 @@ function normalizeCommunityPost(post) {
     members: Number.isInteger(members) ? Math.min(8, Math.max(2, members)) : 4,
     joined: Number.isInteger(joined) ? Math.min(Math.max(0, joined), Math.max(2, members || 4)) : 1,
     intro: sanitizeSavedText(post.intro, '여행 코스를 함께 즐길 동행을 기다려요.'),
+    image: isSafeExternalUrl(post.image) ? post.image : '',
+    photoAsset: PHOTO_ASSETS[post.photoAsset] ? post.photoAsset : '',
     source: post.source === 'local' ? 'local' : 'sample',
     planTitle: sanitizeSavedText(post.planTitle, ''),
     planAttached: Boolean(post.planAttached || post.planSnapshot),
@@ -1456,6 +1540,7 @@ function createCommunityPostCard(post) {
     detail.textContent = value;
     details.append(detail);
   });
+  appendPhotoIfAvailable(copy, getCommunityImage(post), `${post.title} 동행 사진`, 'community-post-photo');
   copy.append(meta, title, intro, details);
   if (post.planAttached) {
     const plan = document.createElement('span');

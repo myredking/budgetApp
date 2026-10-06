@@ -43,6 +43,13 @@ class FakeElement {
     this.children.push(...nextItems);
   }
 
+  remove() {
+    if (this.parentNode) {
+      this.parentNode.children = this.parentNode.children.filter((child) => child !== this);
+      this.parentNode = null;
+    }
+  }
+
   replaceChildren(...items) {
     this.children = items.filter(Boolean);
     this.children.forEach((item) => {
@@ -263,6 +270,21 @@ async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
 }
+
+test('사진 로드에 실패하면 카드가 텍스트 레이아웃으로 돌아간다', async () => {
+  const harness = createHarness();
+  await settle();
+  const todayList = harness.elements.get('#today-list');
+  const image = todayList.find((node) => node.tagName === 'img');
+  assert.ok(image);
+  const card = image.parentNode;
+  assert.ok(card.classList.contains('has-photo'));
+
+  await image.dispatchEvent({ type: 'error', target: image });
+
+  assert.equal(card.classList.contains('has-photo'), false);
+  assert.equal(card.children.includes(image), false);
+});
 
 test('행사 카드의 링크와 조회 실패 재시도 동작을 실제 DOM으로 확인한다', async () => {
   const harness = createHarness();
