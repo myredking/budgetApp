@@ -7,6 +7,7 @@ const logic = require('../web/plan_logic.js');
 const appSource = fs.readFileSync(path.join(__dirname, '..', 'web', 'app.js'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'web', 'index.html'), 'utf8');
 const workerSource = fs.readFileSync(path.join(__dirname, '..', 'travel-site', 'worker', 'index.js'), 'utf8');
+const buildSource = fs.readFileSync(path.join(__dirname, '..', 'travel-site', 'scripts', 'build-site.mjs'), 'utf8');
 
 test('시간 제한 없음은 여유 있는 하루 범위를 만든다', () => {
   const range = logic.getDailyTimeRange('', '', true);
@@ -198,6 +199,12 @@ test('프리미엄 여행 비주얼은 이미지와 접근성 모션 기준을 �
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'web', 'styles.css'), 'utf8'), /prefers-reduced-motion: reduce/);
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'web', 'hero-travel.png')));
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'travel-site', 'public', 'hero-travel.png')));
+});
+
+test('공개 Worker 빌드는 대표 PNG를 바이너리 자산으로 제공한다', () => {
+  assert.match(buildSource, /hero-travel\.png/);
+  assert.match(buildSource, /readFileSync\(path\.join\(publicDir, 'hero-travel\.png'\), 'base64'\)/);
+  assert.match(workerSource, /Uint8Array\.from\(atob\(asset\.body\)/);
 });
 
 test('여행지 변경은 메인 맞춤 코스를 즉시 다시 렌더링한다', () => {
