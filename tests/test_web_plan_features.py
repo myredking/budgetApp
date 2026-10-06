@@ -10,7 +10,7 @@ def read_asset(name: str) -> str:
     return (WEB_ROOT / name).read_text(encoding="utf-8")
 
 
-def test_plan_history_and_route_edit_controls_are_present() -> None:
+def test_plan_archive_and_edit_controls_are_present() -> None:
     html = read_asset("index.html")
 
     assert 'id="save-plan-button"' in html
@@ -20,6 +20,11 @@ def test_plan_history_and_route_edit_controls_are_present() -> None:
     assert 'id="alternate-picker"' in html
     assert 'id="no-time-limit"' in html
     assert 'id="share-plan-button"' in html
+
+
+def test_live_discovery_controls_are_present() -> None:
+    html = read_asset("index.html")
+
     assert 'id="nearby-source-status"' in html
     assert 'id="event-source-status"' in html
     assert 'id="nearby-location-button"' in html
@@ -27,19 +32,23 @@ def test_plan_history_and_route_edit_controls_are_present() -> None:
     assert 'id="nearby-map-note"' in html
     assert 'id="nearby-sort"' in html
     assert 'id="nearby-sort-hint"' in html
+
+
+def test_site_metadata_and_asset_versions_are_present() -> None:
+    html = read_asset("index.html")
+
     assert 'rel="manifest"' in html
     assert 'name="theme-color"' in html
     assert 'name="mobile-web-app-capable"' in html
     assert 'name="apple-mobile-web-app-capable"' in html
-    assert 'styles.css?v=20' in html
-    assert 'plan_logic.js?v=20' in html
-    assert 'app.js?v=20' in html
+    assert 'styles.css?v=21' in html
+    assert 'plan_logic.js?v=21' in html
+    assert 'app.js?v=21' in html
     assert "navigator.serviceWorker" in read_asset("app.js")
 
 
-def test_plan_history_and_route_edit_behaviors_are_wired() -> None:
+def test_plan_storage_and_edit_behaviors_are_wired() -> None:
     javascript = read_asset("app.js")
-    logic = read_asset("plan_logic.js")
 
     assert "localStorage" in javascript
     assert "savePlan" in javascript
@@ -49,6 +58,11 @@ def test_plan_history_and_route_edit_behaviors_are_wired() -> None:
     assert "data-place-change-index" in javascript
     assert "loadSharedPlan" in javascript
     assert "sharePlan" in javascript
+
+
+def test_plan_integration_behaviors_are_wired() -> None:
+    javascript = read_asset("app.js")
+
     assert "getDataSourceLabel" in javascript
     assert "place-map-link" in javascript
     assert "nearby-location-button" in javascript
@@ -58,6 +72,11 @@ def test_plan_history_and_route_edit_behaviors_are_wired() -> None:
     assert "getTransportMinutes" in javascript
     assert 'function applyPlanSnapshot' in javascript
     assert 'function applyPlanSnapshot(plan, message) {\n  const formData = plan.form;\n  currentLocation = null;' in javascript
+
+
+def test_time_limit_behavior_is_wired() -> None:
+    logic = read_asset("plan_logic.js")
+
     assert "시간 제한 없음" in logic
 
 
@@ -101,6 +120,15 @@ def test_brand_copy_reflects_live_integrations() -> None:
 def test_service_worker_caches_the_planner_shell_without_caching_api_responses() -> None:
     service_worker = read_asset("sw.js")
 
-    assert "const CACHE_NAME = 'courseon-shell-v9'" in service_worker
+    assert "const CACHE_NAME = 'courseon-shell-v10'" in service_worker
     assert "cache.put" in service_worker
     assert "/api/" in service_worker
+
+
+def test_map_card_keeps_the_map_footer_visible() -> None:
+    styles = read_asset("styles.css")
+
+    assert ".map-card { display: flex; flex-direction: column; overflow: hidden; }" in styles
+    assert ".map-surface { background: #e7f0ec; flex: 1 1 auto; height: auto;" in styles
+    assert "@media (max-width: 800px)" in styles
+    assert ".map-card { min-height: 330px; }.map-surface { min-height: 330px; }" in styles

@@ -163,8 +163,8 @@ button { cursor: pointer; }
 .place-rating { color: var(--ink); font-family: 'DM Mono', monospace; font-size: 11px; white-space: nowrap; }
 .place-rating span { color: #e5a51e; font-size: 14px; }
 
-.map-card { overflow: hidden; }
-.map-surface { background: #e7f0ec; height: 100%; min-height: 415px; overflow: hidden; position: relative; }
+.map-card { display: flex; flex-direction: column; overflow: hidden; }
+.map-surface { background: #e7f0ec; flex: 1 1 auto; height: auto; min-height: 415px; overflow: hidden; position: relative; }
 .naver-map, .map-fallback { inset: 0; position: absolute; }
 .naver-map { min-height: 415px; }
 .map-fallback { overflow: hidden; }

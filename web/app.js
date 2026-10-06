@@ -797,7 +797,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=20').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=21').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }
