@@ -285,6 +285,60 @@ def naver_response_items(payload: Any) -> list[dict[str, Any]]:
     return [item for item in items if isinstance(item, dict)]
 
 
+def fetch_naver_query(config: ApiConfig, search_query: str) -> list[dict[str, Any]]:
+    """Fetch one local-search query from Naver and return raw items."""
+    response = requests.get(
+        NAVER_LOCAL_URL,
+        headers={
+            "X-NCP-APIGW-API-KEY-ID": config.naver_client_id,
+            "X-NCP-APIGW-API-KEY": config.naver_client_secret,
+        },
+        params={"query": search_query, "display": 5, "sort": "comment", "format": "json"},
+        timeout=8,
+    )
+    response.raise_for_status()
+    return naver_response_items(response.json())
+
+
+def fetch_naver_query_variants(
+    config: ApiConfig,
+    queries: list[str],
+    budget: DailyApiBudget,
+) -> tuple[list[dict[str, Any]], str]:
+    """Try the primary query and a broad fallback within the daily budget."""
+    for search_query in queries:
+        if not budget.try_consume("naver"):
+            return [], "quota"
+        items = fetch_naver_query(config, search_query)
+        if items:
+            return items, "naver"
+    return [], "naver"
+
+
+def build_naver_query_variants(query: str, category: str) -> list[str]:
+    """Build a precise query followed by a broader location fallback."""
+    search_query = " ".join(part for part in (query, category) if part).strip()
+    queries = [search_query]
+    broad_query = query.strip()
+    if category and broad_query and broad_query != search_query:
+        queries.append(broad_query)
+    return queries
+
+
+def store_naver_result(
+    items: list[dict[str, Any]],
+    source: str,
+    cache: ApiResponseCache[tuple[list[dict[str, str]], str]],
+    cache_key: str,
+) -> tuple[list[dict[str, str]], str]:
+    """Normalize and cache successful Naver results without caching quota errors."""
+    if source == "quota":
+        return [], source
+    result = [normalize_naver_item(item) for item in items], source
+    cache.put(cache_key, result)
+    return result
+
+
 def fetch_naver_places(
     config: ApiConfig,
     query: str,
@@ -302,22 +356,9 @@ def fetch_naver_places(
     cached = active_cache.get(cache_key)
     if cached is not None:
         return cached
-    if not active_budget.try_consume("naver"):
-        return [], "quota"
-    response = requests.get(
-        NAVER_LOCAL_URL,
-        headers={
-            "X-NCP-APIGW-API-KEY-ID": config.naver_client_id,
-            "X-NCP-APIGW-API-KEY": config.naver_client_secret,
-        },
-        params={"query": search_query, "display": 5, "sort": "comment", "format": "json"},
-        timeout=8,
-    )
-    response.raise_for_status()
-    items = naver_response_items(response.json())
-    result = [normalize_naver_item(item) for item in items], "naver"
-    active_cache.put(cache_key, result)
-    return result
+    search_queries = build_naver_query_variants(query, category)
+    items, source = fetch_naver_query_variants(config, search_queries, active_budget)
+    return store_naver_result(items, source, active_cache, cache_key)
 
 
 def tour_response_items(payload: Any) -> list[dict[str, Any]]:

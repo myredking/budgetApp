@@ -6,6 +6,7 @@ const logic = require('../web/plan_logic.js');
 
 const appSource = fs.readFileSync(path.join(__dirname, '..', 'web', 'app.js'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'web', 'index.html'), 'utf8');
+const workerSource = fs.readFileSync(path.join(__dirname, '..', 'travel-site', 'worker', 'index.js'), 'utf8');
 
 test('시간 제한 없음은 여유 있는 하루 범위를 만든다', () => {
   const range = logic.getDailyTimeRange('', '', true);
@@ -350,6 +351,12 @@ test('구·동이나 넓은 장소 검색어를 주변 추천 범위로 사용�
     logic.getNearbySearchContext('seoul', '서울', '', 'all', '강남구'),
     { query: '강남구', category: '추천 장소' },
   );
+});
+
+test('공개 API는 넓은 지역 검색 결과가 없으면 분류어를 빼고 재검색한다', () => {
+  assert.match(workerSource, /const broadQuery = query\.trim\(\);/);
+  assert.match(workerSource, /searchQueries\.push\(broadQuery\)/);
+  assert.match(workerSource, /items\.length > 0/);
 });
 
 test('네이버 결과가 없을 때는 데모 카드 대신 빈 결과 안내를 표시한다', () => {

@@ -85,6 +85,36 @@ def test_naver_local_search_uses_current_api_hub_contract(monkeypatch) -> None:
     assert calls["params"] == {"query": "성수 카페", "display": 5, "sort": "comment", "format": "json"}
 
 
+def test_naver_local_search_retries_a_broad_location_without_category(monkeypatch) -> None:
+    queries = []
+
+    class FakeResponse:
+        def __init__(self, items):
+            self.items = items
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {"items": self.items}
+
+    def fake_get(url, headers, params, timeout):
+        queries.append(params["query"])
+        items = [] if params["query"] == "성수동 추천 장소" else [{"title": "성수동 장소"}]
+        return FakeResponse(items)
+
+    monkeypatch.setattr("web.server.requests.get", fake_get)
+    config = ApiConfig("client-id", "client-secret", "", "", "")
+    budget = DailyApiBudget({"naver": 2})
+    cache = ApiResponseCache(ttl_seconds=600, clock=lambda: 100.0)
+
+    items, source = fetch_naver_places(config, "성수동", "추천 장소", cache=cache, budget=budget)
+
+    assert source == "naver"
+    assert items[0]["title"] == "성수동 장소"
+    assert queries == ["성수동 추천 장소", "성수동"]
+
+
 def test_normalize_naver_item_strips_markup_and_maps_place_fields() -> None:
     result = normalize_naver_item(
         {
