@@ -36,6 +36,12 @@ TOUR_AREA_CODES = {
     "namwon": "37", "mokpo": "38", "yeosu": "38", "suncheon": "38", "naju": "38", "gwangyang": "38",
     "pohang": "35", "gyeongju": "35", "gumi": "35", "andong": "35", "gimcheon": "35", "yeongju": "35",
     "changwon": "36", "jinju": "36", "tongyeong": "36", "gimhae": "36", "geoje": "36", "yangsan": "36",
+    "seoul-gangnam": "1", "seoul-seongsu": "1", "seoul-hongdae": "1", "seoul-jongno": "1", "seoul-jamsil": "1",
+    "busan-haeundae": "6", "busan-gwangan": "6", "busan-seomyeon": "6", "busan-nampo": "6",
+    "daegu-suseong": "4", "daegu-dongseongno": "4", "daegu-daemyeong": "4",
+    "incheon-songdo": "2", "incheon-guwol": "2", "incheon-gaehangro": "2",
+    "daejeon-dunsan": "3", "daejeon-soje": "3", "daejeon-yuseong": "3",
+    "jeju-aewol": "39", "jeju-jungmun": "39", "jeju-seogwipo": "39",
 }
 load_dotenv()
 

@@ -66,6 +66,27 @@ const CITY_PROFILES = {
   jinju: { label: '진주', area: '진주성 · 남강' }, tongyeong: { label: '통영', area: '동피랑 · 미륵산' },
   gimhae: { label: '김해', area: '봉리단길 · 수로왕릉' }, geoje: { label: '거제', area: '바람의언덕 · 학동' },
   yangsan: { label: '양산', area: '통도사 · 황산공원' },
+  'seoul-gangnam': { label: '강남구', area: '강남역 · 압구정' },
+  'seoul-seongsu': { label: '성수동', area: '서울숲 · 연무장길' },
+  'seoul-hongdae': { label: '마포구 홍대입구', area: '홍대입구역 · 연남동' },
+  'seoul-jongno': { label: '종로구 경복궁', area: '경복궁 · 서촌' },
+  'seoul-jamsil': { label: '송파구 잠실', area: '석촌호수 · 잠실' },
+  'busan-haeundae': { label: '해운대구', area: '해운대해수욕장 · 달맞이길' },
+  'busan-gwangan': { label: '수영구 광안리', area: '광안리 · 민락수변공원' },
+  'busan-seomyeon': { label: '부산진구 서면', area: '서면 · 전포카페거리' },
+  'busan-nampo': { label: '중구 남포동', area: '남포동 · 광복동' },
+  'daegu-suseong': { label: '수성구', area: '수성못 · 들안길' },
+  'daegu-dongseongno': { label: '중구 동성로', area: '동성로 · 삼덕동' },
+  'daegu-daemyeong': { label: '남구 대명동', area: '앞산 · 안지랑' },
+  'incheon-songdo': { label: '연수구 송도', area: '센트럴파크 · 트리플스트리트' },
+  'incheon-guwol': { label: '남동구 구월동', area: '구월동 · 예술회관' },
+  'incheon-gaehangro': { label: '중구 개항로', area: '개항로 · 차이나타운' },
+  'daejeon-dunsan': { label: '서구 둔산동', area: '둔산동 · 시청' },
+  'daejeon-soje': { label: '동구 소제동', area: '소제동 · 대동하늘공원' },
+  'daejeon-yuseong': { label: '유성구', area: '궁동 · 유성온천' },
+  'jeju-aewol': { label: '제주시 애월', area: '애월해안도로 · 곽지' },
+  'jeju-jungmun': { label: '서귀포시 중문', area: '중문관광단지 · 색달' },
+  'jeju-seogwipo': { label: '서귀포시', area: '서귀포항 · 이중섭거리' },
 };
 
 const GENERIC_PLACE_TEMPLATES = [
@@ -135,6 +156,7 @@ const MAX_TRIP_DAYS = 30;
 const planLogic = window.TravelPlanLogic;
 const form = document.querySelector('#planner-form');
 const destinationInput = document.querySelector('#destination');
+const locationQueryInput = document.querySelector('#location-query');
 const themeInput = document.querySelector('#theme');
 const dateInput = document.querySelector('#trip-date');
 const endDateInput = document.querySelector('#trip-end-date');
@@ -257,6 +279,12 @@ function getDestinationData(destination) {
   return { ...profile, places };
 }
 
+function getSelectedLocationLabel() {
+  if (locationMode === 'current' && currentAddress) return currentAddress;
+  const query = locationQueryInput.value.trim();
+  return query || getDestinationData(destinationInput.value).label;
+}
+
 function getSeasonKey(dateValue) {
   const month = Number(dateValue.slice(5, 7));
   if (month >= 3 && month <= 5) return 'spring';
@@ -310,7 +338,7 @@ function getThemePlan(theme, dateValue, timeRange) {
 
 function getNearbyRecommendations(destination) {
   const destinationData = getDestinationData(destination);
-  const subject = locationMode === 'current' ? '현재 위치' : destinationData.label;
+  const subject = locationMode === 'current' ? '현재 위치' : getSelectedLocationLabel();
   return NEARBY_TEMPLATES.map((place) => ({
     ...place,
     title: `${subject} ${place.title}`,
@@ -395,7 +423,7 @@ function updateIntegrationStatus() {
 function updateNearbyMapContext(items) {
   const subject = locationMode === 'current'
     ? currentAddress || '내 주변'
-    : getDestinationData(destinationInput.value).label;
+    : getSelectedLocationLabel();
   mapDestination.textContent = subject;
   nearbyMapNote.textContent = `${subject} 추천 ${items.length}곳이 지도에 번호로 표시돼요. 거리·평점·영업시간·주차 상태를 함께 확인해요.`;
 }
@@ -565,8 +593,8 @@ function renderNearby() {
   nearbyTitle.textContent = locationMode === 'current'
     ? '현재 위치 주변 추천'
     : destinationInput.value === 'nationwide'
-      ? '오늘 전국 추천 장소'
-      : `${getDestinationData(destinationInput.value).label} 주변 추천`;
+      ? locationQueryInput.value.trim() ? `${getSelectedLocationLabel()} 추천 장소` : '오늘 전국 추천 장소'
+      : `${getSelectedLocationLabel()} 주변 추천`;
   nearbyList.replaceChildren();
   recommendations.forEach((place) => {
     const article = document.createElement('article');
@@ -736,9 +764,11 @@ async function loadLiveNearby() {
     destinationData.label,
     currentAddress,
     nearbyFilter,
+    locationQueryInput.value,
   );
   const nationwideCategoryQuery = destinationInput.value === 'nationwide'
     && !currentAddress
+    && !locationQueryInput.value.trim()
     && nearbyFilter !== 'all'
     ? '대한민국'
     : searchContext.query;
@@ -797,7 +827,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=21').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=22').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }
@@ -849,9 +879,9 @@ function refreshLiveEvents() {
 }
 
 function getEventScope() {
-  return destinationInput.value === 'nationwide'
+  return destinationInput.value === 'nationwide' && !locationQueryInput.value.trim()
     ? '전국'
-    : getDestinationData(destinationInput.value).label;
+    : getSelectedLocationLabel();
 }
 
 function renderDemoEvents() {
@@ -1155,6 +1185,7 @@ function normalizeSavedForm(form) {
   const hasBudget = form.budget !== '' && form.budget !== null && form.budget !== undefined;
   return {
     destination: hasOptionValue(destinationInput, form.destination) ? form.destination : 'nationwide',
+    locationQuery: sanitizeSavedText(form.locationQuery, ''),
     theme: hasOptionValue(themeInput, form.theme) ? form.theme : 'auto',
     startDate: validDate(form.startDate) ? form.startDate : dateInput.value,
     endDate: validDate(form.endDate) ? form.endDate : endDateInput.value,
@@ -1184,6 +1215,7 @@ function normalizeSavedPlan(plan) {
 function getPlanFormData() {
   return {
     destination: destinationInput.value,
+    locationQuery: locationQueryInput.value.trim(),
     theme: themeInput.value,
     startDate: dateInput.value,
     endDate: endDateInput.value,
@@ -1210,9 +1242,9 @@ function getPlanSnapshot() {
 }
 
 function getSavedPlanScope(plan) {
-  return plan.form.destination === 'nationwide'
+  return plan.form.locationQuery || (plan.form.destination === 'nationwide'
     ? '전국'
-    : getDestinationData(plan.form.destination).label;
+    : getDestinationData(plan.form.destination).label);
 }
 
 function formatSavedTime(value) {
@@ -1284,6 +1316,7 @@ function applyPlanSnapshot(plan, message) {
   locationMode = 'selected';
   currentAddress = '';
   destinationInput.value = formData.destination;
+  locationQueryInput.value = formData.locationQuery || '';
   themeInput.value = formData.theme;
   dateInput.value = formData.startDate;
   endDateInput.value = formData.endDate;
@@ -1468,14 +1501,17 @@ function clearShareHash() {
 
 function updatePlanSummary(destination, destinationData, days, people, transport, budget, budgetAware, themePlan, places, estimate) {
   const isNationwide = destination === 'nationwide';
+  const customLocation = locationQueryInput.value.trim();
+  const locationLabel = getSelectedLocationLabel();
+  const locationArea = customLocation ? '' : ` ${destinationData.area}`;
   const dateLabel = formatDateRange();
   const timeLabel = getTimeRangeLabel(getDailyTimeRange());
   document.querySelector('#result-title').textContent = isNationwide
     ? `${themePlan.label} · 오늘의 전국 추천`
-    : `${themePlan.label} · ${destinationData.label} ${destinationData.area}에서 보내는 ${days === 1 ? '하루' : `${days}일`}`;
+    : `${themePlan.label} · ${locationLabel}${locationArea}에서 보내는 ${days === 1 ? '하루' : `${days}일`}`;
   document.querySelector('#result-subtitle').textContent = isNationwide
-    ? `${dateLabel} · ${timeLabel} · ${themePlan.seasonLabel} · 전국 후보예요. 도시를 고르면 실제 동선과 예산을 계산해요.`
-    : `${dateLabel} · ${timeLabel} · ${themePlan.timeLabel} · ${people}명 · ${TRANSPORT_LABEL[transport]} · 데모 리뷰 데이터`;
+    ? `${dateLabel} · ${timeLabel} · ${themePlan.seasonLabel} · ${locationQueryInput.value.trim() ? `${locationLabel} 검색 결과예요.` : '전국 후보예요. 도시를 고르면 실제 동선과 예산을 계산해요.'}`
+    : `${dateLabel} · ${timeLabel} · ${themePlan.timeLabel} · ${people}명 · ${TRANSPORT_LABEL[transport]} · ${locationQueryInput.value.trim() ? `${locationLabel} 검색 범위를 반영했어요.` : '데모 리뷰 데이터'}`;
   const estimatePrefix = estimate.unknownCosts ? '약 ' : '';
   document.querySelector('#estimated-total').textContent = isNationwide ? '지역 선택 필요' : `${estimatePrefix}${formatWon(estimate.total)}`;
   document.querySelector('#daily-budget').textContent = isNationwide ? '—' : `${estimatePrefix}${formatWon(estimate.total / days / people)}`;
@@ -1485,9 +1521,9 @@ function updatePlanSummary(destination, destinationData, days, people, transport
     : '평점 확인';
   document.querySelector('#route-heading').textContent = isNationwide ? `${themePlan.label} · 오늘의 전국 후보` : `${themePlan.label} 동선`;
   document.querySelector('#route-count').textContent = isNationwide ? `${places.length}곳 후보` : `${places.length} places`;
-  document.querySelector('#map-destination').textContent = destinationData.label;
-  const mapLabels = destinationData.area.split(' · ');
-  document.querySelector('.map-label-one').textContent = mapLabels[0] || destinationData.label;
+  document.querySelector('#map-destination').textContent = locationLabel;
+  const mapLabels = (customLocation ? locationLabel : destinationData.area).split(' · ');
+  document.querySelector('.map-label-one').textContent = mapLabels[0] || locationLabel;
   document.querySelector('.map-label-two').textContent = mapLabels[1] || '오늘 추천';
   document.querySelector('.map-label-three').textContent = isNationwide ? '지역별' : destinationData.label === '제주' ? '곶자왈' : '바다';
   updateBudgetSummary(isNationwide, budget, budgetAware, estimate);
@@ -1671,6 +1707,15 @@ savedPlansList.addEventListener('click', (event) => {
   if (button.dataset.planAction === 'delete') deleteSavedPlan(button.dataset.planId);
 });
 destinationInput.addEventListener('change', () => {
+  startFreshPlan();
+  locationMode = 'selected';
+  currentLocation = null;
+  currentAddress = '';
+  renderPlan();
+  renderDemoEvents();
+  loadLiveEvents();
+});
+locationQueryInput.addEventListener('change', () => {
   startFreshPlan();
   locationMode = 'selected';
   currentLocation = null;

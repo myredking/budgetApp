@@ -13,10 +13,10 @@
     />
     <title>코스온 | 국내 여행 코스 플래너</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2318263d'/%3E%3Cpath d='M18 43 30 18l6 13 10-7' fill='none' stroke='%23f5c36b' stroke-linecap='round' stroke-linejoin='round' stroke-width='6'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=21" />
+    <link rel="stylesheet" href="styles.css?v=22" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <script src="plan_logic.js?v=21" defer></script>
-    <script src="app.js?v=21" defer></script>
+    <script src="plan_logic.js?v=22" defer></script>
+    <script src="app.js?v=22" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -126,7 +126,49 @@
                   <option value="geoje">거제시</option>
                   <option value="yangsan">양산시</option>
                 </optgroup>
+                <optgroup label="서울 구·동·상권">
+                  <option value="seoul-gangnam">강남구 · 강남역</option>
+                  <option value="seoul-seongsu">성수동 · 서울숲</option>
+                  <option value="seoul-hongdae">마포구 · 홍대입구역</option>
+                  <option value="seoul-jongno">종로구 · 경복궁</option>
+                  <option value="seoul-jamsil">송파구 · 잠실</option>
+                </optgroup>
+                <optgroup label="부산 구·동·상권">
+                  <option value="busan-haeundae">해운대구 · 해운대해수욕장</option>
+                  <option value="busan-gwangan">수영구 · 광안리</option>
+                  <option value="busan-seomyeon">부산진구 · 서면·전포</option>
+                  <option value="busan-nampo">중구 · 남포동·광복동</option>
+                </optgroup>
+                <optgroup label="대구 구·동·상권">
+                  <option value="daegu-suseong">수성구 · 수성못</option>
+                  <option value="daegu-dongseongno">중구 · 동성로·삼덕동</option>
+                  <option value="daegu-daemyeong">남구 · 대명동·앞산</option>
+                </optgroup>
+                <optgroup label="인천·대전·제주 구·동·상권">
+                  <option value="incheon-songdo">연수구 · 송도</option>
+                  <option value="incheon-guwol">남동구 · 구월동</option>
+                  <option value="incheon-gaehangro">중구 · 개항로·차이나타운</option>
+                  <option value="daejeon-dunsan">서구 · 둔산동</option>
+                  <option value="daejeon-soje">동구 · 소제동</option>
+                  <option value="daejeon-yuseong">유성구 · 궁동·온천</option>
+                  <option value="jeju-aewol">제주시 · 애월</option>
+                  <option value="jeju-jungmun">서귀포시 · 중문</option>
+                  <option value="jeju-seogwipo">서귀포시 · 서귀포</option>
+                </optgroup>
               </select>
+            </label>
+
+            <label class="field field-wide">
+              <span>세부 지역·장소 검색 <small>선택사항</small></span>
+              <input
+                id="location-query"
+                name="location-query"
+                type="search"
+                maxlength="60"
+                placeholder="예: 강남구, 성수동, 홍대입구역, 경복궁"
+                autocomplete="off"
+              />
+              <small class="field-hint">정확한 주소가 아니어도 구·동·역·랜드마크·상권처럼 넓은 검색어로 추천받을 수 있어요.</small>
             </label>
 
             <label class="field field-wide">

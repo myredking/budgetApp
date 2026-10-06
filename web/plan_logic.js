@@ -189,15 +189,17 @@
     };
   }
 
-  function getNearbySearchContext(destination, destinationLabel, currentAddress, filter) {
+  function getNearbySearchContext(destination, destinationLabel, currentAddress, filter, locationQuery = '') {
     const categoryLabels = { restaurant: '식당', cafe: '카페', attraction: '관광지' };
     const address = typeof currentAddress === 'string' ? currentAddress.trim() : '';
-    const isNationwide = destination === 'nationwide' && !address;
+    const requestedLocation = typeof locationQuery === 'string' ? locationQuery.trim() : '';
+    const scope = address || requestedLocation;
+    const isNationwide = destination === 'nationwide' && !scope;
     if (isNationwide && filter && filter !== 'all') {
       return { query: '대한민국', category: categoryLabels[filter] || '관광지' };
     }
     return {
-      query: address || (isNationwide ? '대한민국 관광지' : destinationLabel),
+      query: scope || (isNationwide ? '대한민국 관광지' : destinationLabel),
       category: categoryLabels[filter] || (isNationwide ? '관광지' : '추천 장소'),
     };
   }

@@ -186,10 +186,10 @@ test('평점·거리 정렬이 잠길 때 사용자에게 이유를 안내한다
 });
 
 test('새 배포본은 버전이 붙은 정적 파일을 요청한다', () => {
-  assert.match(htmlSource, /styles\.css\?v=21/);
-  assert.match(htmlSource, /plan_logic\.js\?v=21/);
-  assert.match(htmlSource, /app\.js\?v=21/);
-  assert.match(appSource, /register\('\.\/sw\.js\?v=21'\)/);
+  assert.match(htmlSource, /styles\.css\?v=22/);
+  assert.match(htmlSource, /plan_logic\.js\?v=22/);
+  assert.match(htmlSource, /app\.js\?v=22/);
+  assert.match(appSource, /register\('\.\/sw\.js\?v=22'\)/);
 });
 
 test('여행지 변경은 메인 맞춤 코스를 즉시 다시 렌더링한다', () => {
@@ -305,8 +305,8 @@ test('공개용 Site 파일은 원본 웹 파일과 동기화된다', () => {
 
 test('서비스워커 캐시 버전은 새 배포본으로 갱신된다', () => {
   const sourceWorker = fs.readFileSync(path.join(__dirname, '..', 'web', 'sw.js'), 'utf8');
-      assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v10'/);
-  assert.match(sourceWorker, /ASSET_VERSION = '21'/);
+      assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v11'/);
+  assert.match(sourceWorker, /ASSET_VERSION = '22'/);
   assert.match(sourceWorker, /`\.\/app\.js\?v=\$\{ASSET_VERSION\}`/);
   assert.match(sourceWorker, /caches\.match\(`\.\/index\.html\?v=\$\{ASSET_VERSION\}`\)/);
 });
@@ -334,6 +334,21 @@ test('전국 주변 추천은 좌표가 있는 실제 관광지 검색으로 시
   assert.deepEqual(
     logic.getNearbySearchContext('nationwide', '전국', '', 'cafe'),
     { query: '대한민국', category: '카페' },
+  );
+});
+
+test('구·동이나 넓은 장소 검색어를 주변 추천 범위로 사용한다', () => {
+  assert.deepEqual(
+    logic.getNearbySearchContext('nationwide', '전국', '', 'restaurant', '성수동'),
+    { query: '성수동', category: '식당' },
+  );
+  assert.deepEqual(
+    logic.getNearbySearchContext('seoul', '서울', '', 'cafe', '홍대입구역'),
+    { query: '홍대입구역', category: '카페' },
+  );
+  assert.deepEqual(
+    logic.getNearbySearchContext('seoul', '서울', '', 'all', '강남구'),
+    { query: '강남구', category: '추천 장소' },
   );
 });
 

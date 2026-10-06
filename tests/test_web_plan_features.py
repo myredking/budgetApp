@@ -34,6 +34,14 @@ def test_live_discovery_controls_are_present() -> None:
     assert 'id="nearby-sort-hint"' in html
 
 
+def test_location_query_controls_are_present() -> None:
+    html = read_asset("index.html")
+
+    assert 'id="location-query"' in html
+    assert 'placeholder="예: 강남구, 성수동, 홍대입구역, 경복궁"' in html
+    assert 'label="서울 구·동·상권"' in html
+
+
 def test_site_metadata_and_asset_versions_are_present() -> None:
     html = read_asset("index.html")
 
@@ -41,9 +49,9 @@ def test_site_metadata_and_asset_versions_are_present() -> None:
     assert 'name="theme-color"' in html
     assert 'name="mobile-web-app-capable"' in html
     assert 'name="apple-mobile-web-app-capable"' in html
-    assert 'styles.css?v=21' in html
-    assert 'plan_logic.js?v=21' in html
-    assert 'app.js?v=21' in html
+    assert 'styles.css?v=22' in html
+    assert 'plan_logic.js?v=22' in html
+    assert 'app.js?v=22' in html
     assert "navigator.serviceWorker" in read_asset("app.js")
 
 
@@ -72,6 +80,15 @@ def test_plan_integration_behaviors_are_wired() -> None:
     assert "getTransportMinutes" in javascript
     assert 'function applyPlanSnapshot' in javascript
     assert 'function applyPlanSnapshot(plan, message) {\n  const formData = plan.form;\n  currentLocation = null;' in javascript
+
+
+def test_location_query_search_behaviors_are_wired() -> None:
+    javascript = read_asset("app.js")
+
+    assert "locationQueryInput" in javascript
+    assert "getSelectedLocationLabel" in javascript
+    assert "locationQuery" in javascript
+    assert "getNearbySearchContext(" in javascript
 
 
 def test_time_limit_behavior_is_wired() -> None:
@@ -120,7 +137,7 @@ def test_brand_copy_reflects_live_integrations() -> None:
 def test_service_worker_caches_the_planner_shell_without_caching_api_responses() -> None:
     service_worker = read_asset("sw.js")
 
-    assert "const CACHE_NAME = 'courseon-shell-v10'" in service_worker
+    assert "const CACHE_NAME = 'courseon-shell-v11'" in service_worker
     assert "cache.put" in service_worker
     assert "/api/" in service_worker
 
