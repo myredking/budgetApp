@@ -44,6 +44,7 @@ def test_community_controls_are_present() -> None:
         "community-search",
         "community-region-filter",
         "community-theme-filter",
+        "community-date-filter",
         "community-post-list",
         "open-community-form-button",
         "community-form-panel",
@@ -51,8 +52,26 @@ def test_community_controls_are_present() -> None:
         "community-post-title",
         "community-post-submit",
         "share-plan-community-button",
+        "community-chat-panel",
+        "community-chat-form",
+        "community-chat-input",
     ):
         assert f'id="{element_id}"' in html
+
+
+def test_price_comparison_controls_are_present() -> None:
+    html = read_asset("index.html")
+    javascript = read_asset("app.js")
+
+    for element_id in (
+        "price-comparison-section",
+        "price-comparison-list",
+        "price-comparison-status",
+        "price-comparison-refresh",
+    ):
+        assert f'id="{element_id}"' in html
+    assert "loadPriceComparisons" in javascript
+    assert "/api/price-comparison" in javascript
 
 
 def test_quick_navigation_tabs_link_to_each_major_feature() -> None:
@@ -97,9 +116,9 @@ def test_site_metadata_and_asset_versions_are_present() -> None:
     assert 'name="theme-color"' in html
     assert 'name="mobile-web-app-capable"' in html
     assert 'name="apple-mobile-web-app-capable"' in html
-    assert 'styles.css?v=27' in html
-    assert 'plan_logic.js?v=27' in html
-    assert 'app.js?v=27' in html
+    assert 'styles.css?v=30' in html
+    assert 'plan_logic.js?v=30' in html
+    assert 'app.js?v=30' in html
     assert "navigator.serviceWorker" in read_asset("app.js")
 
 
@@ -138,6 +157,14 @@ def test_travel_cards_have_related_photo_assets_and_fallbacks() -> None:
     assert "if (!photo?.src) return null" in javascript
 
 
+def test_travel_photos_use_square_cards() -> None:
+    styles = read_asset("styles.css")
+
+    assert "aspect-ratio: 1 / 1" in styles
+    assert ".recommendation-photo" in styles
+    assert ".community-post-photo" in styles
+
+
 def test_plan_storage_and_edit_behaviors_are_wired() -> None:
     javascript = read_asset("app.js")
 
@@ -165,6 +192,10 @@ def test_community_behaviors_are_wired() -> None:
     assert "renderCommunityPosts" in javascript
     assert "toggleCommunityJoin" in javascript
     assert "shareCurrentPlanToCommunity" in javascript
+    assert "COMMUNITY_CHAT_STORAGE_KEY" in javascript
+    assert "renderCommunityChat" in javascript
+    assert "sendCommunityChat" in javascript
+    assert "communityDateFilter" in javascript
 
 
 def test_quick_navigation_updates_active_section_and_opens_saved_plans() -> None:
@@ -245,7 +276,7 @@ def test_brand_copy_reflects_live_integrations() -> None:
 def test_service_worker_caches_the_planner_shell_without_caching_api_responses() -> None:
     service_worker = read_asset("sw.js")
 
-    assert "const CACHE_NAME = 'courseon-shell-v17'" in service_worker
+    assert "const CACHE_NAME = 'courseon-shell-v18'" in service_worker
     assert "'./hero-travel.png'" in service_worker
     assert "cache.put" in service_worker
     assert "/api/" in service_worker

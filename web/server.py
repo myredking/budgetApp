@@ -115,6 +115,7 @@ API_BUDGET = DailyApiBudget(
         "naver": configured_limit("NAVER_DAILY_LIMIT", 500),
         "tour": configured_limit("TOUR_DAILY_LIMIT", 100),
         "maps": configured_limit("MAP_DAILY_LIMIT", 100),
+        "partner": configured_limit("PARTNER_DAILY_LIMIT", 30),
     }
 )
 API_CACHE: ApiResponseCache[Any] = ApiResponseCache(
@@ -131,6 +132,7 @@ class ApiConfig:
     tour_service_key: str
     map_api_key_id: str
     map_api_key: str
+    partner_feed_url: str = ""
 
     @classmethod
     def from_env(cls) -> "ApiConfig":
@@ -142,6 +144,7 @@ class ApiConfig:
             tour_service_key=os.getenv("TOUR_API_SERVICE_KEY", ""),
             map_api_key_id=os.getenv("NAVER_MAP_API_KEY_ID", ""),
             map_api_key=os.getenv("NAVER_MAP_API_KEY", ""),
+            partner_feed_url=os.getenv("TRAVEL_PARTNER_FEED_URL", ""),
         )
 
     @property
@@ -222,6 +225,87 @@ def normalize_tour_event(item: dict[str, Any]) -> dict[str, str]:
         "content_id": str(item.get("contentid", "")),
         "source": "tour_api",
     }
+
+
+def safe_https_url(value: Any) -> str:
+    """Keep only HTTPS links supplied by a configured partner feed."""
+    candidate = optional_text(value).strip()
+    parsed = urlparse(candidate)
+    return candidate if parsed.scheme == "https" and parsed.netloc else ""
+
+
+def normalize_partner_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Convert a partner product into the safe comparison-card shape."""
+    try:
+        price = max(float(item.get("price", 0)), 0)
+    except (TypeError, ValueError):
+        price = 0.0
+    return {
+        "provider": first_optional_text(item.get("provider"), item.get("merchant"), "공식 제휴사"),
+        "title": first_optional_text(item.get("title"), item.get("name")),
+        "category": first_optional_text(item.get("category"), item.get("type"), "국내 여행 상품"),
+        "price": price,
+        "currency": first_optional_text(item.get("currency"), "KRW"),
+        "url": safe_https_url(first_optional_text(item.get("affiliate_url"), item.get("affiliateUrl"), item.get("url"), item.get("link"))),
+        "image": safe_https_url(first_optional_text(item.get("image"), item.get("image_url"), item.get("imageUrl"))),
+        "recommended": bool(item.get("recommended", False)),
+        "source": "partner_feed",
+    }
+
+
+def partner_response_items(payload: Any) -> list[dict[str, Any]]:
+    """Read product arrays from common official-feed response envelopes."""
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if not isinstance(payload, dict):
+        return []
+    for key in ("items", "products", "results", "deals"):
+        items = payload.get(key)
+        if isinstance(items, list):
+            return [item for item in items if isinstance(item, dict)]
+    return []
+
+
+def normalized_partner_items(payload: Any) -> list[dict[str, Any]]:
+    """Normalize, validate, and rank official partner products."""
+    items = [normalize_partner_item(item) for item in partner_response_items(payload)]
+    valid_items = [item for item in items if item["title"] and item["price"] > 0]
+    return sorted(valid_items, key=lambda item: (not item["recommended"], item["price"]))
+
+
+def fetch_partner_feed(
+    config: ApiConfig,
+    start_date: str,
+    end_date: str,
+    destination: str,
+    people: str,
+    theme: str,
+    cache: ApiResponseCache[tuple[list[dict[str, Any]], str]] | None = None,
+    budget: DailyApiBudget | None = None,
+) -> tuple[list[dict[str, Any]], str]:
+    """Fetch only a configured official travel product feed."""
+    feed_url = safe_https_url(config.partner_feed_url)
+    if not feed_url:
+        return [], "not_configured"
+    active_cache = cache or API_CACHE
+    active_budget = budget or API_BUDGET
+    cache_key = f"partner:{feed_url}:{start_date}:{end_date}:{destination}:{people}:{theme}"
+    cached = active_cache.get(cache_key)
+    if cached is not None:
+        return cached
+    if not active_budget.try_consume("partner"):
+        return [], "quota"
+    response = requests.get(
+        feed_url,
+        params={"start_date": start_date, "end_date": end_date, "destination": destination, "people": people, "theme": theme},
+        headers={"Accept": "application/json"},
+        timeout=8,
+    )
+    response.raise_for_status()
+    items = normalized_partner_items(response.json())
+    result = items, "partner_feed" if items else "partner_empty"
+    active_cache.put(cache_key, result)
+    return result
 
 
 def extract_reverse_address(payload: dict[str, Any]) -> str:
@@ -469,6 +553,9 @@ class TravelRequestHandler(BaseHTTPRequestHandler):
         if parsed_url.path == "/api/events":
             self._handle_events(params)
             return
+        if parsed_url.path == "/api/price-comparison":
+            self._handle_price_comparison(params)
+            return
         if parsed_url.path == "/api/location":
             self._handle_location(params)
             return
@@ -508,6 +595,26 @@ class TravelRequestHandler(BaseHTTPRequestHandler):
         self._send_json(
             {"source": source, "items": items, "demo": source in {"demo", "quota"}}
         )
+
+    def _handle_price_comparison(self, params: dict[str, list[str]]) -> None:
+        """Return products from the configured official partner feed only."""
+        today = date.today().strftime("%Y%m%d")
+        start_date, end_date = normalized_date_range(
+            bounded_param(params, "start_date"), bounded_param(params, "end_date"), today
+        )
+        try:
+            items, source = fetch_partner_feed(
+                self.config,
+                start_date,
+                end_date,
+                bounded_param(params, "destination", 40),
+                bounded_param(params, "people", 3),
+                bounded_param(params, "theme", 20),
+            )
+        except requests.RequestException:
+            self._send_json({"source": "partner_error", "items": [], "demo": True}, status=502)
+            return
+        self._send_json({"source": source, "items": items, "demo": source != "partner_feed"})
 
     def _handle_location(self, params: dict[str, list[str]]) -> None:
         """Reverse-geocode browser coordinates without exposing map keys."""

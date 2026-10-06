@@ -1,3 +1,5 @@
+import pytest
+
 from web.server import (
     ApiConfig,
     DailyApiBudget,
@@ -5,7 +7,9 @@ from web.server import (
     bounded_param,
     extract_reverse_address,
     fetch_naver_places,
+    fetch_partner_feed,
     normalize_naver_item,
+    normalize_partner_item,
     normalize_tour_event,
     normalized_date,
     normalized_date_range,
@@ -195,6 +199,66 @@ def test_normalize_tour_event_maps_event_schedule_fields() -> None:
         "content_id": "12345",
         "source": "tour_api",
     }
+
+
+def test_normalize_partner_item_keeps_only_safe_comparison_fields() -> None:
+    result = normalize_partner_item(
+        {
+            "provider": "공식 여행사",
+            "title": "부산 2박 3일 패키지",
+            "category": "국내 패키지",
+            "price": 189000,
+            "currency": "KRW",
+            "affiliate_url": "https://partner.example.com/deal/123",
+            "image": "https://images.example.com/deal.jpg",
+            "recommended": True,
+        }
+    )
+
+    assert result == {
+        "provider": "공식 여행사",
+        "title": "부산 2박 3일 패키지",
+        "category": "국내 패키지",
+        "price": 189000.0,
+        "currency": "KRW",
+        "url": "https://partner.example.com/deal/123",
+        "image": "https://images.example.com/deal.jpg",
+        "recommended": True,
+        "source": "partner_feed",
+    }
+
+
+def test_partner_feed_is_cached_ranked_and_called_with_trip_conditions(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "items": [
+                    {"provider": "여행사 A", "title": "비추천 상품", "price": 90000},
+                    {"provider": "여행사 B", "title": "추천 상품", "price": 120000, "recommended": True},
+                ]
+            }
+
+    def fake_get(url: str, **kwargs: object) -> FakeResponse:
+        calls.append((url, kwargs))
+        return FakeResponse()
+
+    monkeypatch.setattr("web.server.requests.get", fake_get)
+    config = ApiConfig("", "", "", "", "", "https://partner.example.com/feed")
+    budget = DailyApiBudget({"partner": 1})
+    cache = ApiResponseCache(ttl_seconds=600, clock=lambda: 100.0)
+
+    first = fetch_partner_feed(config, "20261010", "20261012", "busan", "2", "date", cache, budget)
+    second = fetch_partner_feed(config, "20261010", "20261012", "busan", "2", "date", cache, budget)
+
+    assert first == second
+    assert first[0][0]["title"] == "추천 상품"
+    assert calls[0][1]["params"]["destination"] == "busan"
+    assert len(calls) == 1
 
 
 def test_api_config_reports_demo_mode_without_credentials() -> None:

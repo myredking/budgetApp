@@ -225,8 +225,16 @@ const communitySection = document.querySelector('#community-section');
 const communitySearch = document.querySelector('#community-search');
 const communityRegionFilter = document.querySelector('#community-region-filter');
 const communityThemeFilter = document.querySelector('#community-theme-filter');
+const communityDateFilter = document.querySelector('#community-date-filter');
 const communitySort = document.querySelector('#community-sort');
 const communityPostList = document.querySelector('#community-post-list');
+const communityChatPanel = document.querySelector('#community-chat-panel');
+const communityChatTitle = document.querySelector('#community-chat-title');
+const communityChatMessages = document.querySelector('#community-chat-messages');
+const communityChatForm = document.querySelector('#community-chat-form');
+const communityChatInput = document.querySelector('#community-chat-input');
+const communityChatStatus = document.querySelector('#community-chat-status');
+const closeCommunityChatButton = document.querySelector('#close-community-chat-button');
 const openCommunityFormButton = document.querySelector('#open-community-form-button');
 const sharePlanCommunityButton = document.querySelector('#share-plan-community-button');
 const communityFormPanel = document.querySelector('#community-form-panel');
@@ -241,6 +249,9 @@ const communityShareCurrentPlan = document.querySelector('#community-share-curre
 const communityFormStatus = document.querySelector('#community-form-status');
 const communityStatus = document.querySelector('#community-status');
 const closeCommunityFormButton = document.querySelector('#close-community-form-button');
+const priceComparisonList = document.querySelector('#price-comparison-list');
+const priceComparisonStatus = document.querySelector('#price-comparison-status');
+const priceComparisonRefresh = document.querySelector('#price-comparison-refresh');
 const quickNavigationLinks = Array.from(document.querySelectorAll('[data-quick-nav]'));
 let currentPlaces = [];
 let currentNearbyItems = [];
@@ -264,14 +275,18 @@ let selectedPlaceTrigger = null;
 const PLAN_STORAGE_KEY = 'travel-planner-plans-v1';
 const PLACE_REVIEW_STORAGE_KEY = 'courseon-place-reviews-v1';
 const COMMUNITY_STORAGE_KEY = 'courseon-community-posts-v1';
+const COMMUNITY_CHAT_STORAGE_KEY = 'courseon-community-chats-v1';
 let savedPlans = [];
 let communityPosts = [];
+let communityChats = {};
 let communityFormTrigger = null;
+let activeCommunityChatId = '';
 let currentPlanId = null;
 let routeOverride = null;
 let planGeneration = 0;
 let replacementIndex = null;
 let placeReviews = readPlaceReviews();
+let priceRequestId = 0;
 
 function setActiveQuickTab(sectionId) {
   quickNavigationLinks.forEach((link) => {
@@ -1101,7 +1116,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=27').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=30').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }
@@ -1266,6 +1281,103 @@ async function loadLiveEvents() {
     });
   } catch (error) {
     if (requestId === eventsRequestId) renderEventLiveError();
+  }
+}
+
+function formatPartnerPrice(item) {
+  const price = Number(item.price);
+  if (!Number.isFinite(price) || price < 0) return '가격 확인';
+  const currency = item.currency === 'KRW' || !item.currency ? '₩' : item.currency;
+  return `${currency} ${Math.round(price).toLocaleString('ko-KR')}`;
+}
+
+function createPriceComparisonCard(item) {
+  const article = document.createElement('article');
+  article.className = 'price-comparison-item';
+  if (isSafeExternalUrl(item.image)) {
+    appendPhotoIfAvailable(article, { src: item.image, alt: `${item.title} 상품 사진` }, `${item.title} 상품 사진`, 'price-comparison-photo');
+  }
+  const content = document.createElement('div');
+  const provider = document.createElement('span');
+  provider.className = 'price-comparison-badge';
+  provider.textContent = item.provider || '공식 제휴사';
+  const title = document.createElement('strong');
+  title.textContent = item.title || '여행 상품';
+  const category = document.createElement('p');
+  category.textContent = item.category || '국내 여행 상품';
+  content.append(provider, title, category);
+  const price = document.createElement('strong');
+  price.className = 'price-comparison-price';
+  price.textContent = formatPartnerPrice(item);
+  article.append(content, price);
+  const link = item.url || item.affiliate_url || item.affiliateUrl;
+  if (isSafeExternalUrl(link)) {
+    const action = document.createElement('a');
+    action.className = 'price-comparison-link';
+    action.href = link;
+    action.target = '_blank';
+    action.rel = 'noreferrer sponsored';
+    action.textContent = item.recommended ? '추천 상품 확인' : '공식 링크로 확인';
+    article.append(action);
+  }
+  return article;
+}
+
+function renderPriceComparisonState(title, message) {
+  priceComparisonList.replaceChildren();
+  const empty = document.createElement('div');
+  empty.className = 'recommendation-empty';
+  const heading = document.createElement('strong');
+  heading.textContent = title;
+  const copy = document.createElement('p');
+  copy.textContent = message;
+  empty.append(heading, copy);
+  priceComparisonList.append(empty);
+}
+
+function renderPriceComparisons(items, source) {
+  if (source === 'loading') {
+    priceComparisonStatus.textContent = '공식 제휴 상품 피드를 확인하고 있어요.';
+    renderPriceComparisonState('가격 비교 준비 중', '선택한 지역과 날짜에 맞는 공식 상품을 확인하고 있어요.');
+    return;
+  }
+  if (source === 'partner_feed' && items.length) {
+    priceComparisonStatus.textContent = `${items.length}개 공식 상품을 가격순·추천순으로 비교했어요.`;
+    priceComparisonList.replaceChildren(...items.slice(0, 6).map(createPriceComparisonCard));
+    return;
+  }
+  if (source === 'partner_empty') {
+    priceComparisonStatus.textContent = '공식 제휴 피드 연결됨';
+    renderPriceComparisonState('조건에 맞는 상품이 없어요', '여행 날짜나 지역을 바꾸면 다시 확인할 수 있어요.');
+    return;
+  }
+  if (source === 'partner_error') {
+    priceComparisonStatus.textContent = '공식 제휴 피드 조회 실패';
+    renderPriceComparisonState('가격 비교를 불러오지 못했어요', '잠시 후 가격 다시 확인을 눌러 재시도해 주세요.');
+    return;
+  }
+  priceComparisonStatus.textContent = '공식 제휴 피드 연결 대기 중';
+  renderPriceComparisonState('공식 제휴 상품 연결 준비 중', '여행사·숙박·교통사의 공식 상품 피드가 연결되면 실제 가격과 제휴 링크를 보여드릴게요.');
+}
+
+async function loadPriceComparisons() {
+  const requestId = ++priceRequestId;
+  renderPriceComparisons([], 'loading');
+  const params = new URLSearchParams({
+    destination: destinationInput.value,
+    start_date: dateInput.value,
+    end_date: endDateInput.value,
+    people: peopleInput.value,
+    theme: themeInput.value,
+  });
+  try {
+    const response = await fetch(`/api/price-comparison?${params.toString()}`);
+    const payload = await response.json();
+    if (requestId !== priceRequestId) return;
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    renderPriceComparisons(items, payload.source || 'not_configured');
+  } catch (error) {
+    if (requestId === priceRequestId) renderPriceComparisons([], 'partner_error');
   }
 }
 
@@ -1495,6 +1607,31 @@ function persistCommunityPosts() {
   }
 }
 
+function readCommunityChats() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(COMMUNITY_CHAT_STORAGE_KEY) || '{}');
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
+    return Object.fromEntries(Object.entries(stored).map(([postId, messages]) => [
+      postId,
+      Array.isArray(messages)
+        ? messages.filter((message) => message && typeof message.text === 'string').slice(-80)
+        : [],
+    ]));
+  } catch (error) {
+    return {};
+  }
+}
+
+function persistCommunityChats() {
+  try {
+    localStorage.setItem(COMMUNITY_CHAT_STORAGE_KEY, JSON.stringify(communityChats));
+    return true;
+  } catch (error) {
+    communityChatStatus.textContent = '브라우저 저장공간을 사용할 수 없어 메시지를 저장하지 못했어요.';
+    return false;
+  }
+}
+
 function getTodayDateValue() {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -1553,13 +1690,18 @@ function createCommunityPostCard(post) {
   const capacity = document.createElement('span');
   capacity.className = 'community-capacity';
   capacity.textContent = `${post.joined} / ${post.members}`;
+  const chat = document.createElement('button');
+  chat.className = 'button button-secondary';
+  chat.type = 'button';
+  chat.dataset.communityChatId = post.id;
+  chat.textContent = '채팅 미리보기';
   const join = document.createElement('button');
   join.className = 'button button-secondary';
   join.type = 'button';
   join.dataset.communityJoinId = post.id;
   join.disabled = Boolean(post.joinedByCurrentUser || post.joined >= post.members);
   join.textContent = post.joinedByCurrentUser ? '신청 완료' : post.joined >= post.members ? '모집 마감' : '참여 신청';
-  side.append(capacity, join);
+  side.append(capacity, chat, join);
   article.append(copy, side);
   return article;
 }
@@ -1572,9 +1714,11 @@ function renderCommunityPosts() {
   const query = (communitySearch.value || '').trim().toLowerCase();
   const region = communityRegionFilter.value || 'all';
   const theme = communityThemeFilter.value || 'all';
+  const dateFilter = communityDateFilter.value || '';
   const sort = communitySort.value || 'latest';
   const posts = communityPosts.filter((post) => {
     if (post.endDate < getTodayDateValue()) return false;
+    if (dateFilter && !(post.startDate <= dateFilter && post.endDate >= dateFilter)) return false;
     const searchable = `${post.title} ${post.intro} ${getCommunityRegionLabel(post.region)} ${getCommunityThemeLabel(post.theme)}`.toLowerCase();
     return (!query || searchable.includes(query)) && matchesCommunityRegion(post, region) && (theme === 'all' || post.theme === theme);
   });
@@ -1592,6 +1736,67 @@ function renderCommunityPosts() {
     return;
   }
   posts.forEach((post) => communityPostList.append(createCommunityPostCard(post)));
+}
+
+function renderCommunityChat() {
+  const post = communityPosts.find((item) => item.id === activeCommunityChatId);
+  if (!post) return;
+  communityChatTitle.textContent = `${post.title} · 채팅 미리보기`;
+  communityChatMessages.replaceChildren();
+  const messages = communityChats[post.id] || [];
+  if (!messages.length) {
+    const empty = document.createElement('p');
+    empty.className = 'community-empty';
+    empty.textContent = '첫 메시지를 남겨 동행 일정을 맞춰보세요.';
+    communityChatMessages.append(empty);
+    return;
+  }
+  messages.forEach((message) => {
+    const item = document.createElement('article');
+    item.className = 'community-chat-message';
+    const author = document.createElement('strong');
+    author.textContent = message.author || '나';
+    const text = document.createElement('p');
+    text.textContent = message.text;
+    item.append(author, text);
+    communityChatMessages.append(item);
+  });
+}
+
+function openCommunityChat(id) {
+  const post = communityPosts.find((item) => item.id === id);
+  if (!post) return;
+  activeCommunityChatId = id;
+  communityChatPanel.hidden = false;
+  communityChatStatus.textContent = '이 브라우저에만 저장되는 채팅 미리보기예요. 실제 다자간 채팅은 로그인·서버 연결이 필요해요.';
+  renderCommunityChat();
+  communityChatPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  communityChatInput.focus?.();
+}
+
+function closeCommunityChat() {
+  communityChatPanel.hidden = true;
+  activeCommunityChatId = '';
+}
+
+function sendCommunityChat(event) {
+  event.preventDefault();
+  const text = communityChatInput.value.trim();
+  if (!activeCommunityChatId || !text) return;
+  const previousMessages = communityChats[activeCommunityChatId] || [];
+  communityChats[activeCommunityChatId] = [...previousMessages, {
+    id: `message-${Date.now()}`,
+    author: '나',
+    text: text.slice(0, 300),
+    createdAt: new Date().toISOString(),
+  }].slice(-80);
+  if (!persistCommunityChats()) {
+    communityChats[activeCommunityChatId] = previousMessages;
+    return;
+  }
+  communityChatInput.value = '';
+  renderCommunityChat();
+  communityChatStatus.textContent = '메시지를 저장했어요. 이 기기에서 다시 확인할 수 있어요.';
 }
 
 function toggleCommunityJoin(id) {
@@ -1711,7 +1916,7 @@ function submitCommunityPost(event) {
 }
 
 function setupCommunity() {
-  [communitySearch, communityRegionFilter, communityThemeFilter, communitySort].forEach((input) => {
+  [communitySearch, communityRegionFilter, communityThemeFilter, communityDateFilter, communitySort].forEach((input) => {
     input.addEventListener(input === communitySearch ? 'input' : 'change', renderCommunityPosts);
   });
   openCommunityFormButton.addEventListener('click', () => {
@@ -1719,8 +1924,15 @@ function setupCommunity() {
     openCommunityForm();
   });
   closeCommunityFormButton.addEventListener('click', closeCommunityForm);
+  closeCommunityChatButton.addEventListener('click', closeCommunityChat);
   communityPostForm.addEventListener('submit', submitCommunityPost);
+  communityChatForm.addEventListener('submit', sendCommunityChat);
   communityPostList.addEventListener('click', (event) => {
+    const chatButton = event.target.closest('[data-community-chat-id]');
+    if (chatButton) {
+      openCommunityChat(chatButton.dataset.communityChatId);
+      return;
+    }
     const button = event.target.closest('[data-community-join-id]');
     if (button) toggleCommunityJoin(button.dataset.communityJoinId);
   });
@@ -2398,6 +2610,7 @@ destinationInput.addEventListener('change', () => {
   renderPlan();
   renderDemoEvents();
   loadLiveEvents();
+  loadPriceComparisons();
 });
 locationQueryInput.addEventListener('change', () => {
   startFreshPlan();
@@ -2407,6 +2620,7 @@ locationQueryInput.addEventListener('change', () => {
   renderPlan();
   renderDemoEvents();
   loadLiveEvents();
+  loadPriceComparisons();
 });
 dateInput.addEventListener('change', () => {
   startFreshPlan();
@@ -2414,6 +2628,7 @@ dateInput.addEventListener('change', () => {
   renderPlan();
   renderDemoEvents();
   loadLiveEvents();
+  loadPriceComparisons();
 });
 endDateInput.addEventListener('change', () => {
   startFreshPlan();
@@ -2426,6 +2641,7 @@ endDateInput.addEventListener('change', () => {
   renderPlan();
   renderDemoEvents();
   loadLiveEvents();
+  loadPriceComparisons();
 });
 [themeInput, startTimeInput, endTimeInput].forEach((input) => {
   input.addEventListener('change', () => {
@@ -2433,6 +2649,7 @@ endDateInput.addEventListener('change', () => {
     renderPlan();
     renderDemoEvents();
     loadLiveEvents();
+    loadPriceComparisons();
   });
 });
 noTimeLimitInput.addEventListener('change', () => {
@@ -2441,6 +2658,7 @@ noTimeLimitInput.addEventListener('change', () => {
   renderPlan();
   renderDemoEvents();
   loadLiveEvents();
+  loadPriceComparisons();
 });
 foodQueryInput.addEventListener('input', () => {
   foodQuery = foodQueryInput.value.trim();
@@ -2461,6 +2679,7 @@ document.querySelector('#food-search-button').addEventListener('click', () => {
   renderNearby();
   loadLiveNearby();
 });
+priceComparisonRefresh.addEventListener('click', loadPriceComparisons);
 document.querySelectorAll('[data-nearby-filter]').forEach((button) => {
   button.addEventListener('click', () => {
     nearbyFilter = button.dataset.nearbyFilter;
@@ -2511,10 +2730,12 @@ setupQuickNavigation();
 setTodayAsDefault();
 savedPlans = readSavedPlans();
 communityPosts = readCommunityPosts();
+communityChats = readCommunityChats();
 setupCommunity();
 renderPlan();
 renderTodayAndEvents(false);
 renderSavedPlans();
 if (!loadSharedPlan()) refreshLiveEvents();
+loadPriceComparisons();
 loadNaverMapSdk();
 registerServiceWorker();

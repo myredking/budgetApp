@@ -190,10 +190,10 @@ test('평점·거리 정렬이 잠길 때 사용자에게 이유를 안내한다
 });
 
 test('새 배포본은 버전이 붙은 정적 파일을 요청한다', () => {
-assert.match(htmlSource, /styles\.css\?v=27/);
-assert.match(htmlSource, /plan_logic\.js\?v=27/);
-assert.match(htmlSource, /app\.js\?v=27/);
-assert.match(appSource, /register\('\.\/sw\.js\?v=27'\)/);
+assert.match(htmlSource, /styles\.css\?v=30/);
+assert.match(htmlSource, /plan_logic\.js\?v=30/);
+assert.match(htmlSource, /app\.js\?v=30/);
+assert.match(appSource, /register\('\.\/sw\.js\?v=30'\)/);
 });
 
 test('프리미엄 여행 비주얼은 이미지와 접근성 모션 기준을 갖춘다', () => {
@@ -228,6 +228,23 @@ test('사진이 없는 데이터는 이미지 없이 텍스트 카드로 유지�
   assert.match(appSource, /function createPhotoElement\(photo/);
   assert.match(appSource, /parentNode\?\.classList\?\.remove\('has-photo'\)/);
   assert.match(appSource, /return null;/);
+});
+
+test('여행 사진은 긴 배너 대신 정사각형 카드 비율을 사용한다', () => {
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'web', 'styles.css'), 'utf8');
+  assert.match(styles, /aspect-ratio:\s*1\s*\/\s*1/);
+  assert.match(styles, /\.community-post-photo/);
+});
+
+test('제휴 가격 비교와 동행 날짜·채팅 UI가 연결되어 있다', () => {
+  assert.match(htmlSource, /id="price-comparison-section"/);
+  assert.match(htmlSource, /id="community-date-filter"/);
+  assert.match(htmlSource, /id="community-chat-panel"/);
+  assert.match(appSource, /loadPriceComparisons/);
+  assert.match(appSource, /\/api\/price-comparison/);
+  assert.match(appSource, /COMMUNITY_CHAT_STORAGE_KEY/);
+  assert.match(appSource, /sendCommunityChat/);
+  assert.match(workerSource, /TRAVEL_PARTNER_FEED_URL/);
 });
 
 test('공개 Worker 빌드는 카드용 WebP 자산을 바이너리로 포함한다', () => {
@@ -266,6 +283,31 @@ test('공개 Worker는 카드용 WebP를 이미지 응답으로 제공한다', a
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'image/webp');
     assert.equal(bytes.byteLength, fs.statSync(path.join(siteRoot, 'public', asset)).size);
+  }
+});
+
+test('공개 Worker의 가격 비교는 설정된 공식 피드만 정규화한다', async () => {
+  const siteRoot = path.join(__dirname, '..', 'travel-site');
+  execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: siteRoot, stdio: 'pipe' });
+  const worker = await import(`${pathToFileURL(path.join(siteRoot, 'dist', 'server', 'index.js')).href}?price=${Date.now()}`);
+  const originalFetch = global.fetch;
+  global.fetch = async () => new Response(JSON.stringify({ items: [
+    { provider: '공식 여행사', title: '추천 부산 패키지', price: 180000, recommended: true, affiliate_url: 'https://partner.example.com/deal' },
+    { provider: '공식 여행사', title: '안전하지 않은 링크 상품', price: 150000, affiliate_url: 'http://partner.example.com/deal' },
+  ] }), { status: 200, headers: { 'content-type': 'application/json' } });
+  try {
+    const response = await worker.default.fetch(
+      new Request('https://courseon.test/api/price-comparison?destination=busan&start_date=20261010&end_date=20261012'),
+      { TRAVEL_PARTNER_FEED_URL: 'https://partner.example.com/feed' },
+    );
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.source, 'partner_feed');
+    assert.equal(payload.items.length, 2);
+    assert.equal(payload.items[0].url, 'https://partner.example.com/deal');
+    assert.equal(payload.items[1].url, '');
+  } finally {
+    global.fetch = originalFetch;
   }
 });
 
@@ -386,8 +428,8 @@ test('공개용 Site 파일은 원본 웹 파일과 동기화된다', () => {
 
 test('서비스워커 캐시 버전은 새 배포본으로 갱신된다', () => {
   const sourceWorker = fs.readFileSync(path.join(__dirname, '..', 'web', 'sw.js'), 'utf8');
-      assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v17'/);
-  assert.match(sourceWorker, /ASSET_VERSION = '27'/);
+  assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v18'/);
+  assert.match(sourceWorker, /ASSET_VERSION = '30'/);
   assert.match(sourceWorker, /'\.\/hero-travel\.png'/);
   assert.match(sourceWorker, /`\.\/app\.js\?v=\$\{ASSET_VERSION\}`/);
   assert.match(sourceWorker, /caches\.match\(`\.\/index\.html\?v=\$\{ASSET_VERSION\}`\)/);

@@ -75,6 +75,7 @@ class FakeElement {
       if (selectors.includes('[data-place-select-index]') && current.dataset.placeSelectIndex !== undefined) return current;
       if (selectors.includes('[data-plan-action]') && current.dataset.planAction) return current;
       if (selectors.includes('[data-community-join-id]') && current.dataset.communityJoinId) return current;
+      if (selectors.includes('[data-community-chat-id]') && current.dataset.communityChatId) return current;
       if (selectors.includes('button') && current.tagName === 'button') return current;
       if (selectors.includes('a') && current.tagName === 'a') return current;
       if (selectors.includes('input') && current.tagName === 'input') return current;
@@ -135,17 +136,21 @@ function buildElements() {
     'average-rating', 'route-heading', 'route-count', 'estimated-total', 'daily-budget', 'budget-message',
     'planner-grid', 'result-section', 'community-section', 'discovery-section', 'events-section', 'recommendation-map-card',
     'locate-button', 'food-search-button', 'share-plan-button', 'share-plan-community-button',
-    'community-search', 'community-region-filter', 'community-theme-filter', 'community-sort',
+    'community-search', 'community-region-filter', 'community-theme-filter', 'community-date-filter', 'community-sort',
     'community-post-list', 'open-community-form-button', 'community-form-panel', 'community-post-form',
     'community-post-title', 'community-post-region', 'community-post-date', 'community-post-theme',
     'community-post-members', 'community-post-intro', 'community-share-current-plan', 'community-form-status',
-    'close-community-form-button', 'community-status', 'place-review-panel', 'place-review-title',
+    'close-community-form-button', 'community-status', 'community-chat-panel', 'community-chat-title',
+    'community-chat-messages', 'community-chat-form', 'community-chat-input', 'community-chat-status',
+    'close-community-chat-button', 'price-comparison-list', 'price-comparison-status', 'price-comparison-refresh',
+    'place-review-panel', 'place-review-title',
     'place-review-meta', 'place-review-recommendation', 'place-review-rating-summary', 'place-review-list',
     'place-review-form', 'place-review-rating', 'place-review-text', 'place-review-status', 'close-place-review-button',
   ];
   const elements = new Map(ids.map((id) => [`#${id}`, new FakeElement('div')]));
   elements.get('#saved-plans-panel').hidden = true;
   elements.get('#community-form-panel').hidden = true;
+  elements.get('#community-chat-panel').hidden = true;
   elements.get('#place-review-panel').hidden = true;
   elements.get('#destination').value = 'nationwide';
   elements.get('#theme').value = 'auto';
@@ -183,7 +188,7 @@ function buildElements() {
   return elements;
 }
 
-function createHarness({ hash = '', nearbyItems = [], failLocation = false, locationAddress = '서울특별시 서울시', innerWidth = 1024 } = {}) {
+function createHarness({ hash = '', nearbyItems = [], priceItems = [], failLocation = false, locationAddress = '서울특별시 서울시', innerWidth = 1024 } = {}) {
   const elements = buildElements();
   let eventCalls = 0;
   let failEvents = false;
@@ -218,6 +223,9 @@ function createHarness({ hash = '', nearbyItems = [], failLocation = false, loca
       eventRequests.push(url);
       if (failEvents) throw new Error('events unavailable');
       return { json: async () => ({ source: 'tour_api', items: [{ title: '강남페스티벌', address: '서울 강남구', start_date: '20261003', end_date: '20261005', place: '코엑스' }] }) };
+    }
+    if (url.includes('/api/price-comparison')) {
+      return { json: async () => ({ source: priceItems.length ? 'partner_feed' : 'not_configured', items: priceItems }) };
     }
     return { json: async () => ({}) };
   };
@@ -352,6 +360,53 @@ test('동행 커뮤니티 모집글을 작성하고 참여 신청을 저장한�
   assert.ok(joinButton);
   await list.dispatchEvent({ type: 'click', target: joinButton });
   assert.match(harness.elements.get('#community-status').textContent, /참여 신청을 저장했어요/);
+});
+
+test('동행 모집글은 선택한 여행 날짜로 필터링하고 채팅 메시지를 저장한다', async () => {
+  const harness = createHarness();
+  await settle();
+  const dateFilter = harness.elements.get('#community-date-filter');
+  dateFilter.value = '2026-10-17';
+  await dateFilter.dispatchEvent({ type: 'change', target: dateFilter });
+  const list = harness.elements.get('#community-post-list');
+  assert.match(textFrom(list), /광안리/);
+  assert.doesNotMatch(textFrom(list), /전주 한옥마을|제주 애월|성수동/);
+
+  const chatButton = list.find((node) => node.tagName === 'button' && node.dataset.communityChatId);
+  assert.ok(chatButton);
+  await list.dispatchEvent({ type: 'click', target: chatButton });
+  assert.equal(harness.elements.get('#community-chat-panel').hidden, false);
+  harness.elements.get('#community-chat-input').value = '광안리에서 만날 시간을 맞춰볼까요?';
+  await harness.elements.get('#community-chat-form').dispatchEvent({
+    type: 'submit',
+    target: harness.elements.get('#community-chat-form'),
+    preventDefault: () => {},
+  });
+  assert.match(textFrom(harness.elements.get('#community-chat-messages')), /만날 시간을/);
+});
+
+test('가격 비교 상품은 이미지가 없어도 빈 이미지 열 없이 표시된다', async () => {
+  const harness = createHarness({
+    priceItems: [{ provider: '공식 제휴사', title: '부산 숙박 상품', category: '숙박', price: 99000, currency: 'KRW' }],
+  });
+  await settle();
+  const card = harness.elements.get('#price-comparison-list').children[0];
+  assert.ok(card);
+  assert.equal(card.classList.contains('has-photo'), false);
+  assert.match(textFrom(card), /부산 숙박 상품/);
+});
+
+test('가격 비교 상품 이미지는 실패하면 텍스트 카드로 돌아간다', async () => {
+  const harness = createHarness({
+    priceItems: [{ provider: '공식 제휴사', title: '부산 투어 상품', category: '투어', price: 129000, image: 'https://images.example.com/tour.jpg' }],
+  });
+  await settle();
+  const list = harness.elements.get('#price-comparison-list');
+  const image = list.find((node) => node.tagName === 'img');
+  assert.ok(image);
+  await image.dispatchEvent({ type: 'error', target: image });
+  assert.equal(image.parentNode, null);
+  assert.equal(list.children[0].classList.contains('has-photo'), false);
 });
 
 test('지난 날짜의 동행 모집글 작성은 차단한다', async () => {
