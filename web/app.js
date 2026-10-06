@@ -203,6 +203,7 @@ const mapProviderStatus = document.querySelector('#map-provider-status');
 const integrationTitle = document.querySelector('#integration-title');
 const integrationCopy = document.querySelector('#integration-copy');
 const integrationStatus = document.querySelector('#integration-status');
+const quickNavigationLinks = Array.from(document.querySelectorAll('[data-quick-nav]'));
 let currentPlaces = [];
 let currentNearbyItems = [];
 let currentNearbySource = 'demo';
@@ -225,6 +226,45 @@ let currentPlanId = null;
 let routeOverride = null;
 let planGeneration = 0;
 let replacementIndex = null;
+
+function setActiveQuickTab(sectionId) {
+  quickNavigationLinks.forEach((link) => {
+    const active = link.dataset.quickNav === sectionId;
+    link.classList.toggle('is-active', active);
+    if (active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+}
+
+function showSavedPlansPanel(shouldScroll = true) {
+  savedPlansPanel.hidden = false;
+  renderSavedPlans();
+  setActiveQuickTab('saved-plans-panel');
+  if (shouldScroll) savedPlansPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setupQuickNavigation() {
+  if (!quickNavigationLinks.length) return;
+  quickNavigationLinks.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      const target = document.querySelector(`#${link.dataset.quickNav}`);
+      if (!target) return;
+      event.preventDefault();
+      if (target === savedPlansPanel) showSavedPlansPanel(false);
+      setActiveQuickTab(link.dataset.quickNav);
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  if (!('IntersectionObserver' in window)) return;
+  const observer = new IntersectionObserver((entries) => {
+    const visible = entries.filter((entry) => entry.isIntersecting);
+    if (visible.length) setActiveQuickTab(visible[0].target.id);
+  }, { rootMargin: '-18% 0px -62% 0px', threshold: 0 });
+  quickNavigationLinks.forEach((link) => {
+    const target = document.querySelector(`#${link.dataset.quickNav}`);
+    if (target) observer.observe(target);
+  });
+}
 
 function isSafeExternalUrl(value) {
   try {
@@ -827,7 +867,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=22').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=23').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }
@@ -1304,9 +1344,7 @@ function savePlan() {
     return;
   }
   currentPlanId = snapshot.id;
-  renderSavedPlans();
-  savedPlansPanel.hidden = false;
-  savedPlansPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showSavedPlansPanel();
   locationStatus.textContent = '여행 계획을 저장했어요.';
 }
 
@@ -1679,14 +1717,17 @@ budgetFitButton.addEventListener('click', () => {
 });
 savePlanButton.addEventListener('click', savePlan);
 historyButton.addEventListener('click', () => {
-  savedPlansPanel.hidden = !savedPlansPanel.hidden;
-  if (!savedPlansPanel.hidden) {
-    renderSavedPlans();
-    savedPlansPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (savedPlansPanel.hidden) showSavedPlansPanel();
+  else {
+    savedPlansPanel.hidden = true;
+    setActiveQuickTab('result-section');
   }
 });
 refreshPlanButton.addEventListener('click', refreshPlan);
-closeHistoryButton.addEventListener('click', () => { savedPlansPanel.hidden = true; });
+closeHistoryButton.addEventListener('click', () => {
+  savedPlansPanel.hidden = true;
+  setActiveQuickTab('result-section');
+});
 closeAlternateButton.addEventListener('click', () => { alternatePicker.hidden = true; });
 todayList.addEventListener('click', (event) => {
   const button = event.target.closest('[data-today-destination]');
@@ -1823,6 +1864,7 @@ async function sharePlan() {
 
 document.querySelector('#share-plan-button').addEventListener('click', sharePlan);
 
+setupQuickNavigation();
 setTodayAsDefault();
 savedPlans = readSavedPlans();
 renderPlan();

@@ -13,10 +13,10 @@
     />
     <title>코스온 | 국내 여행 코스 플래너</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2318263d'/%3E%3Cpath d='M18 43 30 18l6 13 10-7' fill='none' stroke='%23f5c36b' stroke-linecap='round' stroke-linejoin='round' stroke-width='6'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=22" />
+    <link rel="stylesheet" href="styles.css?v=23" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <script src="plan_logic.js?v=22" defer></script>
-    <script src="app.js?v=22" defer></script>
+    <script src="plan_logic.js?v=23" defer></script>
+    <script src="app.js?v=23" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -28,6 +28,26 @@
     </header>
 
     <main id="top" class="page-shell">
+      <nav id="quick-navigation" class="quick-navigation" aria-label="코스온 주요 기능">
+        <div class="quick-navigation-inner">
+          <a class="quick-tab is-active" href="#planner-grid" data-quick-nav="planner-grid" aria-current="page">
+            <span>01</span><strong>여행 조건</strong><small>코스 만들기</small>
+          </a>
+          <a class="quick-tab" href="#result-section" data-quick-nav="result-section">
+            <span>02</span><strong>추천 코스</strong><small>동선·지도 확인</small>
+          </a>
+          <a class="quick-tab" href="#discovery-section" data-quick-nav="discovery-section">
+            <span>03</span><strong>주변 추천</strong><small>식당·카페 찾기</small>
+          </a>
+          <a class="quick-tab" href="#events-section" data-quick-nav="events-section">
+            <span>04</span><strong>행사·축제</strong><small>오늘의 이벤트</small>
+          </a>
+          <a class="quick-tab" href="#saved-plans-panel" data-quick-nav="saved-plans-panel">
+            <span>05</span><strong>저장 계획</strong><small>이전 코스 열기</small>
+          </a>
+        </div>
+      </nav>
+
       <section class="intro" aria-labelledby="page-title">
         <div>
           <p class="eyebrow">TRIP CURATOR · BETA</p>
@@ -44,7 +64,7 @@
         </div>
       </section>
 
-      <section class="planner-grid" aria-label="여행 코스 플래너">
+      <section id="planner-grid" class="planner-grid" aria-label="여행 코스 플래너">
         <form id="planner-form" class="panel planner-panel">
           <div class="panel-heading">
             <div>
@@ -348,7 +368,7 @@
         <div id="saved-plans-list" class="saved-plans-list" aria-live="polite"></div>
       </section>
 
-      <section class="discovery-section" aria-labelledby="discovery-title">
+      <section id="discovery-section" class="discovery-section" aria-labelledby="discovery-title">
         <div class="result-heading discovery-heading">
           <div>
             <p class="section-kicker">03 · DISCOVER NEARBY</p>
@@ -418,7 +438,7 @@
           </article>
         </div>
 
-        <article class="event-card">
+        <article id="events-section" class="event-card">
           <div class="discovery-card-heading">
             <div>
               <p class="section-kicker">EVENTS & FESTIVALS</p>

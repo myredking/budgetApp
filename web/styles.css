@@ -75,6 +75,18 @@ button { cursor: pointer; }
 
 .page-shell { margin: 0 auto; max-width: 1240px; padding: 30px 32px 80px; }
 
+.quick-navigation { margin: -8px 0 34px; position: sticky; top: 10px; z-index: 20; }
+.quick-navigation-inner { backdrop-filter: blur(12px); background: rgba(247, 244, 237, .93); border: 1px solid rgba(230, 228, 221, .92); border-radius: 16px; box-shadow: 0 10px 30px rgba(31, 43, 69, .08); display: grid; gap: 4px; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 5px; }
+.quick-tab { align-items: flex-start; border-radius: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 1px; min-height: 58px; padding: 9px 13px; text-decoration: none; transition: background .2s ease, color .2s ease, transform .2s ease; }
+.quick-tab span { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .04em; }
+.quick-tab strong { color: var(--ink-soft); font-size: 12px; letter-spacing: -.03em; }
+.quick-tab small { font-size: 10px; font-weight: 400; }
+.quick-tab:hover, .quick-tab:focus-visible { background: var(--paper); color: var(--ink); outline: none; transform: translateY(-1px); }
+.quick-tab:focus-visible { box-shadow: 0 0 0 3px rgba(127, 200, 194, .35); }
+.quick-tab.is-active { background: var(--ink); color: rgba(255, 255, 255, .72); box-shadow: 0 7px 16px rgba(24, 38, 61, .16); }
+.quick-tab.is-active strong { color: white; }
+.planner-grid, .result-section, .discovery-section, .event-card, .saved-plans-panel { scroll-margin-top: 92px; }
+
 .intro { align-items: end; display: flex; justify-content: space-between; margin: 36px 0 58px; }
 .eyebrow, .section-kicker { color: var(--coral); font-size: 11px; font-weight: 600; margin: 0 0 16px; }
 .intro h1 { font-family: 'Manrope', sans-serif; font-size: clamp(46px, 6vw, 78px); letter-spacing: -0.085em; line-height: 0.98; margin: 0; }
@@ -228,6 +240,7 @@ button { cursor: pointer; }
 
 @media (max-width: 800px) {
   .topbar, .page-shell { padding-left: 20px; padding-right: 20px; }
+  .quick-navigation { margin-bottom: 28px; }
   .intro { align-items: flex-start; flex-direction: column; gap: 25px; margin-top: 25px; }
   .intro-stamp { align-self: flex-end; height: 106px; width: 106px; }.intro-stamp strong { font-size: 17px; }
   .planner-grid, .route-layout, .summary-grid { grid-template-columns: 1fr; }
@@ -239,6 +252,7 @@ button { cursor: pointer; }
 
 @media (max-width: 520px) {
   .topbar { padding-top: 20px; }.topbar-note { font-size: 9px; }.intro { margin-bottom: 37px; }.intro h1 { font-size: 50px; }.intro-copy { font-size: 13px; }
+  .quick-navigation-inner { display: flex; overflow-x: auto; scrollbar-width: none; }.quick-navigation-inner::-webkit-scrollbar { display: none; }.quick-tab { flex: 0 0 126px; min-height: 54px; padding: 8px 11px; }
   .planner-panel { padding: 24px 19px 21px; }.form-grid { gap: 15px 9px; }.field input, .field select { font-size: 13px; }.form-actions { align-items: stretch; flex-direction: column; }.button { width: 100%; }
   .result-section, .discovery-section { margin-top: 52px; }.result-heading { align-items: flex-start; flex-direction: column; gap: 17px; }.result-heading h2 { font-size: 26px; }.result-actions { align-self: flex-end; }.demo-pill { align-self: flex-start; }.place-title-row { align-items: flex-start; }.saved-plan-item { align-items: flex-start; flex-direction: column; }.saved-plan-actions { align-self: flex-end; }
   .summary-card { min-height: 116px; }.place-card { gap: 8px; grid-template-columns: 41px 1fr; }.place-rating { grid-column: 2; grid-row: 1; justify-self: end; margin-bottom: -4px; }.place-info { grid-column: 2; }.integration-note { align-items: flex-start; }.integration-status { display: none; }

@@ -20,9 +20,16 @@ class FakeElement {
     this.options = [];
     this.attributes = {};
     this.classList = {
-      add: () => {},
-      remove: () => {},
-      toggle: () => {},
+      values: new Set(),
+      add: (...names) => names.forEach((name) => this.classList.values.add(name)),
+      remove: (...names) => names.forEach((name) => this.classList.values.delete(name)),
+      toggle: (name, force) => {
+        const next = force === undefined ? !this.classList.values.has(name) : force;
+        if (next) this.classList.values.add(name);
+        else this.classList.values.delete(name);
+        return next;
+      },
+      contains: (name) => this.classList.values.has(name),
     };
   }
 
@@ -63,6 +70,11 @@ class FakeElement {
     this[name] = String(value);
   }
 
+  removeAttribute(name) {
+    delete this.attributes[name];
+    delete this[name];
+  }
+
   getAttribute(name) {
     return this.attributes[name] ?? null;
   }
@@ -93,9 +105,11 @@ function buildElements() {
     'nearby-map-button', 'nearby-sort', 'nearby-sort-hint', 'naver-map', 'map-fallback', 'map-provider-status',
     'integration-title', 'integration-copy', 'integration-status', 'result-title', 'result-subtitle',
     'average-rating', 'route-heading', 'route-count', 'estimated-total', 'daily-budget', 'budget-message',
-    'result-section', 'recommendation-map-card', 'locate-button', 'food-search-button', 'share-plan-button',
+    'planner-grid', 'result-section', 'discovery-section', 'events-section', 'recommendation-map-card',
+    'locate-button', 'food-search-button', 'share-plan-button',
   ];
   const elements = new Map(ids.map((id) => [`#${id}`, new FakeElement('div')]));
+  elements.get('#saved-plans-panel').hidden = true;
   elements.get('#destination').value = 'nationwide';
   elements.get('#theme').value = 'auto';
   elements.get('#start-time').value = '10:00';
@@ -122,6 +136,13 @@ function buildElements() {
     button.setAttribute('aria-pressed', String(index === 0));
     return button;
   });
+  elements.quickTabs = ['planner-grid', 'result-section', 'discovery-section', 'events-section', 'saved-plans-panel'].map((target, index) => {
+    const link = new FakeElement('a');
+    link.dataset.quickNav = target;
+    link.className = index === 0 ? 'quick-tab is-active' : 'quick-tab';
+    if (index === 0) link.setAttribute('aria-current', 'page');
+    return link;
+  });
   return elements;
 }
 
@@ -135,7 +156,11 @@ function createHarness({ hash = '', nearbyItems = [], failLocation = false, loca
   const document = {
     head: new FakeElement('head'),
     querySelector: (selector) => elements.get(selector) || new FakeElement(),
-    querySelectorAll: (selector) => selector === '[data-nearby-filter]' ? elements.filterButtons : [],
+      querySelectorAll: (selector) => {
+        if (selector === '[data-nearby-filter]') return elements.filterButtons;
+        if (selector === '[data-quick-nav]') return elements.quickTabs;
+        return [];
+      },
     createElement: (tagName) => new FakeElement(tagName),
     createTextNode: (text) => ({ textContent: text }),
   };
@@ -183,6 +208,7 @@ function createHarness({ hash = '', nearbyItems = [], failLocation = false, loca
     getEventRequests: () => eventRequests,
     getNearbyRequests: () => nearbyRequests,
     filterButtons: elements.filterButtons,
+    quickTabs: elements.quickTabs,
   };
 }
 
@@ -271,6 +297,21 @@ test('현재 위치 확인에 실패하면 이전 주변 추천을 선택 지역
   assert.match(harness.getNearbyRequests().at(-1), /query=%EC%84%9C%EC%9A%B8/);
 });
 
+test('빠른 이동 탭은 저장 계획을 열고 닫을 때 활성 상태를 갱신한다', async () => {
+  const harness = createHarness();
+  await settle();
+  const savedTab = harness.quickTabs.at(-1);
+  await savedTab.dispatchEvent({ type: 'click', target: savedTab, preventDefault: () => {} });
+  await settle();
+  assert.equal(harness.elements.get('#saved-plans-panel').hidden, false);
+  assert.equal(savedTab.getAttribute('aria-current'), 'page');
+
+  await harness.elements.get('#history-button').dispatchEvent({ type: 'click', target: harness.elements.get('#history-button') });
+  assert.equal(harness.elements.get('#saved-plans-panel').hidden, true);
+  assert.equal(savedTab.getAttribute('aria-current'), null);
+  assert.equal(harness.quickTabs[1].getAttribute('aria-current'), 'page');
+});
+
 test('위치 기능을 지원하지 않아도 선택한 지역 기준으로 주변 추천을 복구한다', async () => {
   const harness = createHarness();
   harness.elements.get('#destination').value = 'busan';
@@ -282,7 +323,7 @@ test('위치 기능을 지원하지 않아도 선택한 지역 기준으로 주�
   assert.match(harness.getNearbyRequests().at(-1), /query=%EB%B6%80%EC%82%B0/);
 });
 
-test('현재 위치의 주소 변환에 실패하면 오해 없이 선택 지역 기준으로 되돌린다', async () => {
+test('현재 위치의 주소 변환에 실패해도 좌표 기반 도시 권역으로 주변 추천을 이어간다', async () => {
   const harness = createHarness({ failLocation: true });
   harness.elements.get('#destination').value = 'seoul';
   await settle();
@@ -291,11 +332,13 @@ test('현재 위치의 주소 변환에 실패하면 오해 없이 선택 지역
   };
   await harness.elements.get('#locate-button').dispatchEvent({ type: 'click', target: harness.elements.get('#locate-button') });
   await settle();
-  assert.equal(harness.elements.get('#nearby-title').textContent, '서울 주변 추천');
-  assert.match(harness.elements.get('#location-status').textContent, /주소를 확인하지 못했어요/);
+  assert.equal(harness.elements.get('#nearby-title').textContent, '현재 위치 주변 추천');
+  assert.match(harness.elements.get('#location-status').textContent, /서울 인근/);
+  assert.ok(harness.elements.get('#map-points').find((node) => node.className === 'map-user-point'));
+  assert.match(harness.getNearbyRequests().at(-1), /query=%EC%84%9C%EC%9A%B8/);
 });
 
-test('주소 변환 응답이 비어도 현재 위치 표시를 지우고 선택 지역으로 되돌린다', async () => {
+test('주소 변환 응답이 비어도 좌표 기반 도시 권역으로 주변 추천을 이어간다', async () => {
   const harness = createHarness({ locationAddress: '' });
   harness.elements.get('#destination').value = 'seoul';
   await settle();
@@ -304,8 +347,9 @@ test('주소 변환 응답이 비어도 현재 위치 표시를 지우고 선택
   };
   await harness.elements.get('#locate-button').dispatchEvent({ type: 'click', target: harness.elements.get('#locate-button') });
   await settle();
-  assert.equal(harness.elements.get('#nearby-title').textContent, '서울 주변 추천');
-  assert.equal(harness.elements.get('#map-points').find((node) => node.className === 'map-user-point'), null);
+  assert.equal(harness.elements.get('#nearby-title').textContent, '현재 위치 주변 추천');
+  assert.match(harness.elements.get('#location-status').textContent, /서울 인근/);
+  assert.ok(harness.elements.get('#map-points').find((node) => node.className === 'map-user-point'));
   assert.match(harness.getNearbyRequests().at(-1), /query=%EC%84%9C%EC%9A%B8/);
 });
 
