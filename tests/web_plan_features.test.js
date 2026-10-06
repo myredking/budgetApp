@@ -187,10 +187,10 @@ test('평점·거리 정렬이 잠길 때 사용자에게 이유를 안내한다
 });
 
 test('새 배포본은 버전이 붙은 정적 파일을 요청한다', () => {
-  assert.match(htmlSource, /styles\.css\?v=22/);
-  assert.match(htmlSource, /plan_logic\.js\?v=22/);
-  assert.match(htmlSource, /app\.js\?v=22/);
-  assert.match(appSource, /register\('\.\/sw\.js\?v=22'\)/);
+  assert.match(htmlSource, /styles\.css\?v=23/);
+  assert.match(htmlSource, /plan_logic\.js\?v=23/);
+  assert.match(htmlSource, /app\.js\?v=23/);
+  assert.match(appSource, /register\('\.\/sw\.js\?v=23'\)/);
 });
 
 test('여행지 변경은 메인 맞춤 코스를 즉시 다시 렌더링한다', () => {
@@ -306,8 +306,8 @@ test('공개용 Site 파일은 원본 웹 파일과 동기화된다', () => {
 
 test('서비스워커 캐시 버전은 새 배포본으로 갱신된다', () => {
   const sourceWorker = fs.readFileSync(path.join(__dirname, '..', 'web', 'sw.js'), 'utf8');
-      assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v11'/);
-  assert.match(sourceWorker, /ASSET_VERSION = '22'/);
+      assert.match(sourceWorker, /CACHE_NAME = 'courseon-shell-v12'/);
+  assert.match(sourceWorker, /ASSET_VERSION = '23'/);
   assert.match(sourceWorker, /`\.\/app\.js\?v=\$\{ASSET_VERSION\}`/);
   assert.match(sourceWorker, /caches\.match\(`\.\/index\.html\?v=\$\{ASSET_VERSION\}`\)/);
 });
