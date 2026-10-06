@@ -67,6 +67,7 @@ class FakeElement {
       if (selectors.includes('[data-place-change-index]') && current.dataset.placeChangeIndex) return current;
       if (selectors.includes('[data-place-select-index]') && current.dataset.placeSelectIndex !== undefined) return current;
       if (selectors.includes('[data-plan-action]') && current.dataset.planAction) return current;
+      if (selectors.includes('[data-community-join-id]') && current.dataset.communityJoinId) return current;
       if (selectors.includes('button') && current.tagName === 'button') return current;
       if (selectors.includes('a') && current.tagName === 'a') return current;
       if (selectors.includes('input') && current.tagName === 'input') return current;
@@ -125,13 +126,19 @@ function buildElements() {
     'nearby-map-button', 'nearby-sort', 'nearby-sort-hint', 'naver-map', 'map-fallback', 'map-provider-status',
     'integration-title', 'integration-copy', 'integration-status', 'result-title', 'result-subtitle',
     'average-rating', 'route-heading', 'route-count', 'estimated-total', 'daily-budget', 'budget-message',
-    'planner-grid', 'result-section', 'discovery-section', 'events-section', 'recommendation-map-card',
-    'locate-button', 'food-search-button', 'share-plan-button', 'place-review-panel', 'place-review-title',
+    'planner-grid', 'result-section', 'community-section', 'discovery-section', 'events-section', 'recommendation-map-card',
+    'locate-button', 'food-search-button', 'share-plan-button', 'share-plan-community-button',
+    'community-search', 'community-region-filter', 'community-theme-filter', 'community-sort',
+    'community-post-list', 'open-community-form-button', 'community-form-panel', 'community-post-form',
+    'community-post-title', 'community-post-region', 'community-post-date', 'community-post-theme',
+    'community-post-members', 'community-post-intro', 'community-share-current-plan', 'community-form-status',
+    'close-community-form-button', 'community-status', 'place-review-panel', 'place-review-title',
     'place-review-meta', 'place-review-recommendation', 'place-review-rating-summary', 'place-review-list',
     'place-review-form', 'place-review-rating', 'place-review-text', 'place-review-status', 'close-place-review-button',
   ];
   const elements = new Map(ids.map((id) => [`#${id}`, new FakeElement('div')]));
   elements.get('#saved-plans-panel').hidden = true;
+  elements.get('#community-form-panel').hidden = true;
   elements.get('#place-review-panel').hidden = true;
   elements.get('#destination').value = 'nationwide';
   elements.get('#theme').value = 'auto';
@@ -159,7 +166,7 @@ function buildElements() {
     button.setAttribute('aria-pressed', String(index === 0));
     return button;
   });
-  elements.quickTabs = ['planner-grid', 'result-section', 'discovery-section', 'events-section', 'saved-plans-panel'].map((target, index) => {
+  elements.quickTabs = ['planner-grid', 'result-section', 'community-section', 'discovery-section', 'events-section', 'saved-plans-panel'].map((target, index) => {
     const link = new FakeElement('a');
     link.dataset.quickNav = target;
     link.className = index === 0 ? 'quick-tab is-active' : 'quick-tab';
@@ -175,6 +182,7 @@ function createHarness({ hash = '', nearbyItems = [], failLocation = false, loca
   let failEvents = false;
   const nearbyRequests = [];
   const eventRequests = [];
+  const storage = new Map();
   const navigator = { serviceWorker: { register: async () => {} } };
   const document = {
     head: new FakeElement('head'),
@@ -214,7 +222,10 @@ function createHarness({ hash = '', nearbyItems = [], failLocation = false, loca
     document,
     window: null,
     navigator,
-    localStorage: { getItem: () => null, setItem: () => {} },
+    localStorage: {
+      getItem: (key) => storage.get(key) || null,
+      setItem: (key, value) => storage.set(key, String(value)),
+    },
     setTimeout,
     Event: class { constructor(type) { this.type = type; this.target = null; } },
     location: { hash, href: `https://courseon.test/${hash}`, pathname: '/', search: '' },
@@ -233,12 +244,19 @@ function createHarness({ hash = '', nearbyItems = [], failLocation = false, loca
     getNearbyRequests: () => nearbyRequests,
     filterButtons: elements.filterButtons,
     quickTabs: elements.quickTabs,
+    storage,
   };
 }
 
 function textFrom(node) {
   if (!(node instanceof FakeElement)) return '';
   return [node.textContent || '', ...node.children.map(textFrom)].join(' ');
+}
+
+function dateOffset(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 async function settle() {
@@ -288,6 +306,54 @@ test('추천 동선 장소를 선택하면 순번 지도와 리뷰 패널을 표
   assert.match(harness.elements.get('#place-review-title').textContent, /산책|카페|추천/);
   assert.equal(textFrom(harness.elements.get('#map-points').children[0]).trim(), '1');
   assert.match(textFrom(harness.elements.get('#place-review-list')), /코스온 추천/);
+});
+
+test('동행 커뮤니티 모집글을 작성하고 참여 신청을 저장한다', async () => {
+  const harness = createHarness();
+  await settle();
+  const openButton = harness.elements.get('#open-community-form-button');
+  await openButton.dispatchEvent({ type: 'click', target: openButton });
+  assert.equal(harness.elements.get('#community-form-panel').hidden, false);
+
+  harness.elements.get('#community-post-title').value = '주말 성수동 감성 산책 동행';
+  harness.elements.get('#community-post-region').value = 'seoul-seongsu';
+  harness.elements.get('#community-post-date').value = dateOffset(1);
+  harness.elements.get('#community-post-theme').value = 'date';
+  harness.elements.get('#community-post-members').value = '4';
+  harness.elements.get('#community-post-intro').value = '서울숲과 성수 카페를 함께 걸어요.';
+  const form = harness.elements.get('#community-post-form');
+  await form.dispatchEvent({ type: 'submit', target: form, preventDefault: () => {} });
+
+  const list = harness.elements.get('#community-post-list');
+  assert.match(textFrom(list), /주말 성수동 감성 산책 동행/);
+  const joinButton = list.find((node) => node.tagName === 'button' && node.dataset.communityJoinId);
+  assert.ok(joinButton);
+  await list.dispatchEvent({ type: 'click', target: joinButton });
+  assert.match(harness.elements.get('#community-status').textContent, /참여 신청을 저장했어요/);
+});
+
+test('지난 날짜의 동행 모집글 작성은 차단한다', async () => {
+  const harness = createHarness();
+  await settle();
+  await harness.elements.get('#open-community-form-button').dispatchEvent({ type: 'click', target: harness.elements.get('#open-community-form-button') });
+  harness.elements.get('#community-post-title').value = '지난 여행 모집글';
+  harness.elements.get('#community-post-region').value = 'seoul';
+  harness.elements.get('#community-post-date').value = dateOffset(-1);
+  harness.elements.get('#community-post-intro').value = '지난 일정이에요.';
+  const form = harness.elements.get('#community-post-form');
+  await form.dispatchEvent({ type: 'submit', target: form, preventDefault: () => {} });
+  assert.match(harness.elements.get('#community-form-status').textContent, /지난 날짜/);
+  assert.equal(harness.elements.get('#community-form-panel').hidden, false);
+});
+
+test('현재 코스를 동행 모집글 작성 화면으로 넘긴다', async () => {
+  const harness = createHarness();
+  await settle();
+  const shareButton = harness.elements.get('#share-plan-community-button');
+  await shareButton.dispatchEvent({ type: 'click', target: shareButton });
+  assert.equal(harness.elements.get('#community-form-panel').hidden, false);
+  assert.ok(harness.elements.get('#community-post-title').value);
+  assert.equal(harness.elements.get('#community-share-current-plan').checked, true);
 });
 
 test('장소 리뷰 입력은 선택한 장소의 리뷰 목록에 즉시 반영된다', async () => {

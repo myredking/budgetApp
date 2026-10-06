@@ -13,10 +13,10 @@
     />
     <title>코스온 | 국내 여행 코스 플래너</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2318263d'/%3E%3Cpath d='M18 43 30 18l6 13 10-7' fill='none' stroke='%23f5c36b' stroke-linecap='round' stroke-linejoin='round' stroke-width='6'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=24" />
+    <link rel="stylesheet" href="styles.css?v=25" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <script src="plan_logic.js?v=24" defer></script>
-    <script src="app.js?v=24" defer></script>
+    <script src="plan_logic.js?v=25" defer></script>
+    <script src="app.js?v=25" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -36,14 +36,17 @@
           <a class="quick-tab" href="#result-section" data-quick-nav="result-section">
             <span>02</span><strong>추천 코스</strong><small>동선·지도 확인</small>
           </a>
+          <a class="quick-tab" href="#community-section" data-quick-nav="community-section">
+            <span>03</span><strong>동행 커뮤니티</strong><small>같이 여행하기</small>
+          </a>
           <a class="quick-tab" href="#discovery-section" data-quick-nav="discovery-section">
-            <span>03</span><strong>주변 추천</strong><small>식당·카페 찾기</small>
+            <span>04</span><strong>주변 추천</strong><small>식당·카페 찾기</small>
           </a>
           <a class="quick-tab" href="#events-section" data-quick-nav="events-section">
-            <span>04</span><strong>행사·축제</strong><small>오늘의 이벤트</small>
+            <span>05</span><strong>행사·축제</strong><small>오늘의 이벤트</small>
           </a>
           <a class="quick-tab" href="#saved-plans-panel" data-quick-nav="saved-plans-panel">
-            <span>05</span><strong>저장 계획</strong><small>이전 코스 열기</small>
+            <span>06</span><strong>저장 계획</strong><small>이전 코스 열기</small>
           </a>
         </div>
       </nav>
@@ -286,6 +289,7 @@
             <button id="history-button" class="share-button" type="button">저장 계획</button>
             <button id="refresh-plan-button" class="share-button" type="button">새로 추천 <span>↻</span></button>
             <button id="share-plan-button" class="share-button" type="button">공유하기 <span>↗</span></button>
+            <button id="share-plan-community-button" class="share-button" type="button">동행 모집 <span>＋</span></button>
           </div>
         </div>
 
@@ -402,6 +406,137 @@
           <button id="close-history-button" class="text-button" type="button">닫기</button>
         </div>
         <div id="saved-plans-list" class="saved-plans-list" aria-live="polite"></div>
+      </section>
+
+      <section id="community-section" class="community-section" aria-labelledby="community-title">
+        <div class="result-heading community-heading">
+          <div>
+            <p class="section-kicker">03 · TRAVEL TOGETHER</p>
+            <h2 id="community-title">여행 동행을 찾아보세요</h2>
+            <p class="muted-copy">비슷한 일정과 취향의 여행자를 만나고, 내 코스도 함께 나눠보세요.</p>
+          </div>
+          <button id="open-community-form-button" class="button button-primary" type="button">동행 모집글 쓰기 <span>＋</span></button>
+        </div>
+        <div class="community-notice">
+          <strong>코스온 동행 커뮤니티 1차 버전</strong>
+          <span>모집글과 참여 신청은 현재 브라우저에 저장돼요. 로그인·서버 연결 후 다른 여행자와 공개 공유와 채팅으로 확장할 수 있어요.</span>
+        </div>
+        <div class="community-toolbar">
+          <label class="community-search-field">
+            <span class="sr-only">동행 모집글 검색</span>
+            <input id="community-search" type="search" maxlength="60" placeholder="지역, 테마, 여행 제목으로 검색" autocomplete="off" />
+          </label>
+          <label>
+            <span class="sr-only">동행 지역 필터</span>
+            <select id="community-region-filter">
+              <option value="all">전국 모든 지역</option>
+              <option value="seoul">서울</option>
+              <option value="busan">부산</option>
+              <option value="daegu">대구</option>
+              <option value="jeju">제주</option>
+              <option value="gangneung">강릉</option>
+              <option value="jeonju">전주</option>
+              <option value="seoul-seongsu">서울 성수동</option>
+              <option value="busan-gwangan">부산 광안리</option>
+            </select>
+          </label>
+          <label>
+            <span class="sr-only">동행 테마 필터</span>
+            <select id="community-theme-filter">
+              <option value="all">모든 여행 테마</option>
+              <option value="date">데이트·감성</option>
+              <option value="food">미식 여행</option>
+              <option value="nature">자연·힐링</option>
+              <option value="culture">역사·문화</option>
+              <option value="cafe">카페·사진</option>
+              <option value="activity">액티비티</option>
+              <option value="family">가족 여행</option>
+              <option value="night">야경·야간</option>
+            </select>
+          </label>
+          <label>
+            <span class="sr-only">동행 모집글 정렬</span>
+            <select id="community-sort">
+              <option value="latest">최신 등록순</option>
+              <option value="date">여행일 빠른순</option>
+              <option value="available">자리 남은 글</option>
+            </select>
+          </label>
+        </div>
+        <p id="community-status" class="helper-text" role="status"></p>
+        <div id="community-post-list" class="community-post-list" aria-live="polite"></div>
+        <section id="community-form-panel" class="community-form-panel" hidden aria-labelledby="community-form-title">
+          <div class="community-form-heading">
+            <div>
+              <p class="section-kicker">POST A TRIP</p>
+              <h3 id="community-form-title">동행 모집글 작성</h3>
+            </div>
+            <button id="close-community-form-button" class="text-button" type="button">닫기</button>
+          </div>
+          <form id="community-post-form" class="community-post-form">
+            <label class="field field-wide">
+              <span>모집글 제목</span>
+              <input id="community-post-title" type="text" maxlength="80" placeholder="예: 이번 주말 경주 황리단길 같이 가요" required />
+            </label>
+            <div class="community-form-grid">
+              <label class="field">
+                <span>여행 지역</span>
+                <select id="community-post-region" required>
+                  <option value="">지역 선택</option>
+                  <option value="seoul">서울</option>
+                  <option value="busan">부산</option>
+                  <option value="daegu">대구</option>
+                  <option value="jeju">제주</option>
+                  <option value="gangneung">강릉</option>
+                  <option value="jeonju">전주</option>
+                  <option value="seoul-seongsu">서울 성수동</option>
+                  <option value="busan-gwangan">부산 광안리</option>
+                  <option value="nationwide">전국</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>여행 날짜</span>
+                <input id="community-post-date" type="date" required />
+              </label>
+              <label class="field">
+                <span>여행 테마</span>
+                <select id="community-post-theme" required>
+                  <option value="date">데이트·감성</option>
+                  <option value="food">미식 여행</option>
+                  <option value="nature">자연·힐링</option>
+                  <option value="culture">역사·문화</option>
+                  <option value="cafe">카페·사진</option>
+                  <option value="activity">액티비티</option>
+                  <option value="family">가족 여행</option>
+                  <option value="night">야경·야간</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>모집 인원</span>
+                <select id="community-post-members" required>
+                  <option value="2">2명</option>
+                  <option value="3">3명</option>
+                  <option value="4" selected>4명</option>
+                  <option value="6">6명</option>
+                  <option value="8">8명</option>
+                </select>
+              </label>
+            </div>
+            <label class="field field-wide">
+              <span>소개</span>
+              <textarea id="community-post-intro" rows="4" maxlength="300" placeholder="어떤 코스로 여행할지, 어떤 동행을 원하는지 적어주세요." required></textarea>
+            </label>
+            <label class="community-check">
+              <input id="community-share-current-plan" type="checkbox" />
+              <span>지금 만든 코스도 모집글에 함께 첨부하기</span>
+            </label>
+            <div class="community-form-actions">
+              <button id="community-post-submit" class="button button-primary" type="submit">모집글 저장하기 <span>↗</span></button>
+              <p id="community-form-status" class="helper-text" role="status"></p>
+            </div>
+          </form>
+        </section>
+        <p class="community-safety"><strong>안전하게 만나요.</strong> 처음 만나는 동행은 낮 시간 공개 장소에서 만나고, 개인정보·송금 요구는 거절하세요.</p>
       </section>
 
       <section id="discovery-section" class="discovery-section" aria-labelledby="discovery-title">

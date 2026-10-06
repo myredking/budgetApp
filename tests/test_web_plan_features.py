@@ -36,11 +36,37 @@ def test_route_place_review_controls_are_present() -> None:
         assert f'id="{element_id}"' in html
 
 
+def test_community_controls_are_present() -> None:
+    html = read_asset("index.html")
+
+    for element_id in (
+        "community-section",
+        "community-search",
+        "community-region-filter",
+        "community-theme-filter",
+        "community-post-list",
+        "open-community-form-button",
+        "community-form-panel",
+        "community-post-form",
+        "community-post-title",
+        "community-post-submit",
+        "share-plan-community-button",
+    ):
+        assert f'id="{element_id}"' in html
+
+
 def test_quick_navigation_tabs_link_to_each_major_feature() -> None:
     html = read_asset("index.html")
 
     assert 'id="quick-navigation"' in html
-    for target in ("planner-grid", "result-section", "discovery-section", "events-section", "saved-plans-panel"):
+    for target in (
+        "planner-grid",
+        "result-section",
+        "community-section",
+        "discovery-section",
+        "events-section",
+        "saved-plans-panel",
+    ):
         assert f'data-quick-nav="{target}"' in html
 
 
@@ -71,9 +97,9 @@ def test_site_metadata_and_asset_versions_are_present() -> None:
     assert 'name="theme-color"' in html
     assert 'name="mobile-web-app-capable"' in html
     assert 'name="apple-mobile-web-app-capable"' in html
-    assert 'styles.css?v=24' in html
-    assert 'plan_logic.js?v=24' in html
-    assert 'app.js?v=24' in html
+    assert 'styles.css?v=25' in html
+    assert 'plan_logic.js?v=25' in html
+    assert 'app.js?v=25' in html
     assert "navigator.serviceWorker" in read_asset("app.js")
 
 
@@ -95,6 +121,15 @@ def test_route_map_and_review_behaviors_are_wired() -> None:
 
     assert "selectItineraryPlace" in javascript
     assert "placeReviews" in javascript
+
+
+def test_community_behaviors_are_wired() -> None:
+    javascript = read_asset("app.js")
+
+    assert "COMMUNITY_STORAGE_KEY" in javascript
+    assert "renderCommunityPosts" in javascript
+    assert "toggleCommunityJoin" in javascript
+    assert "shareCurrentPlanToCommunity" in javascript
 
 
 def test_quick_navigation_updates_active_section_and_opens_saved_plans() -> None:
@@ -175,7 +210,7 @@ def test_brand_copy_reflects_live_integrations() -> None:
 def test_service_worker_caches_the_planner_shell_without_caching_api_responses() -> None:
     service_worker = read_asset("sw.js")
 
-    assert "const CACHE_NAME = 'courseon-shell-v13'" in service_worker
+    assert "const CACHE_NAME = 'courseon-shell-v14'" in service_worker
     assert "cache.put" in service_worker
     assert "/api/" in service_worker
 

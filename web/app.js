@@ -132,6 +132,13 @@ const EVENT_SAMPLES = [
   { region: '전국', title: '계절 축제와 야간 개장', type: '축제', date: '날짜 맞춤', note: '지역·기간·운영시간을 반영 예정' },
 ];
 
+const COMMUNITY_SEEDS = [
+  { id: 'sample-seongsu', title: '토요일 성수동 카페와 서울숲 산책', region: 'seoul-seongsu', startDate: '2026-10-10', endDate: '2026-10-10', theme: 'date', members: 4, joined: 2, intro: '사진 찍고 맛있는 점심 먹으며 천천히 걸어요. 밝은 분위기의 동행을 기다려요.', planTitle: '성수에서 보내는 하루', source: 'sample', planAttached: true },
+  { id: 'sample-gwangalli', title: '부산 광안리 노을부터 야경까지', region: 'busan-gwangan', startDate: '2026-10-17', endDate: '2026-10-17', theme: 'nature', members: 4, joined: 1, intro: '광안리 해변 산책과 바다 앞 식사를 함께할 분을 찾아요.', source: 'sample' },
+  { id: 'sample-jeonju', title: '전주 한옥마을 주말 미식 여행', region: 'jeonju', startDate: '2026-10-24', endDate: '2026-10-25', theme: 'food', members: 6, joined: 3, intro: '객리단길과 한옥마을을 여유롭게 둘러보고 맛집을 나눠서 가봐요.', source: 'sample' },
+  { id: 'sample-jeju', title: '제주 애월 사진 스팟 하루 코스', region: 'jeju', startDate: '2026-11-01', endDate: '2026-11-02', theme: 'cafe', members: 3, joined: 1, intro: '렌터카로 애월과 곽지 주변 카페, 바다를 둘러볼 예정이에요.', source: 'sample', planAttached: true },
+];
+
 const THEME_PROFILES = {
   date: { label: '데이트·감성', categories: ['브런치', '카페', '전시', '산책', '저녁', '야경'] },
   food: { label: '미식 여행', categories: ['아침', '브런치', '저녁', '골목', '카페'] },
@@ -214,6 +221,26 @@ const placeReviewRating = document.querySelector('#place-review-rating');
 const placeReviewText = document.querySelector('#place-review-text');
 const placeReviewStatus = document.querySelector('#place-review-status');
 const closePlaceReviewButton = document.querySelector('#close-place-review-button');
+const communitySection = document.querySelector('#community-section');
+const communitySearch = document.querySelector('#community-search');
+const communityRegionFilter = document.querySelector('#community-region-filter');
+const communityThemeFilter = document.querySelector('#community-theme-filter');
+const communitySort = document.querySelector('#community-sort');
+const communityPostList = document.querySelector('#community-post-list');
+const openCommunityFormButton = document.querySelector('#open-community-form-button');
+const sharePlanCommunityButton = document.querySelector('#share-plan-community-button');
+const communityFormPanel = document.querySelector('#community-form-panel');
+const communityPostForm = document.querySelector('#community-post-form');
+const communityPostTitle = document.querySelector('#community-post-title');
+const communityPostRegion = document.querySelector('#community-post-region');
+const communityPostDate = document.querySelector('#community-post-date');
+const communityPostTheme = document.querySelector('#community-post-theme');
+const communityPostMembers = document.querySelector('#community-post-members');
+const communityPostIntro = document.querySelector('#community-post-intro');
+const communityShareCurrentPlan = document.querySelector('#community-share-current-plan');
+const communityFormStatus = document.querySelector('#community-form-status');
+const communityStatus = document.querySelector('#community-status');
+const closeCommunityFormButton = document.querySelector('#close-community-form-button');
 const quickNavigationLinks = Array.from(document.querySelectorAll('[data-quick-nav]'));
 let currentPlaces = [];
 let currentNearbyItems = [];
@@ -236,7 +263,10 @@ let selectedPlaceIndex = null;
 let selectedPlaceTrigger = null;
 const PLAN_STORAGE_KEY = 'travel-planner-plans-v1';
 const PLACE_REVIEW_STORAGE_KEY = 'courseon-place-reviews-v1';
+const COMMUNITY_STORAGE_KEY = 'courseon-community-posts-v1';
 let savedPlans = [];
+let communityPosts = [];
+let communityFormTrigger = null;
 let currentPlanId = null;
 let routeOverride = null;
 let planGeneration = 0;
@@ -993,7 +1023,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=24').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=25').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }
@@ -1325,6 +1355,292 @@ function renderItinerary(places) {
     article.append(time, info, rating);
     itinerary.append(article);
   });
+}
+
+const COMMUNITY_REGION_LABELS = {
+  nationwide: '전국', seoul: '서울', busan: '부산', daegu: '대구', jeju: '제주',
+  gangneung: '강릉', jeonju: '전주', 'seoul-seongsu': '서울 성수동', 'busan-gwangan': '부산 광안리',
+};
+const COMMUNITY_THEME_LABELS = {
+  date: '데이트·감성', food: '미식 여행', nature: '자연·힐링', culture: '역사·문화',
+  cafe: '카페·사진', activity: '액티비티', family: '가족 여행', night: '야경·야간',
+};
+
+function normalizeCommunityPost(post) {
+  if (!post || typeof post !== 'object' || !post.title || !post.region) return null;
+  const members = Number(post.members);
+  const joined = Number(post.joined);
+  return {
+    id: sanitizeSavedText(post.id, `community-${Date.now()}-${Math.random()}`),
+    title: sanitizeSavedText(post.title, '여행 동행 모집글'),
+    region: COMMUNITY_REGION_LABELS[post.region] || CITY_PROFILES[post.region] ? post.region : 'nationwide',
+    startDate: /^\d{4}-\d{2}-\d{2}$/.test(post.startDate) ? post.startDate : dateInput.value,
+    endDate: /^\d{4}-\d{2}-\d{2}$/.test(post.endDate) ? post.endDate : post.startDate,
+    theme: COMMUNITY_THEME_LABELS[post.theme] || THEME_PROFILES[post.theme] ? post.theme : 'date',
+    members: Number.isInteger(members) ? Math.min(8, Math.max(2, members)) : 4,
+    joined: Number.isInteger(joined) ? Math.min(Math.max(0, joined), Math.max(2, members || 4)) : 1,
+    intro: sanitizeSavedText(post.intro, '여행 코스를 함께 즐길 동행을 기다려요.'),
+    source: post.source === 'local' ? 'local' : 'sample',
+    planTitle: sanitizeSavedText(post.planTitle, ''),
+    planAttached: Boolean(post.planAttached || post.planSnapshot),
+    joinedByCurrentUser: Boolean(post.joinedByCurrentUser),
+    createdAt: sanitizeSavedText(post.createdAt, new Date().toISOString()),
+  };
+}
+
+function readCommunityPosts() {
+  const seeds = COMMUNITY_SEEDS.map(normalizeCommunityPost).filter(Boolean);
+  try {
+    const stored = JSON.parse(localStorage.getItem(COMMUNITY_STORAGE_KEY) || 'null');
+    if (!Array.isArray(stored)) return seeds;
+    const localPosts = stored.map(normalizeCommunityPost).filter(Boolean);
+    const ids = new Set(localPosts.map((post) => post.id));
+    return [...localPosts, ...seeds.filter((post) => !ids.has(post.id))];
+  } catch (error) {
+    return seeds;
+  }
+}
+
+function persistCommunityPosts() {
+  try {
+    localStorage.setItem(COMMUNITY_STORAGE_KEY, JSON.stringify(communityPosts.slice(0, 60)));
+    return true;
+  } catch (error) {
+    communityStatus.textContent = '브라우저 저장공간을 사용할 수 없어 동행 정보를 저장하지 못했어요.';
+    return false;
+  }
+}
+
+function getTodayDateValue() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+
+function formatCommunityDateRange(startDate, endDate) {
+  const format = (value) => {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return match ? `${match[1]}.${match[2]}.${match[3]}` : '날짜 확인 필요';
+  };
+  return startDate === endDate ? format(startDate) : `${format(startDate)} ~ ${format(endDate)}`;
+}
+
+function getCommunityRegionLabel(region) {
+  return COMMUNITY_REGION_LABELS[region] || CITY_PROFILES[region]?.label || '전국';
+}
+
+function getCommunityThemeLabel(theme) {
+  return COMMUNITY_THEME_LABELS[theme] || THEME_PROFILES[theme]?.label || COMMUNITY_THEME_LABELS.date;
+}
+
+function createCommunityPostCard(post) {
+  const article = document.createElement('article');
+  article.className = 'community-post-card';
+  const copy = document.createElement('div');
+  copy.className = 'community-post-copy';
+  const meta = document.createElement('div');
+  meta.className = 'community-post-meta';
+  [getCommunityRegionLabel(post.region), getCommunityThemeLabel(post.theme), post.source === 'local' ? '내 글' : '예시 모집글'].forEach((value, index) => {
+    const badge = document.createElement('span');
+    badge.className = `community-badge ${index === 2 && post.source === 'local' ? 'local' : ''}`;
+    badge.textContent = value;
+    meta.append(badge);
+  });
+  const title = document.createElement('h3');
+  title.textContent = post.title;
+  const intro = document.createElement('p');
+  intro.textContent = post.intro;
+  const details = document.createElement('div');
+  details.className = 'community-post-details';
+  [formatCommunityDateRange(post.startDate, post.endDate), `모집 ${post.members}명`, `현재 ${post.joined}명`].forEach((value) => {
+    const detail = document.createElement('span');
+    detail.textContent = value;
+    details.append(detail);
+  });
+  copy.append(meta, title, intro, details);
+  if (post.planAttached) {
+    const plan = document.createElement('span');
+    plan.className = 'community-plan-badge';
+    plan.textContent = `↗ ${post.planTitle || '코스온 추천 코스'} 첨부`;
+    copy.append(plan);
+  }
+  const side = document.createElement('div');
+  side.className = 'community-post-side';
+  const capacity = document.createElement('span');
+  capacity.className = 'community-capacity';
+  capacity.textContent = `${post.joined} / ${post.members}`;
+  const join = document.createElement('button');
+  join.className = 'button button-secondary';
+  join.type = 'button';
+  join.dataset.communityJoinId = post.id;
+  join.disabled = Boolean(post.joinedByCurrentUser || post.joined >= post.members);
+  join.textContent = post.joinedByCurrentUser ? '신청 완료' : post.joined >= post.members ? '모집 마감' : '참여 신청';
+  side.append(capacity, join);
+  article.append(copy, side);
+  return article;
+}
+
+function matchesCommunityRegion(post, filter) {
+  return filter === 'all' || post.region === filter || post.region.startsWith(`${filter}-`);
+}
+
+function renderCommunityPosts() {
+  const query = (communitySearch.value || '').trim().toLowerCase();
+  const region = communityRegionFilter.value || 'all';
+  const theme = communityThemeFilter.value || 'all';
+  const sort = communitySort.value || 'latest';
+  const posts = communityPosts.filter((post) => {
+    if (post.endDate < getTodayDateValue()) return false;
+    const searchable = `${post.title} ${post.intro} ${getCommunityRegionLabel(post.region)} ${getCommunityThemeLabel(post.theme)}`.toLowerCase();
+    return (!query || searchable.includes(query)) && matchesCommunityRegion(post, region) && (theme === 'all' || post.theme === theme);
+  });
+  posts.sort((left, right) => sort === 'date'
+    ? left.startDate.localeCompare(right.startDate)
+    : sort === 'available'
+      ? (right.members - right.joined) - (left.members - left.joined)
+      : right.createdAt.localeCompare(left.createdAt));
+  communityPostList.replaceChildren();
+  if (!posts.length) {
+    const empty = document.createElement('p');
+    empty.className = 'community-empty';
+    empty.textContent = '조건에 맞는 모집글이 없어요. 검색 조건을 바꾸거나 첫 모집글을 작성해보세요.';
+    communityPostList.append(empty);
+    return;
+  }
+  posts.forEach((post) => communityPostList.append(createCommunityPostCard(post)));
+}
+
+function toggleCommunityJoin(id) {
+  const post = communityPosts.find((item) => item.id === id);
+  if (!post || post.joinedByCurrentUser || post.joined >= post.members) return;
+  if (post.endDate < getTodayDateValue()) {
+    communityStatus.textContent = '지난 여행의 모집글이라 참여 신청을 받을 수 없어요.';
+    renderCommunityPosts();
+    return;
+  }
+  post.joined += 1;
+  post.joinedByCurrentUser = true;
+  if (!persistCommunityPosts()) {
+    post.joined -= 1;
+    post.joinedByCurrentUser = false;
+    renderCommunityPosts();
+    return;
+  }
+  renderCommunityPosts();
+  communityStatus.textContent = '참여 신청을 저장했어요. 연락처는 공개하지 않고, 안전한 장소에서 만나요.';
+}
+
+function openCommunityForm(prefill = {}) {
+  communityFormPanel.hidden = false;
+  if (prefill.region) ensureCommunityRegionOption(prefill.region);
+  communityPostDate.min = dateInput.min || getTodayDateValue();
+  communityPostTitle.value = prefill.title || '';
+  communityPostRegion.value = prefill.region || '';
+  communityPostDate.value = prefill.startDate || dateInput.value;
+  communityPostTheme.value = prefill.theme || (themeInput.value === 'auto' ? 'date' : themeInput.value);
+  communityPostMembers.value = prefill.members || '4';
+  communityPostIntro.value = prefill.intro || '';
+  communityShareCurrentPlan.checked = Boolean(prefill.sharePlan);
+  communityFormStatus.textContent = '';
+  communityFormPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeCommunityForm() {
+  communityFormPanel.hidden = true;
+  communityFormStatus.textContent = '';
+  if (communityFormTrigger?.focus) communityFormTrigger.focus();
+}
+
+function getCommunityDestinationValue() {
+  const destination = destinationInput.value;
+  return COMMUNITY_REGION_LABELS[destination] || CITY_PROFILES[destination] ? destination : 'nationwide';
+}
+
+function ensureCommunityRegionOption(region) {
+  if (!region || !communityPostRegion || Array.from(communityPostRegion.options || []).some((option) => option.value === region)) return;
+  const option = document.createElement('option');
+  option.value = region;
+  option.textContent = getCommunityRegionLabel(region);
+  communityPostRegion.append(option);
+}
+
+function getCommunityPlanAttachment() {
+  if (!currentPlaces.length) return null;
+  return {
+    title: document.querySelector('#result-title').textContent,
+    places: currentPlaces.map((place) => ({ title: place.title, category: place.category, time: place.time })),
+  };
+}
+
+function shareCurrentPlanToCommunity() {
+  const snapshot = getPlanSnapshot();
+  if (!snapshot) {
+    locationStatus.textContent = '먼저 여행 코스를 만든 뒤 동행 모집글을 작성해 주세요.';
+    return;
+  }
+  communityFormTrigger = sharePlanCommunityButton;
+  openCommunityForm({
+    title: `${getSelectedLocationLabel()} · ${getCommunityThemeLabel(themeInput.value === 'auto' ? 'date' : themeInput.value)} 동행 모집`,
+    region: getCommunityDestinationValue(), startDate: dateInput.value,
+    theme: themeInput.value === 'auto' ? 'date' : themeInput.value,
+    intro: `코스온으로 만든 ${currentPlaces.length}곳 코스를 함께 둘러봐요. ${currentPlaces.slice(0, 3).map((place) => place.title).join(' · ')}`,
+    sharePlan: true,
+  });
+  setActiveQuickTab('community-section');
+}
+
+function submitCommunityPost(event) {
+  event.preventDefault();
+  const title = communityPostTitle.value.trim();
+  const region = communityPostRegion.value;
+  const startDate = communityPostDate.value;
+  const intro = communityPostIntro.value.trim();
+  if (!title || !region || !startDate || !intro) {
+    communityFormStatus.textContent = '제목·지역·날짜·소개를 모두 입력해 주세요.';
+    return;
+  }
+  if (startDate < (communityPostDate.min || getTodayDateValue())) {
+    communityFormStatus.textContent = '지난 날짜는 모집글에 사용할 수 없어요.';
+    return;
+  }
+  const attachment = communityShareCurrentPlan.checked ? getCommunityPlanAttachment() : null;
+  const post = normalizeCommunityPost({
+    id: `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    title, region, startDate, endDate: startDate, theme: communityPostTheme.value,
+    members: Number(communityPostMembers.value), joined: 1, intro, source: 'local',
+    planAttached: Boolean(attachment), planTitle: attachment?.title || '', planSnapshot: attachment,
+    joinedByCurrentUser: false, createdAt: new Date().toISOString(),
+  });
+  if (!post) return;
+  const previousPosts = communityPosts;
+  communityPosts = [post, ...communityPosts.filter((item) => item.id !== post.id)];
+  if (!persistCommunityPosts()) {
+    communityPosts = previousPosts;
+    renderCommunityPosts();
+    communityFormStatus.textContent = '브라우저 저장공간이 부족해 모집글을 저장하지 못했어요.';
+    return;
+  }
+  renderCommunityPosts();
+  closeCommunityForm();
+  communityStatus.textContent = '모집글을 저장했어요. 현재 이 브라우저에서만 확인할 수 있어요.';
+  communitySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function setupCommunity() {
+  [communitySearch, communityRegionFilter, communityThemeFilter, communitySort].forEach((input) => {
+    input.addEventListener(input === communitySearch ? 'input' : 'change', renderCommunityPosts);
+  });
+  openCommunityFormButton.addEventListener('click', () => {
+    communityFormTrigger = openCommunityFormButton;
+    openCommunityForm();
+  });
+  closeCommunityFormButton.addEventListener('click', closeCommunityForm);
+  communityPostForm.addEventListener('submit', submitCommunityPost);
+  communityPostList.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-community-join-id]');
+    if (button) toggleCommunityJoin(button.dataset.communityJoinId);
+  });
+  sharePlanCommunityButton.addEventListener('click', shareCurrentPlanToCommunity);
+  renderCommunityPosts();
 }
 
 function readSavedPlans() {
@@ -2109,6 +2425,8 @@ document.querySelector('#share-plan-button').addEventListener('click', sharePlan
 setupQuickNavigation();
 setTodayAsDefault();
 savedPlans = readSavedPlans();
+communityPosts = readCommunityPosts();
+setupCommunity();
 renderPlan();
 renderTodayAndEvents(false);
 renderSavedPlans();
