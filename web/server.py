@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import ipaddress
 import mimetypes
 import os
 import re
@@ -13,7 +14,7 @@ from html import unescape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable, Generic, TypeVar
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, parse_qsl, unquote, urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -133,6 +134,11 @@ class ApiConfig:
     map_api_key_id: str
     map_api_key: str
     partner_feed_url: str = ""
+    myrealtrip_api_url: str = ""
+    myrealtrip_api_key: str = ""
+    klook_api_url: str = ""
+    klook_api_key: str = ""
+    partner_feed_allowed_hosts: str = ""
 
     @classmethod
     def from_env(cls) -> "ApiConfig":
@@ -145,6 +151,11 @@ class ApiConfig:
             map_api_key_id=os.getenv("NAVER_MAP_API_KEY_ID", ""),
             map_api_key=os.getenv("NAVER_MAP_API_KEY", ""),
             partner_feed_url=os.getenv("TRAVEL_PARTNER_FEED_URL", ""),
+            partner_feed_allowed_hosts=os.getenv("PARTNER_FEED_ALLOWED_HOSTS", ""),
+            myrealtrip_api_url=os.getenv("MYREALTRIP_API_URL", ""),
+            myrealtrip_api_key=os.getenv("MYREALTRIP_API_KEY", ""),
+            klook_api_url=os.getenv("KLOOK_API_URL", ""),
+            klook_api_key=os.getenv("KLOOK_API_KEY", ""),
         )
 
     @property
@@ -227,30 +238,120 @@ def normalize_tour_event(item: dict[str, Any]) -> dict[str, str]:
     }
 
 
+SENSITIVE_URL_KEYS = {"api_key", "apikey", "token", "secret", "access_token", "client_secret", "authorization"}
+
+
+def has_sensitive_query(parsed: Any) -> bool:
+    """Detect credentials embedded in a URL query string."""
+    query_keys = {key.lower() for key, _ in parse_qsl(parsed.query, keep_blank_values=True)}
+    return bool(query_keys.intersection(SENSITIVE_URL_KEYS))
+
+
+def is_public_hostname(hostname: str) -> bool:
+    """Reject local names and IP literals before making an outbound request."""
+    normalized = hostname.lower()
+    if not normalized or normalized in {"localhost", "localhost.localdomain"} or normalized.endswith(".local"):
+        return False
+    try:
+        ipaddress.ip_address(normalized)
+    except ValueError:
+        return True
+    return False
+
+
 def safe_https_url(value: Any) -> str:
     """Keep only HTTPS links supplied by a configured partner feed."""
     candidate = optional_text(value).strip()
-    parsed = urlparse(candidate)
-    return candidate if parsed.scheme == "https" and parsed.netloc else ""
-
-
-def normalize_partner_item(item: dict[str, Any]) -> dict[str, Any]:
-    """Convert a partner product into the safe comparison-card shape."""
     try:
-        price = max(float(item.get("price", 0)), 0)
+        parsed = urlparse(candidate)
+        hostname = parsed.hostname or ""
+        has_credentials = bool(parsed.username or parsed.password)
+    except ValueError:
+        return ""
+    if parsed.scheme != "https" or not parsed.netloc or has_credentials:
+        return ""
+    if has_credentials or has_sensitive_query(parsed) or not is_public_hostname(hostname):
+        return ""
+    return candidate
+
+
+def host_matches(hostname: str, hosts: set[str] | tuple[str, ...]) -> bool:
+    """Match an exact host or a subdomain against an allowlist."""
+    return any(hostname == host or hostname.endswith(f".{host}") for host in hosts)
+
+
+def configured_partner_hosts(value: str) -> set[str]:
+    """Parse the explicit host allowlist used by a legacy partner feed."""
+    return {host.strip().lower().lstrip(".") for host in value.split(",") if host.strip()}
+
+
+def safe_provider_url(
+    value: Any,
+    provider: str,
+    allowed_hosts: set[str] | None = None,
+) -> str:
+    """Allow provider API calls only to the provider's official domain."""
+    candidate = safe_https_url(value)
+    if not candidate:
+        return ""
+    hostname = (urlparse(candidate).hostname or "").lower()
+    suffixes = {
+        "마이리얼트립": ("myrealtrip.com",),
+        "Klook": ("klook.com",),
+    }.get(provider, ())
+    if provider == "공식 제휴사" and allowed_hosts is not None and not host_matches(hostname, allowed_hosts):
+        return ""
+    if suffixes and not host_matches(hostname, suffixes):
+        return ""
+    return candidate
+
+
+def safe_partner_link(
+    value: Any,
+    provider: str,
+    allowed_hosts: set[str] | None = None,
+) -> str:
+    """Keep provider links on the provider domain when the source is known."""
+    if provider in {"마이리얼트립", "Klook", "공식 제휴사"}:
+        return safe_provider_url(value, provider, allowed_hosts)
+    return safe_https_url(value)
+
+
+def normalize_partner_item(
+    item: dict[str, Any],
+    provider_hint: str = "",
+    allowed_hosts: set[str] | None = None,
+) -> dict[str, Any]:
+    """Convert a partner product into the safe comparison-card shape."""
+    raw_price = first_optional_text(
+        item.get("price"), item.get("sale_price"), item.get("salePrice"),
+        item.get("total_price"), item.get("totalPrice"), item.get("amount"),
+    ).replace(",", "")
+    try:
+        price = max(float(raw_price or 0), 0)
     except (TypeError, ValueError):
         price = 0.0
     return {
-        "provider": first_optional_text(item.get("provider"), item.get("merchant"), "공식 제휴사"),
-        "title": first_optional_text(item.get("title"), item.get("name")),
+        "provider": first_optional_text(item.get("provider"), item.get("merchant"), provider_hint, "공식 제휴사"),
+        "title": first_optional_text(item.get("title"), item.get("name"), item.get("product_name"), item.get("productName"), item.get("displayName")),
         "category": first_optional_text(item.get("category"), item.get("type"), "국내 여행 상품"),
         "price": price,
         "currency": first_optional_text(item.get("currency"), "KRW"),
-        "url": safe_https_url(first_optional_text(item.get("affiliate_url"), item.get("affiliateUrl"), item.get("url"), item.get("link"))),
-        "image": safe_https_url(first_optional_text(item.get("image"), item.get("image_url"), item.get("imageUrl"))),
+        "url": safe_partner_link(first_optional_text(item.get("affiliate_url"), item.get("affiliateUrl"), item.get("deeplink"), item.get("booking_url"), item.get("url"), item.get("link")), provider_hint, allowed_hosts),
+        "image": safe_partner_link(first_optional_text(item.get("image"), item.get("image_url"), item.get("imageUrl")), provider_hint, allowed_hosts),
         "recommended": bool(item.get("recommended", False)),
         "source": "partner_feed",
     }
+
+
+def normalize_myrealtrip_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a MyRealTrip marketing-partner response item."""
+    return normalize_partner_item(item, "마이리얼트립")
+
+
+def normalize_klook_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a Klook affiliate response item."""
+    return normalize_partner_item(item, "Klook")
 
 
 def partner_response_items(payload: Any) -> list[dict[str, Any]]:
@@ -273,6 +374,76 @@ def normalized_partner_items(payload: Any) -> list[dict[str, Any]]:
     return sorted(valid_items, key=lambda item: (not item["recommended"], item["price"]))
 
 
+def normalized_provider_items(
+    payload: Any,
+    provider_hint: str,
+    allowed_hosts: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Normalize products while applying the configured provider label."""
+    normalizer = normalize_partner_item
+    if provider_hint == "마이리얼트립":
+        normalizer = normalize_myrealtrip_item
+    elif provider_hint == "Klook":
+        normalizer = normalize_klook_item
+    if provider_hint in {"마이리얼트립", "Klook"}:
+        items = [normalizer(item) for item in partner_response_items(payload)]
+    else:
+        items = [
+            normalize_partner_item(item, provider_hint, allowed_hosts)
+            for item in partner_response_items(payload)
+        ]
+    valid_items = [item for item in items if item["title"] and item["price"] > 0]
+    return sorted(valid_items, key=lambda item: (not item["recommended"], item["price"]))
+
+
+def partner_headers(provider: str, api_key: str) -> dict[str, str]:
+    """Build common authorization headers without exposing keys to clients."""
+    headers = {"Accept": "application/json"}
+    if api_key and provider == "마이리얼트립":
+        headers["Authorization"] = f"Bearer {api_key}"
+    if api_key and provider == "Klook":
+        headers["X-API-Key"] = api_key
+    return headers
+
+
+def fetch_partner_endpoint(
+    feed_url: str,
+    start_date: str,
+    end_date: str,
+    destination: str,
+    people: str,
+    theme: str,
+    provider_hint: str = "",
+    api_key: str = "",
+    allowed_hosts: set[str] | None = None,
+    cache: ApiResponseCache[tuple[list[dict[str, Any]], str]] | None = None,
+    budget: DailyApiBudget | None = None,
+) -> tuple[list[dict[str, Any]], str]:
+    """Fetch and normalize one configured official travel product feed."""
+    safe_url = safe_provider_url(feed_url, provider_hint, allowed_hosts)
+    if not safe_url:
+        return [], "not_configured"
+    active_cache = cache or API_CACHE
+    active_budget = budget or API_BUDGET
+    cache_key = f"partner:{provider_hint}:{safe_url}:{start_date}:{end_date}:{destination}:{people}:{theme}"
+    cached = active_cache.get(cache_key)
+    if cached is not None:
+        return cached
+    if not active_budget.try_consume("partner"):
+        return [], "quota"
+    response = requests.get(
+        safe_url,
+        params={"start_date": start_date, "end_date": end_date, "destination": destination, "people": people, "theme": theme},
+        headers=partner_headers(provider_hint, api_key),
+        timeout=8,
+    )
+    response.raise_for_status()
+    items = normalized_provider_items(response.json(), provider_hint, allowed_hosts)
+    result = items, "partner_feed" if items else "partner_empty"
+    active_cache.put(cache_key, result)
+    return result
+
+
 def fetch_partner_feed(
     config: ApiConfig,
     start_date: str,
@@ -283,29 +454,55 @@ def fetch_partner_feed(
     cache: ApiResponseCache[tuple[list[dict[str, Any]], str]] | None = None,
     budget: DailyApiBudget | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
-    """Fetch only a configured official travel product feed."""
-    feed_url = safe_https_url(config.partner_feed_url)
-    if not feed_url:
-        return [], "not_configured"
-    active_cache = cache or API_CACHE
-    active_budget = budget or API_BUDGET
-    cache_key = f"partner:{feed_url}:{start_date}:{end_date}:{destination}:{people}:{theme}"
-    cached = active_cache.get(cache_key)
-    if cached is not None:
-        return cached
-    if not active_budget.try_consume("partner"):
-        return [], "quota"
-    response = requests.get(
-        feed_url,
-        params={"start_date": start_date, "end_date": end_date, "destination": destination, "people": people, "theme": theme},
-        headers={"Accept": "application/json"},
-        timeout=8,
+    """Fetch the legacy single official travel product feed."""
+    return fetch_partner_endpoint(
+        config.partner_feed_url, start_date, end_date, destination, people, theme,
+        provider_hint="공식 제휴사",
+        allowed_hosts=configured_partner_hosts(config.partner_feed_allowed_hosts),
+        cache=cache, budget=budget,
     )
-    response.raise_for_status()
-    items = normalized_partner_items(response.json())
-    result = items, "partner_feed" if items else "partner_empty"
-    active_cache.put(cache_key, result)
-    return result
+
+
+def fetch_partner_feeds(
+    config: ApiConfig,
+    start_date: str,
+    end_date: str,
+    destination: str,
+    people: str,
+    theme: str,
+    cache: ApiResponseCache[tuple[list[dict[str, Any]], str]] | None = None,
+    budget: DailyApiBudget | None = None,
+) -> tuple[list[dict[str, Any]], str, list[str], list[str]]:
+    """Merge the configured MyRealTrip, Klook, and legacy partner feeds."""
+    feeds = [
+        ("마이리얼트립", config.myrealtrip_api_url, config.myrealtrip_api_key, None),
+        ("Klook", config.klook_api_url, config.klook_api_key, None),
+        ("공식 제휴사", config.partner_feed_url, "", configured_partner_hosts(config.partner_feed_allowed_hosts)),
+    ]
+    configured = [(label, url, key, hosts) for label, url, key, hosts in feeds if safe_provider_url(url, label, hosts)]
+    if not configured:
+        return [], "not_configured", [], []
+    items: list[dict[str, Any]] = []
+    providers: list[str] = []
+    failed_providers: list[str] = []
+    failed = False
+    for label, url, key, hosts in configured:
+        try:
+            result, source = fetch_partner_endpoint(url, start_date, end_date, destination, people, theme, label, key, hosts, cache, budget)
+        except requests.RequestException:
+            failed = True
+            failed_providers.append(label)
+            continue
+        if source == "partner_feed":
+            providers.append(label)
+        elif source == "quota":
+            failed = True
+            failed_providers.append(label)
+        items.extend(result)
+    items.sort(key=lambda item: (not item["recommended"], item["price"]))
+    if items:
+        return items, "partner_feed", providers, failed_providers
+    return [], "partner_error" if failed else "partner_empty", providers, failed_providers
 
 
 def extract_reverse_address(payload: dict[str, Any]) -> str:
@@ -603,7 +800,7 @@ class TravelRequestHandler(BaseHTTPRequestHandler):
             bounded_param(params, "start_date"), bounded_param(params, "end_date"), today
         )
         try:
-            items, source = fetch_partner_feed(
+            items, source, providers, failed_providers = fetch_partner_feeds(
                 self.config,
                 start_date,
                 end_date,
@@ -612,9 +809,9 @@ class TravelRequestHandler(BaseHTTPRequestHandler):
                 bounded_param(params, "theme", 20),
             )
         except requests.RequestException:
-            self._send_json({"source": "partner_error", "items": [], "demo": True}, status=502)
+            self._send_json({"source": "partner_error", "items": [], "providers": [], "failedProviders": [], "demo": True}, status=502)
             return
-        self._send_json({"source": source, "items": items, "demo": source != "partner_feed"})
+        self._send_json({"source": source, "items": items, "providers": providers, "failedProviders": failed_providers, "demo": source != "partner_feed"})
 
     def _handle_location(self, params: dict[str, list[str]]) -> None:
         """Reverse-geocode browser coordinates without exposing map keys."""

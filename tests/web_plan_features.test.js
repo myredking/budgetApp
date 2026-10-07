@@ -298,7 +298,7 @@ test('공개 Worker의 가격 비교는 설정된 공식 피드만 정규화한�
   try {
     const response = await worker.default.fetch(
       new Request('https://courseon.test/api/price-comparison?destination=busan&start_date=20261010&end_date=20261012'),
-      { TRAVEL_PARTNER_FEED_URL: 'https://partner.example.com/feed' },
+      { TRAVEL_PARTNER_FEED_URL: 'https://partner.example.com/feed', PARTNER_FEED_ALLOWED_HOSTS: 'partner.example.com' },
     );
     const payload = await response.json();
     assert.equal(response.status, 200);
@@ -306,6 +306,83 @@ test('공개 Worker의 가격 비교는 설정된 공식 피드만 정규화한�
     assert.equal(payload.items.length, 2);
     assert.equal(payload.items[0].url, 'https://partner.example.com/deal');
     assert.equal(payload.items[1].url, '');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('공개 Worker는 마이리얼트립과 Klook 피드를 함께 비교한다', async () => {
+  const siteRoot = path.join(__dirname, '..', 'travel-site');
+  execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: siteRoot, stdio: 'pipe' });
+  const worker = await import(`${pathToFileURL(path.join(siteRoot, 'dist', 'server', 'index.js')).href}?multi-price=${Date.now()}`);
+  const originalFetch = global.fetch;
+  global.fetch = async (request) => {
+    const url = String(request);
+    const payload = url.includes('myrealtrip')
+      ? { items: [{ productName: '부산 숙소', salePrice: '99000' }] }
+      : { products: [{ name: '부산 야경 투어', totalPrice: 45000 }] };
+    return new Response(JSON.stringify(payload), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const response = await worker.default.fetch(
+      new Request('https://courseon.test/api/price-comparison?destination=busan&start_date=20261010&end_date=20261012'),
+      {
+        MYREALTRIP_API_URL: 'https://api.myrealtrip.com/products',
+        MYREALTRIP_API_KEY: 'mtr-key',
+        KLOOK_API_URL: 'https://api.klook.com/products',
+        KLOOK_API_KEY: 'klook-key',
+      },
+    );
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.source, 'partner_feed');
+    assert.deepEqual(payload.providers, ['마이리얼트립', 'Klook']);
+    assert.deepEqual(payload.failedProviders, []);
+    assert.deepEqual(payload.items.map((item) => item.title), ['부산 야경 투어', '부산 숙소']);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('공개 Worker는 허용되지 않은 제휴 API 도메인에 요청하지 않는다', async () => {
+  const siteRoot = path.join(__dirname, '..', 'travel-site');
+  execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: siteRoot, stdio: 'pipe' });
+  const worker = await import(`${pathToFileURL(path.join(siteRoot, 'dist', 'server', 'index.js')).href}?provider-host=${Date.now()}`);
+  const originalFetch = global.fetch;
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    return new Response('{}', { status: 200 });
+  };
+  try {
+    const response = await worker.default.fetch(
+      new Request('https://courseon.test/api/price-comparison?destination=busan'),
+      { MYREALTRIP_API_URL: 'https://malicious.example/products', MYREALTRIP_API_KEY: 'secret' },
+    );
+    const payload = await response.json();
+    assert.equal(payload.source, 'not_configured');
+    assert.equal(calls, 0);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('공개 Worker는 지연되는 제휴 피드를 타임아웃 처리한다', async () => {
+  const siteRoot = path.join(__dirname, '..', 'travel-site');
+  execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: siteRoot, stdio: 'pipe' });
+  const worker = await import(`${pathToFileURL(path.join(siteRoot, 'dist', 'server', 'index.js')).href}?provider-timeout=${Date.now()}`);
+  const originalFetch = global.fetch;
+  global.fetch = async (_request, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener('abort', () => reject(new Error('aborted')));
+  });
+  try {
+    const response = await worker.default.fetch(
+      new Request('https://courseon.test/api/price-comparison?destination=busan'),
+      { MYREALTRIP_API_URL: 'https://api.myrealtrip.com/products', MYREALTRIP_API_KEY: 'secret', PARTNER_TIMEOUT_MS: '1' },
+    );
+    const payload = await response.json();
+    assert.equal(payload.source, 'partner_error');
+    assert.deepEqual(payload.failedProviders, ['마이리얼트립']);
   } finally {
     global.fetch = originalFetch;
   }

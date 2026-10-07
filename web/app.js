@@ -1335,29 +1335,37 @@ function renderPriceComparisonState(title, message) {
   priceComparisonList.append(empty);
 }
 
-function renderPriceComparisons(items, source) {
+function partnerProviderLabel(providers, fallback = '공식 제휴사') {
+  const labels = Array.isArray(providers) ? providers.filter(Boolean) : [];
+  return labels.length ? labels.join(' · ') : fallback;
+}
+
+function renderPriceComparisons(items, source, providers = [], failedProviders = []) {
+  const fallback = source === 'not_configured' ? '마이리얼트립 · Klook' : '공식 제휴사';
+  const providerLabel = partnerProviderLabel(providers, fallback);
+  const failedLabel = Array.isArray(failedProviders) && failedProviders.length ? ` · ${failedProviders.join(' · ')} 조회 실패` : '';
   if (source === 'loading') {
     priceComparisonStatus.textContent = '공식 제휴 상품 피드를 확인하고 있어요.';
     renderPriceComparisonState('가격 비교 준비 중', '선택한 지역과 날짜에 맞는 공식 상품을 확인하고 있어요.');
     return;
   }
   if (source === 'partner_feed' && items.length) {
-    priceComparisonStatus.textContent = `${items.length}개 공식 상품을 가격순·추천순으로 비교했어요.`;
+    priceComparisonStatus.textContent = `${providerLabel} ${items.length}개 상품을 가격순·추천순으로 비교했어요.${failedLabel}`;
     priceComparisonList.replaceChildren(...items.slice(0, 6).map(createPriceComparisonCard));
     return;
   }
   if (source === 'partner_empty') {
-    priceComparisonStatus.textContent = '공식 제휴 피드 연결됨';
+    priceComparisonStatus.textContent = `${providerLabel} 공식 피드 연결됨`;
     renderPriceComparisonState('조건에 맞는 상품이 없어요', '여행 날짜나 지역을 바꾸면 다시 확인할 수 있어요.');
     return;
   }
   if (source === 'partner_error') {
-    priceComparisonStatus.textContent = '공식 제휴 피드 조회 실패';
+    priceComparisonStatus.textContent = `${providerLabel} 피드 조회 실패${failedLabel}`;
     renderPriceComparisonState('가격 비교를 불러오지 못했어요', '잠시 후 가격 다시 확인을 눌러 재시도해 주세요.');
     return;
   }
-  priceComparisonStatus.textContent = '공식 제휴 피드 연결 대기 중';
-  renderPriceComparisonState('공식 제휴 상품 연결 준비 중', '여행사·숙박·교통사의 공식 상품 피드가 연결되면 실제 가격과 제휴 링크를 보여드릴게요.');
+  priceComparisonStatus.textContent = `${providerLabel} 제휴 연결 대기 중`;
+  renderPriceComparisonState('공식 제휴 상품 연결 준비 중', '마이리얼트립과 Klook의 제휴 승인·API 설정이 완료되면 실제 가격과 제휴 링크를 보여드릴게요.');
 }
 
 async function loadPriceComparisons() {
@@ -1375,7 +1383,7 @@ async function loadPriceComparisons() {
     const payload = await response.json();
     if (requestId !== priceRequestId) return;
     const items = Array.isArray(payload.items) ? payload.items : [];
-    renderPriceComparisons(items, payload.source || 'not_configured');
+    renderPriceComparisons(items, payload.source || 'not_configured', payload.providers, payload.failedProviders);
   } catch (error) {
     if (requestId === priceRequestId) renderPriceComparisons([], 'partner_error');
   }

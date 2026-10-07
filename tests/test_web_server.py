@@ -8,12 +8,14 @@ from web.server import (
     extract_reverse_address,
     fetch_naver_places,
     fetch_partner_feed,
+    fetch_partner_feeds,
     normalize_naver_item,
     normalize_partner_item,
     normalize_tour_event,
     normalized_date,
     normalized_date_range,
     public_config,
+    safe_provider_url,
     configured_host,
     tour_area_code,
 )
@@ -248,7 +250,10 @@ def test_partner_feed_is_cached_ranked_and_called_with_trip_conditions(monkeypat
         return FakeResponse()
 
     monkeypatch.setattr("web.server.requests.get", fake_get)
-    config = ApiConfig("", "", "", "", "", "https://partner.example.com/feed")
+    config = ApiConfig(
+        "", "", "", "", "", "https://partner.example.com/feed",
+        partner_feed_allowed_hosts="partner.example.com",
+    )
     budget = DailyApiBudget({"partner": 1})
     cache = ApiResponseCache(ttl_seconds=600, clock=lambda: 100.0)
 
@@ -259,6 +264,88 @@ def test_partner_feed_is_cached_ranked_and_called_with_trip_conditions(monkeypat
     assert first[0][0]["title"] == "추천 상품"
     assert calls[0][1]["params"]["destination"] == "busan"
     assert len(calls) == 1
+
+
+def test_configured_partner_feeds_merge_myrealtrip_and_klook_products(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+
+    class FakeResponse:
+        def __init__(self, payload: dict) -> None:
+            self.payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return self.payload
+
+    def fake_get(url: str, **kwargs: object) -> FakeResponse:
+        calls.append((url, kwargs))
+        if "myrealtrip" in url:
+            return FakeResponse({"items": [{"productName": "부산 숙소", "salePrice": "99000"}]})
+        return FakeResponse({"products": [{"name": "부산 야경 투어", "totalPrice": 45000}]})
+
+    monkeypatch.setattr("web.server.requests.get", fake_get)
+    config = ApiConfig(
+        "", "", "", "", "", "",
+        "https://api.myrealtrip.com/products", "mtr-key",
+        "https://api.klook.com/products", "klook-key",
+    )
+    budget = DailyApiBudget({"partner": 2})
+
+    items, source, providers, failed = fetch_partner_feeds(
+        config, "20261011", "20261013", "busan", "2", "date",
+        cache=ApiResponseCache(ttl_seconds=600, clock=lambda: 100.0), budget=budget,
+    )
+
+    assert source == "partner_feed"
+    assert providers == ["마이리얼트립", "Klook"]
+    assert failed == []
+    assert [item["title"] for item in items] == ["부산 야경 투어", "부산 숙소"]
+    assert calls[0][1]["headers"]["Authorization"] == "Bearer mtr-key"
+    assert calls[1][1]["headers"]["X-API-Key"] == "klook-key"
+
+
+def test_partner_feed_reports_quota_provider_without_calling_untrusted_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+
+    def fake_get(url: str, **kwargs: object) -> object:
+        calls.append((url, kwargs))
+
+        class FakeResponse:
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict:
+                return {"items": [{"title": "마이리얼트립 상품", "price": 10000}]}
+
+        return FakeResponse()
+
+    monkeypatch.setattr("web.server.requests.get", fake_get)
+    config = ApiConfig(
+        "", "", "", "", "", "",
+        "https://api.myrealtrip.com/products", "mtr-key",
+        "https://api.klook.com/products", "klook-key",
+    )
+    budget = DailyApiBudget({"partner": 1})
+
+    items, source, providers, failed = fetch_partner_feeds(
+        config, "20261010", "20261012", "busan", "2", "date", budget=budget,
+    )
+
+    assert source == "partner_feed"
+    assert [item["title"] for item in items] == ["마이리얼트립 상품"]
+    assert providers == ["마이리얼트립"]
+    assert failed == ["Klook"]
+    assert [call[0] for call in calls] == ["https://api.myrealtrip.com/products"]
+    assert safe_provider_url("https://malicious.example/products", "Klook") == ""
+    assert safe_provider_url("https://api.klook.com/products?api_key=secret", "Klook") == ""
+
+
+def test_partner_feeds_return_a_stable_empty_shape_when_no_provider_is_configured() -> None:
+    result = fetch_partner_feeds(ApiConfig("", "", "", "", ""), "20261010", "20261012", "busan", "2", "date")
+
+    assert result == ([], "not_configured", [], [])
 
 
 def test_api_config_reports_demo_mode_without_credentials() -> None:
