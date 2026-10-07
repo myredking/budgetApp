@@ -106,6 +106,12 @@ def configured_limit(name: str, fallback: int) -> int:
         return fallback
 
 
+def configured_flag(name: str, fallback: bool) -> bool:
+    """Read a conservative boolean flag from the environment."""
+    value = os.getenv(name, str(fallback)).strip().lower()
+    return value not in {"0", "false", "no", "off"}
+
+
 def configured_host() -> str:
     """Return the interface used for local and LAN browser access."""
     return os.getenv("WEB_HOST", "0.0.0.0").strip() or "0.0.0.0"
@@ -139,9 +145,10 @@ class ApiConfig:
     klook_api_url: str = ""
     klook_api_key: str = ""
     partner_feed_allowed_hosts: str = ""
+    cost_safe_mode: bool = True
 
     @classmethod
-    def from_env(cls) -> "ApiConfig":
+    def from_env(cls: type["ApiConfig"]) -> "ApiConfig":
         """Build configuration from environment variables."""
         load_dotenv()
         return cls(
@@ -156,6 +163,7 @@ class ApiConfig:
             myrealtrip_api_key=os.getenv("MYREALTRIP_API_KEY", ""),
             klook_api_url=os.getenv("KLOOK_API_URL", ""),
             klook_api_key=os.getenv("KLOOK_API_KEY", ""),
+            cost_safe_mode=configured_flag("COST_SAFE_MODE", True),
         )
 
     @property
@@ -455,12 +463,30 @@ def fetch_partner_feed(
     budget: DailyApiBudget | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
     """Fetch the legacy single official travel product feed."""
+    if config.cost_safe_mode:
+        return [], "cost_guard"
     return fetch_partner_endpoint(
         config.partner_feed_url, start_date, end_date, destination, people, theme,
         provider_hint="공식 제휴사",
         allowed_hosts=configured_partner_hosts(config.partner_feed_allowed_hosts),
         cache=cache, budget=budget,
     )
+
+
+def configured_partner_feeds(
+    config: ApiConfig,
+) -> list[tuple[str, str, str, set[str] | None]]:
+    """Return only official partner endpoints that pass URL validation."""
+    feeds = [
+        ("마이리얼트립", config.myrealtrip_api_url, config.myrealtrip_api_key, None),
+        ("Klook", config.klook_api_url, config.klook_api_key, None),
+        ("공식 제휴사", config.partner_feed_url, "", configured_partner_hosts(config.partner_feed_allowed_hosts)),
+    ]
+    return [
+        (label, url, key, hosts)
+        for label, url, key, hosts in feeds
+        if safe_provider_url(url, label, hosts)
+    ]
 
 
 def fetch_partner_feeds(
@@ -474,12 +500,9 @@ def fetch_partner_feeds(
     budget: DailyApiBudget | None = None,
 ) -> tuple[list[dict[str, Any]], str, list[str], list[str]]:
     """Merge the configured MyRealTrip, Klook, and legacy partner feeds."""
-    feeds = [
-        ("마이리얼트립", config.myrealtrip_api_url, config.myrealtrip_api_key, None),
-        ("Klook", config.klook_api_url, config.klook_api_key, None),
-        ("공식 제휴사", config.partner_feed_url, "", configured_partner_hosts(config.partner_feed_allowed_hosts)),
-    ]
-    configured = [(label, url, key, hosts) for label, url, key, hosts in feeds if safe_provider_url(url, label, hosts)]
+    if config.cost_safe_mode:
+        return [], "cost_guard", [], []
+    configured = configured_partner_feeds(config)
     if not configured:
         return [], "not_configured", [], []
     items: list[dict[str, Any]] = []

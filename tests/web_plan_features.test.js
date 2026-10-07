@@ -247,6 +247,11 @@ test('제휴 가격 비교와 동행 날짜·채팅 UI가 연결되어 있다', 
   assert.match(workerSource, /TRAVEL_PARTNER_FEED_URL/);
 });
 
+test('비용 보호 모드의 중단 안내가 웹 화면에 연결되어 있다', () => {
+  assert.match(appSource, /source === 'cost_guard'/);
+  assert.match(appSource, /비용 보호 모드로 제휴 조회를 일시 중단했어요/);
+});
+
 test('공개 Worker 빌드는 카드용 WebP 자산을 바이너리로 포함한다', () => {
   ['travel-food.webp', 'travel-culture.webp', 'travel-nature.webp'].forEach((asset) => {
     assert.match(buildSource, new RegExp(asset.replace('.', '\\.') ));
@@ -298,7 +303,7 @@ test('공개 Worker의 가격 비교는 설정된 공식 피드만 정규화한�
   try {
     const response = await worker.default.fetch(
       new Request('https://courseon.test/api/price-comparison?destination=busan&start_date=20261010&end_date=20261012'),
-      { TRAVEL_PARTNER_FEED_URL: 'https://partner.example.com/feed', PARTNER_FEED_ALLOWED_HOSTS: 'partner.example.com' },
+      { TRAVEL_PARTNER_FEED_URL: 'https://partner.example.com/feed', PARTNER_FEED_ALLOWED_HOSTS: 'partner.example.com', COST_SAFE_MODE: 'false' },
     );
     const payload = await response.json();
     assert.equal(response.status, 200);
@@ -331,6 +336,7 @@ test('공개 Worker는 마이리얼트립과 Klook 피드를 함께 비교한다
         MYREALTRIP_API_KEY: 'mtr-key',
         KLOOK_API_URL: 'https://api.klook.com/products',
         KLOOK_API_KEY: 'klook-key',
+        COST_SAFE_MODE: 'false',
       },
     );
     const payload = await response.json();
@@ -357,10 +363,36 @@ test('공개 Worker는 허용되지 않은 제휴 API 도메인에 요청하지 
   try {
     const response = await worker.default.fetch(
       new Request('https://courseon.test/api/price-comparison?destination=busan'),
-      { MYREALTRIP_API_URL: 'https://malicious.example/products', MYREALTRIP_API_KEY: 'secret' },
+      { MYREALTRIP_API_URL: 'https://malicious.example/products', MYREALTRIP_API_KEY: 'secret', COST_SAFE_MODE: 'false' },
     );
     const payload = await response.json();
     assert.equal(payload.source, 'not_configured');
+    assert.equal(calls, 0);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('공개 Worker는 비용 보호 모드에서 제휴 피드를 호출하지 않는다', async () => {
+  const siteRoot = path.join(__dirname, '..', 'travel-site');
+  execFileSync(process.execPath, ['scripts/build-site.mjs'], { cwd: siteRoot, stdio: 'pipe' });
+  const worker = await import(`${pathToFileURL(path.join(siteRoot, 'dist', 'server', 'index.js')).href}?cost-guard=${Date.now()}`);
+  const originalFetch = global.fetch;
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ items: [{ title: '차단되어야 하는 상품', price: 10000 }] }), { status: 200 });
+  };
+  try {
+    const response = await worker.default.fetch(
+      new Request('https://courseon.test/api/price-comparison?destination=busan'),
+      { MYREALTRIP_API_URL: 'https://api.myrealtrip.com/products', MYREALTRIP_API_KEY: 'secret' },
+    );
+    const payload = await response.json();
+    assert.equal(payload.source, 'cost_guard');
+    assert.deepEqual(payload.items, []);
+    assert.deepEqual(payload.providers, []);
+    assert.deepEqual(payload.failedProviders, []);
     assert.equal(calls, 0);
   } finally {
     global.fetch = originalFetch;
@@ -378,7 +410,7 @@ test('공개 Worker는 지연되는 제휴 피드를 타임아웃 처리한다',
   try {
     const response = await worker.default.fetch(
       new Request('https://courseon.test/api/price-comparison?destination=busan'),
-      { MYREALTRIP_API_URL: 'https://api.myrealtrip.com/products', MYREALTRIP_API_KEY: 'secret', PARTNER_TIMEOUT_MS: '1' },
+      { MYREALTRIP_API_URL: 'https://api.myrealtrip.com/products', MYREALTRIP_API_KEY: 'secret', PARTNER_TIMEOUT_MS: '1', COST_SAFE_MODE: 'false' },
     );
     const payload = await response.json();
     assert.equal(payload.source, 'partner_error');

@@ -1349,6 +1349,11 @@ function renderPriceComparisons(items, source, providers = [], failedProviders =
     renderPriceComparisonState('가격 비교 준비 중', '선택한 지역과 날짜에 맞는 공식 상품을 확인하고 있어요.');
     return;
   }
+  if (source === 'cost_guard') {
+    priceComparisonStatus.textContent = '비용 보호 모드로 제휴 조회를 일시 중단했어요.';
+    renderPriceComparisonState('가격 비교는 잠시 쉬고 있어요', '과금 가능성이 있는 제휴 조회를 막아두었어요. 무료 한도와 이용 조건이 확인되면 다시 연결할 수 있어요.');
+    return;
+  }
   if (source === 'partner_feed' && items.length) {
     priceComparisonStatus.textContent = `${providerLabel} ${items.length}개 상품을 가격순·추천순으로 비교했어요.${failedLabel}`;
     priceComparisonList.replaceChildren(...items.slice(0, 6).map(createPriceComparisonCard));

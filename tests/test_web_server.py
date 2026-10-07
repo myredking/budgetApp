@@ -253,6 +253,7 @@ def test_partner_feed_is_cached_ranked_and_called_with_trip_conditions(monkeypat
     config = ApiConfig(
         "", "", "", "", "", "https://partner.example.com/feed",
         partner_feed_allowed_hosts="partner.example.com",
+        cost_safe_mode=False,
     )
     budget = DailyApiBudget({"partner": 1})
     cache = ApiResponseCache(ttl_seconds=600, clock=lambda: 100.0)
@@ -290,6 +291,7 @@ def test_configured_partner_feeds_merge_myrealtrip_and_klook_products(monkeypatc
         "", "", "", "", "", "",
         "https://api.myrealtrip.com/products", "mtr-key",
         "https://api.klook.com/products", "klook-key",
+        cost_safe_mode=False,
     )
     budget = DailyApiBudget({"partner": 2})
 
@@ -326,6 +328,7 @@ def test_partner_feed_reports_quota_provider_without_calling_untrusted_host(monk
         "", "", "", "", "", "",
         "https://api.myrealtrip.com/products", "mtr-key",
         "https://api.klook.com/products", "klook-key",
+        cost_safe_mode=False,
     )
     budget = DailyApiBudget({"partner": 1})
 
@@ -343,9 +346,39 @@ def test_partner_feed_reports_quota_provider_without_calling_untrusted_host(monk
 
 
 def test_partner_feeds_return_a_stable_empty_shape_when_no_provider_is_configured() -> None:
-    result = fetch_partner_feeds(ApiConfig("", "", "", "", ""), "20261010", "20261012", "busan", "2", "date")
+    result = fetch_partner_feeds(
+        ApiConfig("", "", "", "", "", cost_safe_mode=False),
+        "20261010", "20261012", "busan", "2", "date",
+    )
 
     assert result == ([], "not_configured", [], [])
+
+
+def test_partner_feeds_stop_before_network_when_cost_safe_mode_is_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+
+    def fake_get(url: str, **kwargs: object) -> object:
+        calls.append((url, kwargs))
+        raise AssertionError("cost-safe mode must block the partner request")
+
+    monkeypatch.setattr("web.server.requests.get", fake_get)
+    config = ApiConfig(
+        "", "", "", "", "", "",
+        "https://api.myrealtrip.com/products", "mtr-key",
+    )
+
+    result = fetch_partner_feeds(config, "20261010", "20261012", "busan", "2", "date")
+
+    assert result == ([], "cost_guard", [], [])
+    assert calls == []
+
+
+def test_cost_safe_mode_reads_false_only_when_explicitly_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COST_SAFE_MODE", "false")
+    assert ApiConfig.from_env().cost_safe_mode is False
+
+    monkeypatch.setenv("COST_SAFE_MODE", "true")
+    assert ApiConfig.from_env().cost_safe_mode is True
 
 
 def test_api_config_reports_demo_mode_without_credentials() -> None:
