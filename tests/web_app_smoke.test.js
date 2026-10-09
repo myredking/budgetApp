@@ -129,12 +129,14 @@ function buildElements() {
     'budget-fit-button', 'save-plan-button', 'history-button', 'refresh-plan-button', 'saved-plans-panel',
     'saved-plans-list', 'alternate-picker', 'alternate-list', 'close-history-button', 'close-alternate-button',
     'nearby-list', 'nearby-title', 'nearby-source-status', 'event-source-status', 'data-mode-pill',
-    'today-list', 'today-label', 'event-list', 'event-heading', 'food-search', 'food-query', 'food-type',
-    'map-points', 'map-footer-text', 'map-destination', 'nearby-map-note', 'nearby-location-button',
+    'today-list', 'today-label', 'event-list', 'event-heading', 'event-start-date', 'event-end-date',
+    'event-region-query', 'event-search-button', 'event-filter-status', 'food-search', 'food-query', 'food-type',
+    'map-points', 'map-search-links', 'map-footer-text', 'map-destination', 'nearby-map-note', 'nearby-location-button',
     'nearby-map-button', 'nearby-sort', 'nearby-sort-hint', 'naver-map', 'map-fallback', 'map-provider-status',
     'integration-title', 'integration-copy', 'integration-status', 'result-title', 'result-subtitle',
     'average-rating', 'route-heading', 'route-count', 'estimated-total', 'daily-budget', 'budget-message',
-    'planner-grid', 'result-section', 'community-section', 'discovery-section', 'events-section', 'recommendation-map-card',
+    'planner-grid', 'result-section', 'community-section', 'discovery-section', 'events-section', 'price-comparison-section',
+    'saved-plans-panel', 'recommendation-map-card',
     'locate-button', 'food-search-button', 'share-plan-button', 'share-plan-community-button',
     'community-search', 'community-region-filter', 'community-theme-filter', 'community-date-filter', 'community-sort',
     'community-post-list', 'open-community-form-button', 'community-form-panel', 'community-post-form',
@@ -178,7 +180,7 @@ function buildElements() {
     button.setAttribute('aria-pressed', String(index === 0));
     return button;
   });
-  elements.quickTabs = ['planner-grid', 'result-section', 'community-section', 'discovery-section', 'events-section', 'saved-plans-panel'].map((target, index) => {
+  elements.quickTabs = ['planner-grid', 'result-section', 'discovery-section', 'events-section', 'price-comparison-section', 'community-section', 'saved-plans-panel'].map((target, index) => {
     const link = new FakeElement('a');
     link.dataset.quickNav = target;
     link.className = index === 0 ? 'quick-tab is-active' : 'quick-tab';
@@ -188,13 +190,13 @@ function buildElements() {
   return elements;
 }
 
-function createHarness({ hash = '', nearbyItems = [], priceItems = [], failLocation = false, locationAddress = '서울특별시 서울시', innerWidth = 1024 } = {}) {
+function createHarness({ hash = '', nearbyItems = [], priceItems = [], savedPlans = [], failLocation = false, locationAddress = '서울특별시 서울시', innerWidth = 1024 } = {}) {
   const elements = buildElements();
   let eventCalls = 0;
   let failEvents = false;
   const nearbyRequests = [];
   const eventRequests = [];
-  const storage = new Map();
+  const storage = new Map([['travel-planner-plans-v1', JSON.stringify(savedPlans)]]);
   const navigator = { serviceWorker: { register: async () => {} } };
   const document = {
     head: new FakeElement('head'),
@@ -322,6 +324,75 @@ test('전국 후보 화면은 실제 도시 동선과 다른 안내를 보여준
   assert.match(harness.elements.get('#result-subtitle').textContent, /전국 후보예요/);
   assert.match(harness.elements.get('#route-heading').textContent, /오늘의 전국 후보/);
   assert.match(textFrom(harness.elements.get('#itinerary')), /도시 선택 후 이동 계산/);
+});
+
+test('관련 사진이 없는 추천 동선은 이미지 영역 없이 텍스트로 표시한다', async () => {
+  const harness = createHarness();
+  await settle();
+  const firstPlace = harness.elements.get('#itinerary').children[0];
+  assert.ok(firstPlace);
+  assert.equal(firstPlace.find((node) => node.tagName === 'img'), null);
+});
+
+test('저장한 실시간 장소의 사진은 계획을 다시 열어도 유지된다', async () => {
+  const tripDate = dateOffset(1);
+  const harness = createHarness({
+    savedPlans: [{
+      id: 'saved-live-place', title: '실시간 사진 코스', savedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      form: { destination: 'seoul', locationQuery: '', theme: 'date', startDate: tripDate, endDate: tripDate, startTime: '10:00', endTime: '20:00', noTimeLimit: false, people: '2', transport: 'public', budget: '' },
+      places: [{ title: '실시간 장소', category: '관광', duration: '1시간', distance: '도보', review: '사진 장소', reviews: '네이버 확인', rating: null, cost: 0, costUnknown: true, day: 1, time: '10:00', live: true, image: 'https://images.example.com/place.jpg', link: 'https://map.naver.com/p/search/place' }],
+    }],
+  });
+  await settle();
+  await harness.elements.get('#history-button').dispatchEvent({ type: 'click', target: harness.elements.get('#history-button') });
+  const list = harness.elements.get('#saved-plans-list');
+  const loadButton = list.find((node) => node.tagName === 'button' && node.dataset.planAction === 'load');
+  assert.ok(loadButton);
+  await list.dispatchEvent({ type: 'click', target: loadButton });
+  await settle();
+  assert.ok(harness.elements.get('#itinerary').find((node) => node.tagName === 'img'));
+});
+
+test('지도 fallback은 동선 장소를 네이버 검색 링크로 안내한다', async () => {
+  const harness = createHarness();
+  await settle();
+  const links = harness.elements.get('#map-search-links');
+  assert.ok(links.children.some((node) => node.tagName === 'a'));
+  assert.match(textFrom(links), /네이버 지도에서 위치 확인/);
+});
+
+test('행사 조회는 입력한 기간과 지역으로 다시 검색한다', async () => {
+  const harness = createHarness();
+  await settle();
+  const start = harness.elements.get('#event-start-date');
+  const end = harness.elements.get('#event-end-date');
+  const region = harness.elements.get('#event-region-query');
+  start.value = '2026-10-10';
+  end.value = '2026-10-12';
+  region.value = '부산 해운대구';
+  await start.dispatchEvent({ type: 'change', target: start });
+  await end.dispatchEvent({ type: 'change', target: end });
+  await region.dispatchEvent({ type: 'change', target: region });
+  await harness.elements.get('#event-search-button').dispatchEvent({ type: 'click', target: harness.elements.get('#event-search-button') });
+  await settle();
+  const request = harness.getEventRequests().at(-1);
+  assert.match(request, /start_date=20261010/);
+  assert.match(request, /end_date=20261012/);
+  assert.match(request, /destination=%EB%B6%80%EC%82%B0(?:\+|%20)%ED%95%B4%EC%9A%B4%EB%8C%80%EA%B5%AC/);
+});
+
+test('모호한 구 이름은 도시명을 함께 입력하도록 안내한다', async () => {
+  const harness = createHarness();
+  await settle();
+  const before = harness.getEventRequests().length;
+  const region = harness.elements.get('#event-region-query');
+  region.value = '중구';
+  await region.dispatchEvent({ type: 'change', target: region });
+  await settle();
+  assert.equal(harness.getEventRequests().length, before);
+  assert.match(harness.elements.get('#event-filter-status').textContent, /도시명을 함께/);
+  assert.doesNotMatch(textFrom(harness.elements.get('#event-list')), /강남페스티벌/);
+  assert.ok(harness.elements.get('#event-list').children[0].className.includes('event-empty'));
 });
 
 test('추천 동선 장소를 선택하면 순번 지도와 리뷰 패널을 표시한다', async () => {

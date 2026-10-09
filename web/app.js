@@ -193,10 +193,16 @@ const dataModePill = document.querySelector('#data-mode-pill');
 const todayList = document.querySelector('#today-list');
 const eventList = document.querySelector('#event-list');
 const eventHeading = document.querySelector('#event-heading');
+const eventStartDateInput = document.querySelector('#event-start-date');
+const eventEndDateInput = document.querySelector('#event-end-date');
+const eventRegionQueryInput = document.querySelector('#event-region-query');
+const eventSearchButton = document.querySelector('#event-search-button');
+const eventFilterStatus = document.querySelector('#event-filter-status');
 const foodSearch = document.querySelector('#food-search');
 const foodQueryInput = document.querySelector('#food-query');
 const foodTypeInput = document.querySelector('#food-type');
 const mapPoints = document.querySelector('#map-points');
+const mapSearchLinks = document.querySelector('#map-search-links');
 const mapFooterText = document.querySelector('#map-footer-text');
 const mapDestination = document.querySelector('#map-destination');
 const nearbyMapNote = document.querySelector('#nearby-map-note');
@@ -392,6 +398,13 @@ function getPlaceImage(place) {
   }
   const asset = PHOTO_ASSETS[place?.photoAsset];
   return asset ? { src: asset, alt: `${place?.title || '추천 장소'} 관련 사진` } : null;
+}
+
+function getRoutePlaceImage(place) {
+  const external = place?.image || place?.image_url;
+  return isSafeExternalUrl(external)
+    ? { src: external, alt: `${place.title} 관련 사진` }
+    : null;
 }
 
 function getEventImage(event) {
@@ -655,6 +668,51 @@ function formatDateRange() {
   return `${start.toLocaleDateString('ko-KR', format)} ~ ${end.toLocaleDateString('ko-KR', format)}`;
 }
 
+function syncEventDateBounds() {
+  eventEndDateInput.min = eventStartDateInput.value || dateInput.value;
+  if (!eventEndDateInput.value || eventEndDateInput.value < eventEndDateInput.min) {
+    eventEndDateInput.value = eventEndDateInput.min;
+  }
+}
+
+function syncEventFiltersFromTrip() {
+  eventStartDateInput.value = dateInput.value;
+  eventEndDateInput.value = endDateInput.value;
+  syncEventDateBounds();
+}
+
+function getEventDateValues() {
+  return {
+    startDate: eventStartDateInput.value || dateInput.value,
+    endDate: eventEndDateInput.value || endDateInput.value || eventStartDateInput.value,
+  };
+}
+
+function formatEventDateRange() {
+  const { startDate, endDate } = getEventDateValues();
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return formatDateRange();
+  const format = { month: 'long', day: 'numeric' };
+  return startDate === endDate
+    ? start.toLocaleDateString('ko-KR', format)
+    : `${start.toLocaleDateString('ko-KR', format)} ~ ${end.toLocaleDateString('ko-KR', format)}`;
+}
+
+function getEventRegionQuery() {
+  return eventRegionQueryInput.value.trim();
+}
+
+function getEventRegionValidationMessage() {
+  return /^(중구|서구|동구|남구|북구)$/.test(getEventRegionQuery())
+    ? '여러 도시에 있는 구는 도시명을 함께 입력해 주세요. 예: 부산 중구'
+    : '';
+}
+
+function updateEventFilterStatus(scope, dateLabel) {
+  eventFilterStatus.textContent = `조회 기간 · ${dateLabel} · ${scope}`;
+}
+
 function focusRecommendation(index) {
   const recommendation = nearbyList.children[index];
   recommendation?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -729,9 +787,7 @@ function clearNaverMapMarkers() {
 function showMapFallback() {
   naverMapCanvas.hidden = true;
   mapFallback.hidden = false;
-  mapProviderStatus.textContent = window.naver?.maps
-    ? '미리보기 · 좌표가 있는 검색 결과에서 실제 지도 표시'
-    : '미리보기 · 지도 키 설정 후 실제 지도';
+  mapProviderStatus.textContent = '네이버 지도 검색 미리보기';
 }
 
 function renderNaverMap(items, markerClick = focusRecommendation, selectedIndex = null) {
@@ -796,28 +852,17 @@ function renderNaverMap(items, markerClick = focusRecommendation, selectedIndex 
   return true;
 }
 
-function getStaticMapPositions(count) {
-  const positions = [[22, 30], [52, 35], [72, 50], [43, 63], [29, 73], [67, 72]];
-  return Array.from({ length: count }, (_, index) => positions[index % positions.length]);
-}
-
-function getCoordinateMapPositions(items) {
-  const coordinates = items.map((place) => ({ x: Number(place.mapx), y: Number(place.mapy) }));
-  const valid = coordinates.filter(({ x, y }) => Number.isFinite(x) && Number.isFinite(y));
-  if (valid.length < 2) {
-    return null;
-  }
-  const xValues = valid.map(({ x }) => x);
-  const yValues = valid.map(({ y }) => y);
-  const minX = Math.min(...xValues);
-  const maxX = Math.max(...xValues);
-  const minY = Math.min(...yValues);
-  const maxY = Math.max(...yValues);
-  const xRange = maxX - minX || 1;
-  const yRange = maxY - minY || 1;
-  return coordinates.map(({ x, y }, index) => Number.isFinite(x) && Number.isFinite(y)
-    ? [18 + ((x - minX) / xRange) * 64, 20 + (1 - (y - minY) / yRange) * 62]
-    : getStaticMapPositions(items.length)[index]);
+function renderMapSearchLinks(items) {
+  mapSearchLinks.replaceChildren();
+  items.slice(0, 6).forEach((place, index) => {
+    const link = document.createElement('a');
+    link.className = 'map-search-link';
+    link.href = planLogic.createNaverSearchUrl(place.title);
+    link.target = '_blank';
+    link.rel = 'noreferrer';
+    link.textContent = `네이버 지도에서 위치 확인 · ${index + 1}. ${place.title}`;
+    mapSearchLinks.append(link);
+  });
 }
 
 function renderMapMarkers(items, sourceLabel = '데모 추천 장소', markerClick = focusRecommendation, selectedIndex = null) {
@@ -826,14 +871,11 @@ function renderMapMarkers(items, sourceLabel = '데모 추천 장소', markerCli
     return;
   }
   showMapFallback();
-  const positions = getCoordinateMapPositions(items) || getStaticMapPositions(items.length);
   mapPoints.replaceChildren();
-  items.slice(0, positions.length).forEach((place, index) => {
+  items.slice(0, 6).forEach((place, index) => {
     const marker = document.createElement('button');
     marker.type = 'button';
-    marker.className = 'map-point map-point-dynamic';
-    marker.style.left = `${positions[index][0]}%`;
-    marker.style.top = `${positions[index][1]}%`;
+    marker.className = 'map-point map-point-list';
     marker.title = place.title;
     marker.setAttribute('aria-label', `${index + 1}번 ${place.title}`);
     marker.classList.toggle('is-selected', index === selectedIndex);
@@ -841,20 +883,20 @@ function renderMapMarkers(items, sourceLabel = '데모 추천 장소', markerCli
     const number = document.createElement('span');
     number.textContent = String(index + 1);
     marker.append(number);
+    marker.append(document.createTextNode(place.title));
     mapPoints.append(marker);
   });
   if (planLogic.isValidLocation(currentLocation)) {
     const userMarker = document.createElement('span');
     userMarker.className = 'map-user-point';
-    userMarker.style.left = '50%';
-    userMarker.style.top = '50%';
     userMarker.title = '현재 위치';
     userMarker.setAttribute('aria-label', '현재 위치');
-    userMarker.textContent = '⌖';
+    userMarker.textContent = '⌖ 현재 위치';
     mapPoints.append(userMarker);
   }
+  renderMapSearchLinks(items);
   mapFooterText.textContent = items.length
-    ? `${items.length}곳 · ${sourceLabel} · 번호를 누르면 목록으로 이동해요`
+    ? `${items.length}곳 · 네이버 지도 검색 미리보기 · 번호를 누르면 목록으로 이동해요`
     : planLogic.isValidLocation(currentLocation) ? '현재 위치를 기준으로 추천 장소를 준비 중이에요' : '조건에 맞는 추천 장소가 없어요';
 }
 
@@ -1116,7 +1158,7 @@ async function loadNaverMapSdk() {
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('./sw.js?v=30').catch(() => {
+  navigator.serviceWorker.register('./sw.js?v=32').catch(() => {
     // The planner remains fully usable when service workers are unavailable.
   });
 }
@@ -1169,6 +1211,8 @@ function refreshLiveEvents() {
 }
 
 function getEventScope() {
+  const query = getEventRegionQuery();
+  if (query) return query;
   return destinationInput.value === 'nationwide' && !locationQueryInput.value.trim()
     ? '전국'
     : getSelectedLocationLabel();
@@ -1176,11 +1220,23 @@ function getEventScope() {
 
 function renderDemoEvents() {
   const scope = getEventScope();
-  const dateLabel = formatDateRange();
+  const dateLabel = formatEventDateRange();
+  const validationMessage = getEventRegionValidationMessage();
   currentEventSource = 'demo';
   updateDataSourceStatus();
+  updateEventFilterStatus(scope, dateLabel);
+  if (validationMessage) eventFilterStatus.textContent = validationMessage;
   eventHeading.textContent = scope === '전국' ? '전국 행사를 찾아볼까요?' : `${scope} 주변 행사를 찾아볼까요?`;
   eventList.replaceChildren();
+  if (validationMessage) {
+    const article = document.createElement('article');
+    article.className = 'event-item event-empty';
+    const message = document.createElement('p');
+    message.textContent = validationMessage;
+    article.append(message);
+    eventList.append(article);
+    return;
+  }
   EVENT_SAMPLES.forEach((event) => {
     const article = document.createElement('article');
     article.className = 'event-item';
@@ -1204,6 +1260,7 @@ function renderDemoEvents() {
 function renderLiveEvents(items) {
   currentEventSource = 'tour_api';
   updateDataSourceStatus();
+  updateEventFilterStatus(getEventScope(), formatEventDateRange());
   eventList.replaceChildren();
   items.slice(0, 3).forEach((event) => {
     const article = document.createElement('article');
@@ -1227,9 +1284,10 @@ function renderLiveEvents(items) {
 
 function renderNoLiveEvents() {
   const scope = getEventScope();
-  const dateLabel = formatDateRange();
+  const dateLabel = formatEventDateRange();
   currentEventSource = 'tour_empty';
   updateDataSourceStatus();
+  updateEventFilterStatus(scope, dateLabel);
   eventList.replaceChildren();
   const article = document.createElement('article');
   article.className = 'event-item event-empty';
@@ -1264,9 +1322,17 @@ function renderEventLiveError() {
 
 async function loadLiveEvents() {
   const requestId = ++eventsRequestId;
-  const startDate = dateInput.value.replaceAll('-', '');
-  const endDate = endDateInput.value.replaceAll('-', '');
-  const destination = destinationInput.value;
+  const validationMessage = getEventRegionValidationMessage();
+  if (validationMessage) {
+    currentEventSource = 'tour_empty';
+    updateDataSourceStatus();
+    eventFilterStatus.textContent = validationMessage;
+    return;
+  }
+  const { startDate: rawStartDate, endDate: rawEndDate } = getEventDateValues();
+  const startDate = rawStartDate.replaceAll('-', '');
+  const endDate = rawEndDate.replaceAll('-', '');
+  const destination = getEventRegionQuery() || destinationInput.value;
   currentEventSource = 'loading';
   updateDataSourceStatus();
   try {
@@ -1515,7 +1581,7 @@ function renderItinerary(places) {
     time.append(document.createTextNode(place.time));
     const info = document.createElement('div');
     info.className = 'place-info';
-    appendPhotoIfAvailable(info, getPlaceImage(place), `${place.title} 일정 사진`, 'place-photo');
+    appendPhotoIfAvailable(info, getRoutePlaceImage(place), `${place.title} 일정 사진`, 'place-photo');
     const titleRow = document.createElement('div');
     titleRow.className = 'place-title-row';
     const title = document.createElement('h4');
@@ -1980,6 +2046,7 @@ function normalizeSavedPlace(place) {
   if (!place || typeof place !== 'object') return null;
   const hasRating = hasNumericRating(place.rating);
   const rating = hasRating ? Number(place.rating) : null;
+  const image = isSafeExternalUrl(place.image || place.image_url) ? (place.image || place.image_url) : '';
   return {
     title: sanitizeSavedText(place.title, '추천 장소'),
     category: sanitizeSavedText(place.category, '추천'),
@@ -1998,6 +2065,7 @@ function normalizeSavedPlace(place) {
     mapy: place.mapy || '',
     address: sanitizeSavedText(place.address, ''),
     road_address: sanitizeSavedText(place.road_address, ''),
+    image,
   };
 }
 
@@ -2157,6 +2225,7 @@ function applyPlanSnapshot(plan, message) {
   dateInput.value = formData.startDate;
   endDateInput.value = formData.endDate;
   updateEndDateBounds();
+  syncEventFiltersFromTrip();
   startTimeInput.value = formData.startTime;
   endTimeInput.value = formData.endTime;
   noTimeLimitInput.checked = formData.noTimeLimit;
@@ -2248,6 +2317,7 @@ function createLiveAlternative(place, previous) {
     mapy: place.mapy || '',
     address: place.address || '',
     road_address: place.road_address || '',
+    image: place.image || place.image_url || '',
   };
 }
 
@@ -2434,6 +2504,7 @@ function setTodayAsDefault() {
   dateInput.value = `${year}-${month}-${day}`;
   endDateInput.value = `${year}-${month}-${day}`;
   updateEndDateBounds();
+  syncEventFiltersFromTrip();
 }
 
 async function resolveCurrentAddress(position) {
@@ -2638,6 +2709,7 @@ locationQueryInput.addEventListener('change', () => {
 dateInput.addEventListener('change', () => {
   startFreshPlan();
   updateEndDateBounds();
+  syncEventFiltersFromTrip();
   renderPlan();
   renderDemoEvents();
   loadLiveEvents();
@@ -2651,6 +2723,7 @@ endDateInput.addEventListener('change', () => {
   if (endDateInput.max && endDateInput.value > endDateInput.max) {
     endDateInput.value = endDateInput.max;
   }
+  syncEventFiltersFromTrip();
   renderPlan();
   renderDemoEvents();
   loadLiveEvents();
@@ -2672,6 +2745,25 @@ noTimeLimitInput.addEventListener('change', () => {
   renderDemoEvents();
   loadLiveEvents();
   loadPriceComparisons();
+});
+eventStartDateInput.addEventListener('change', () => {
+  syncEventDateBounds();
+  renderDemoEvents();
+  loadLiveEvents();
+});
+eventEndDateInput.addEventListener('change', () => {
+  syncEventDateBounds();
+  renderDemoEvents();
+  loadLiveEvents();
+});
+eventRegionQueryInput.addEventListener('change', () => {
+  renderDemoEvents();
+  loadLiveEvents();
+});
+eventSearchButton.addEventListener('click', () => {
+  syncEventDateBounds();
+  renderDemoEvents();
+  loadLiveEvents();
 });
 foodQueryInput.addEventListener('input', () => {
   foodQuery = foodQueryInput.value.trim();

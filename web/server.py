@@ -44,6 +44,17 @@ TOUR_AREA_CODES = {
     "daejeon-dunsan": "3", "daejeon-soje": "3", "daejeon-yuseong": "3",
     "jeju-aewol": "39", "jeju-jungmun": "39", "jeju-seogwipo": "39",
 }
+TOUR_TEXT_AREA_CODES = {
+    "서울": "1", "성수": "1", "강남": "1", "홍대": "1", "마포": "1", "서초": "1", "용산": "1", "성동": "1", "서대문": "1", "영등포": "1", "종로": "1", "잠실": "1", "송파": "1",
+    "인천": "2", "대전": "3", "대구": "4", "수성": "4", "동성로": "4", "광주": "5",
+    "부산": "6", "해운대": "6", "광안리": "6", "수영": "6", "부산진": "6", "동래": "6", "남포": "6", "울산": "7", "세종": "8",
+    "경기": "31", "수원": "31", "성남": "31", "고양": "31", "용인": "31", "강원": "32",
+    "춘천": "32", "원주": "32", "강릉": "32", "속초": "32", "충북": "33", "청주": "33",
+    "충남": "34", "천안": "34", "전북": "37", "전주": "37", "전남": "38", "여수": "38",
+    "경북": "35", "경주": "35", "포항": "35", "경남": "36", "창원": "36", "제주": "39",
+    "애월": "39", "중문": "39", "송도": "2", "구월": "2", "둔산": "3", "소제": "3",
+    "서울중구": "1", "부산중구": "6", "인천중구": "2", "대전중구": "3", "대구중구": "4",
+}
 load_dotenv()
 
 CacheValue = TypeVar("CacheValue")
@@ -188,8 +199,16 @@ def public_config(config: ApiConfig) -> dict[str, str]:
 
 
 def tour_area_code(destination: str) -> str:
-    """Return the Korea Tourism area code for a destination slug."""
-    return TOUR_AREA_CODES.get(destination, "")
+    """Return the Korea Tourism area code for a slug or Korean location query."""
+    key = destination.strip().lower()
+    direct = TOUR_AREA_CODES.get(key)
+    if direct:
+        return direct
+    compact = re.sub(r"\s+", "", key)
+    for term, code in sorted(TOUR_TEXT_AREA_CODES.items(), key=lambda item: len(item[0]), reverse=True):
+        if term in compact:
+            return code
+    return ""
 
 
 def strip_markup(value: str) -> str:

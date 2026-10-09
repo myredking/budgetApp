@@ -406,6 +406,15 @@ def test_tour_area_code_maps_city_selection_to_tourism_region() -> None:
     assert tour_area_code("suwon") == "31"
     assert tour_area_code("seoul-gangnam") == "1"
     assert tour_area_code("busan-haeundae") == "6"
+    assert tour_area_code("해운대구") == "6"
+    assert tour_area_code("성수동") == "1"
+    assert tour_area_code("마포구") == "1"
+    assert tour_area_code("서초구") == "1"
+    assert tour_area_code("수영구") == "6"
+    assert tour_area_code("용산구") == "1"
+    assert tour_area_code("동래구") == "6"
+    assert tour_area_code("부산 중구") == "6"
+    assert tour_area_code("중구") == ""
     assert tour_area_code("nationwide") == ""
 
 

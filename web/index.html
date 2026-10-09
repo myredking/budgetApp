@@ -13,10 +13,10 @@
     />
     <title>코스온 | 국내 여행 코스 플래너</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%2318263d'/%3E%3Cpath d='M18 43 30 18l6 13 10-7' fill='none' stroke='%23f5c36b' stroke-linecap='round' stroke-linejoin='round' stroke-width='6'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="styles.css?v=30" />
+    <link rel="stylesheet" href="styles.css?v=32" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <script src="plan_logic.js?v=30" defer></script>
-    <script src="app.js?v=30" defer></script>
+    <script src="plan_logic.js?v=32" defer></script>
+    <script src="app.js?v=32" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -43,10 +43,13 @@
             <span>04</span><strong>주변 추천</strong><small>식당·카페 찾기</small>
           </a>
           <a class="quick-tab" href="#events-section" data-quick-nav="events-section">
-            <span>05</span><strong>행사·축제</strong><small>오늘의 이벤트</small>
+            <span>05</span><strong>행사·축제</strong><small>기간·지역 검색</small>
+          </a>
+          <a class="quick-tab" href="#price-comparison-section" data-quick-nav="price-comparison-section">
+            <span>06</span><strong>여행 상품</strong><small>가격 비교</small>
           </a>
           <a class="quick-tab" href="#saved-plans-panel" data-quick-nav="saved-plans-panel">
-            <span>06</span><strong>저장 계획</strong><small>이전 코스 열기</small>
+            <span>07</span><strong>저장 계획</strong><small>이전 코스 열기</small>
           </a>
         </div>
       </nav>
@@ -390,15 +393,13 @@
             <div class="map-surface">
               <div id="naver-map" class="naver-map" hidden aria-label="네이버 지도"></div>
               <div id="map-fallback" class="map-fallback" aria-label="지도 미리보기">
-                <div class="map-grid-lines"></div>
-                <div class="map-river"></div>
-                <div class="map-route route-one"></div>
-                <div class="map-route route-two"></div>
+                <div class="map-preview-heading">
+                  <span>네이버 지도 미리보기</span>
+                  <strong>장소별 위치를 네이버 지도에서 확인하세요</strong>
+                  <p>공식 좌표가 있는 검색 결과는 실제 네이버 지도로 표시합니다.</p>
+                </div>
                 <div id="map-points" class="map-points"></div>
-                <div class="map-label map-label-one">성수</div>
-                <div class="map-label map-label-two">서울숲</div>
-                <div class="map-label map-label-three">한강</div>
-                <div class="map-compass">N</div>
+                <div id="map-search-links" class="map-search-links" aria-label="네이버 지도 장소 검색"></div>
               </div>
               <div class="map-provider">NAVER MAP · <span id="map-destination">서울</span><br /><span id="map-provider-status">실시간 지도 연결 대기 중</span></div>
             </div>
@@ -414,18 +415,6 @@
           </div>
           <span id="integration-status" class="integration-status">확인 중</span>
         </div>
-      </section>
-
-      <section id="saved-plans-panel" class="saved-plans-panel" hidden aria-labelledby="saved-plans-title">
-        <div class="result-heading saved-plans-heading">
-          <div>
-            <p class="section-kicker">YOUR TRIP ARCHIVE</p>
-            <h2 id="saved-plans-title">저장된 여행 계획</h2>
-            <p class="muted-copy">저장한 코스를 다시 열어보고, 필요한 장소만 바꿔보세요.</p>
-          </div>
-          <button id="close-history-button" class="text-button" type="button">닫기</button>
-        </div>
-        <div id="saved-plans-list" class="saved-plans-list" aria-live="polite"></div>
       </section>
 
       <section id="community-section" class="community-section" aria-labelledby="community-title">
@@ -582,7 +571,7 @@
       <section id="discovery-section" class="discovery-section" aria-labelledby="discovery-title">
         <div class="result-heading discovery-heading">
           <div>
-            <p class="section-kicker">03 · DISCOVER NEARBY</p>
+            <p class="section-kicker">04 · DISCOVER NEARBY</p>
             <h2 id="discovery-title">지금 갈 곳을 찾고 있나요?</h2>
             <p class="muted-copy">현재 위치 주변의 식당·카페부터 오늘 전국 추천과 행사까지 한 번에 확인해요.</p>
           </div>
@@ -660,8 +649,24 @@
               <span class="event-calendar">▣</span>
             </div>
           </div>
+          <div class="event-filters" aria-label="행사 검색 조건">
+            <label>
+              <span>행사 시작일</span>
+              <input id="event-start-date" type="date" />
+            </label>
+            <label>
+              <span>행사 종료일</span>
+              <input id="event-end-date" type="date" />
+            </label>
+            <label class="event-region-field">
+              <span>행사 지역 검색</span>
+              <input id="event-region-query" type="search" placeholder="부산 해운대구, 서울 용산구" autocomplete="off" />
+            </label>
+            <button id="event-search-button" class="nearby-action-button" type="button">기간·지역 행사 찾기</button>
+          </div>
+          <p id="event-filter-status" class="event-filter-status" role="status"></p>
           <div id="event-list" class="event-list"></div>
-          <p class="data-source-note">행사 일정은 한국관광공사 행사정보 API에서 날짜와 지역을 기준으로 조회합니다. 도시 선택 시 해당 도시가 속한 권역 기준으로 검색됩니다.</p>
+          <p class="data-source-note">입력한 시작일·종료일과 지역 검색어를 기준으로 한국관광공사 행사정보를 조회합니다. 중구·서구처럼 여러 도시에 있는 구는 도시명을 함께 입력해 주세요.</p>
         </article>
         <article id="price-comparison-section" class="price-comparison-card" aria-labelledby="price-comparison-title">
           <div class="discovery-card-heading">
@@ -675,6 +680,18 @@
           <div id="price-comparison-list" class="price-comparison-list" aria-live="polite"></div>
           <p class="data-source-note">마이리얼트립·Klook 등 공식 제휴 상품 피드가 연결된 경우에만 실제 가격과 제휴 링크를 표시합니다. 승인 전 상품을 임의로 만들어 보여주지 않아요.</p>
         </article>
+      </section>
+
+      <section id="saved-plans-panel" class="saved-plans-panel" hidden aria-labelledby="saved-plans-title">
+        <div class="result-heading saved-plans-heading">
+          <div>
+            <p class="section-kicker">YOUR TRIP ARCHIVE</p>
+            <h2 id="saved-plans-title">저장된 여행 계획</h2>
+            <p class="muted-copy">저장한 코스를 다시 열어보고, 필요한 장소만 바꿔보세요.</p>
+          </div>
+          <button id="close-history-button" class="text-button" type="button">닫기</button>
+        </div>
+        <div id="saved-plans-list" class="saved-plans-list" aria-live="polite"></div>
       </section>
     </main>
 
