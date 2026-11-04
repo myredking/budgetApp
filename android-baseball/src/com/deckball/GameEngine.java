@@ -8,7 +8,7 @@ import java.util.Random;
 public final class GameEngine {
     public static final class Player {
         public final int id, year;
-        public int contact, power, control;
+        public int contact, power, control, skills;
         public final boolean legend;
         public final String record, source;
         public final String name, position, team;
@@ -20,11 +20,13 @@ public final class GameEngine {
             this.year = year; this.legend = legend; this.record = record; this.source = source;
             this.id = id; this.name = name; this.position = position; this.team = team;
             this.contact = contact; this.power = power; this.control = control;
+            this.skills = PlayerSkills.defaults(this);
         }
         public String label() {
             return (legend ? "★ " : "") + name + " '" + year + " · " + team + " · " + position + "  컨택 " + contact + " / 파워 " + power;
         }
     }
+    public final ClubCareer career;
     public final List<Player> roster = new ArrayList<>();
     public int difficulty = 1, opponentHitter = 3, opponentPitcher = 27;
     public int[] lineup = {0,1,2,3,4,5,6,7,8};
@@ -36,9 +38,28 @@ public final class GameEngine {
 
     public GameEngine(long seed) {
         random = new Random(seed);
-        KboRoster.populate(roster);
+        KboRoster.populate(roster); career=new ClubCareer(this);
     }
 
+    public void assignSkills(int id,int skills) {
+        Player p=player(id); PlayerSkills.validate(p,skills); p.skills=skills;
+    }
+    public int contactRating(Player p) { return PlayerSkills.contact(p,bases[1] || bases[2]); }
+    public int powerRating(Player p) { return PlayerSkills.power(p); }
+    public int controlRating(Player p) { return PlayerSkills.control(p); }
+    private void requireOwned(int id) {
+        if(career.active && !career.owns(id)) throw new IllegalArgumentException("스카우트 후 영입한 선수만 편성할 수 있습니다");
+    }
+    private void validateDistance(int value) {
+        if(value<1 || value>4) throw new IllegalArgumentException("안타 거리는 1~4");
+    }
+    private void validatePitch(int kind,int location) {
+        if(kind<0 || kind>2 || location<0 || location>4) throw new IllegalArgumentException("잘못된 구종 또는 코스");
+    }
+    private void validateTiming(double timing) {
+        if(Double.isNaN(timing) || Double.isInfinite(timing) || timing<0 || timing>1)
+            throw new IllegalArgumentException("잘못된 타이밍");
+    }
     public void selectOpponent(int hitter, int pitcherId) {
         if (player(hitter).position.equals("P")) throw new IllegalArgumentException("상대 타자 오류");
         if (!player(pitcherId).position.equals("P")) throw new IllegalArgumentException("상대 투수 오류");
@@ -70,11 +91,11 @@ public final class GameEngine {
         for (int i = 0; i < 9; i++) {
             if (i != slot && lineup[i] == id) throw new IllegalArgumentException("이미 덱에 있는 선수입니다");
         }
-        lineup[slot] = id;
+        requireOwned(id); lineup[slot] = id;
     }
     public void selectPitcher(int id) {
         if (!player(id).position.equals("P")) throw new IllegalArgumentException("투수를 선택하세요");
-        pitcher = id;
+        requireOwned(id); pitcher = id;
     }
     public void swap(int a, int b) {
         if (a < 0 || a > 8 || b < 0 || b > 8) throw new IllegalArgumentException("잘못된 타순입니다");
@@ -86,6 +107,7 @@ public final class GameEngine {
         return text.toString();
     }
     public boolean loadDeck(String text) {
+        if(text==null) return false;
         try {
             String[] values = text.split(",");
             if (values.length != 10) return false;
@@ -94,6 +116,8 @@ public final class GameEngine {
             candidate.lineup = new int[]{-1,-1,-1,-1,-1,-1,-1,-1,-1};
             candidate.selectPitcher(Integer.parseInt(values[0]));
             for (int i = 0; i < 9; i++) candidate.select(i, Integer.parseInt(values[i + 1]));
+            requireOwned(candidate.pitcher);
+            for(int id:candidate.lineup) requireOwned(id);
             lineup = candidate.lineup.clone(); pitcher = candidate.pitcher;
             return true;
         } catch (IllegalArgumentException e) { return false; }
@@ -118,12 +142,13 @@ public final class GameEngine {
         outs = 0; Arrays.fill(bases, false);
         if (batting) { inning++; batting = false; } else batting = true;
         if (inning > 3) {
-            finished = true;
+            finished = true; career.matchReward(home>away);
             message = home == away ? "경기 종료 · 무승부" : (home > away ? "경기 종료 · 승리!" : "경기 종료 · 패배");
         } else message = inning + "회 " + (batting ? "말 · 공격" : "초 · 수비");
     }
     public void hit(int distance) {
         if (finished) return;
+        validateDistance(distance);
         int runs = distance == 4 ? 1 : 0;
         boolean[] advanced = new boolean[3];
         for (int i = 0; i < 3; i++) {
@@ -151,11 +176,12 @@ public final class GameEngine {
     }
     public void swing(double timing) {
         if (finished || !batting) return;
+        validateTiming(timing);
         Player hitter = player(lineup[batter]);
         double quality = timingQuality(timing, .78);
-        if (random.nextDouble() > quality * (.60 + hitter.contact / 200.0 - player(opponentPitcher).control / 500.0)) { strike(); return; }
+        if (random.nextDouble() > quality * (.60 + contactRating(hitter) / 200.0 - controlRating(player(opponentPitcher)) / 500.0)) { strike(); return; }
         double roll = random.nextDouble();
-        if (quality > .85 && roll < hitter.power / 230.0) { hit(4); return; }
+        if (quality > .85 && roll < powerRating(hitter) / 230.0) { hit(4); return; }
         if (roll < .20) { message = "뜬공 아웃"; out(); return; }
         hit(roll > .78 ? 2 : 1);
     }
@@ -165,13 +191,15 @@ public final class GameEngine {
     }
     public void pitch(int kind, int location, double timing) {
         if (finished || batting) return;
-        double control = player(pitcher).control / 100.0;
+        validateTiming(timing);
+        validatePitch(kind,location);
+        double control = controlRating(player(pitcher)) / 100.0;
         double precision = timingQuality(timing, .65);
         double roll = random.nextDouble();
         double zone = location == 4 ? .1 : .24;
         if (roll < zone * (1.3 - control * precision)) { ball(); return; }
-        if (roll < .64 + precision * .16 + kind * .025 - (player(opponentHitter).contact - 75) / 500.0) { strike(); return; }
-        if (roll > 1 - player(opponentHitter).power / 2400.0) { hit(4); return; }
+        if (roll < .64 + precision * .16 + kind * .025 - (contactRating(player(opponentHitter)) - 75) / 500.0) { strike(); return; }
+        if (roll > 1 - powerRating(player(opponentHitter)) / 2400.0) { hit(4); return; }
         if (roll > .83) { hit(1); return; }
         message = "범타 아웃!"; out();
     }
@@ -180,8 +208,8 @@ public final class GameEngine {
         Player hitter = player(batting ? lineup[batter] : opponentHitter);
         Player bowler = player(batting ? opponentPitcher : pitcher);
         double advantage = (batting ? 1 - difficulty : difficulty - 1) * .04;
-        double homeRun = Math.max(.002, .01 + hitter.power / 1800.0 - bowler.control / 5000.0 + advantage / 3);
-        double skill = Math.max(.01, .10 + hitter.contact / 400.0 - bowler.control / 650.0 + advantage);
+        double homeRun = Math.max(.002, .01 + powerRating(hitter) / 1800.0 - controlRating(bowler) / 5000.0 + advantage / 3);
+        double skill = Math.max(.01, .10 + contactRating(hitter) / 400.0 - controlRating(bowler) / 650.0 + advantage);
         double roll = random.nextDouble();
         if (roll < homeRun) hit(4);
         else if (roll < homeRun + skill) hit(1);

@@ -11,10 +11,11 @@ public final class GameSettings {
     public static String capture(GameEngine game) {
         StringBuilder text = new StringBuilder(game.difficulty + "," + game.opponentHitter + "," + game.opponentPitcher);
         for (GameEngine.Player p : game.roster)
-            text.append(';').append(p.id).append(',').append(p.contact).append(',').append(p.power).append(',').append(p.control);
+            text.append(';').append(p.id).append(',').append(p.contact).append(',').append(p.power).append(',').append(p.control).append(',').append(p.skills);
         return text.toString();
     }
     public static boolean restore(GameEngine game, String text) {
+        if(text==null) return false;
         try {
             String[] entries = text.split(";");
             int[] header = numbers(entries[0],3);
@@ -22,7 +23,10 @@ public final class GameSettings {
             validation.roster.clear(); validation.roster.addAll(game.roster);
             validation.setDifficulty(header[0]); validation.selectOpponent(header[1],header[2]);
             List<int[]> rows = ratingRows(game,entries);
-            for (int[] row : rows) game.editRatings(row[0],row[1],row[2],row[3]);
+            for (int[] row : rows) {
+                game.editRatings(row[0],row[1],row[2],row[3]);
+                if(row.length==5) game.assignSkills(row[0],row[4]);
+            }
             game.setDifficulty(header[0]); game.selectOpponent(header[1],header[2]);
             return true;
         } catch (IllegalArgumentException e) { return false; }
@@ -37,7 +41,10 @@ public final class GameSettings {
     private static List<int[]> ratingRows(GameEngine game, String[] entries) {
         List<int[]> rows=new ArrayList<>();
         for(int i=1;i<entries.length;i++) {
-            int[] row=numbers(entries[i],4); game.player(row[0]);
+            int count=entries[i].split(",").length;
+            if(count!=4 && count!=5) throw new IllegalArgumentException("잘못된 설정");
+            int[] row=numbers(entries[i],count); game.player(row[0]);
+            if(count==5) PlayerSkills.validate(game.player(row[0]),row[4]);
             for(int j=1;j<4;j++) {
                 if(row[j]<1 || row[j]>99) throw new IllegalArgumentException("잘못된 능력치");
             }

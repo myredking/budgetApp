@@ -13,6 +13,7 @@ import java.util.List;
 
 public final class MainActivity extends Activity {
     final GameEngine engine = new GameEngine(System.nanoTime());
+    final ClubScreens office=new ClubScreens(this);
     final Handler handler = new Handler();
     final int bg = Color.rgb(9,20,30), panel = Color.rgb(20,39,52), ink = Color.rgb(236,244,247);
     LinearLayout root, controls;
@@ -30,6 +31,8 @@ public final class MainActivity extends Activity {
         restoreCustom();
         if (!getPreferences(0).contains("deck2026") && getPreferences(0).contains("deck"))
             toast("2026 시즌 명단으로 변경되었습니다. 덱을 다시 선택해 주세요. 커스텀 선수는 유지됩니다.");
+        String career=getPreferences(0).getString(CareerSave.KEY, "");
+        if(!career.isEmpty() && !CareerSave.restore(engine.career,career)) toast("구단 저장 정보를 복원하지 못했습니다");
         engine.loadDeck(getPreferences(0).getString(GameSettings.DECK_KEY, engine.encodeDeck()));
         restoreRatings();
         home();
@@ -72,6 +75,7 @@ public final class MainActivity extends Activity {
         menu.addView(text("나의 선수, 나의 야구",20));
         menu.addView(button("▶ 경기 시작", () -> { engine.start(); match(); }));
         menu.addView(button("선수 덱 / 타순 편집",this::deck));
+        menu.addView(button("구단 운영 / 스카우트",office::show));
         menu.addView(button("능력치 직접 수정",this::editPlayer));
         menu.addView(button("상대 대표 선수 선택",this::opponentDialog));
         menu.addView(button("난이도 · " + difficultyName(),this::difficultyDialog));
@@ -119,11 +123,13 @@ public final class MainActivity extends Activity {
         GameEngine.Player p = engine.player(id); LinearLayout box = column();
         box.addView(text(p.name + " · " + p.team + " · " + p.year,18));
         box.addView(text(p.record,14));
+        box.addView(text(PlayerSkills.describe(p),13));
         box.addView(text("컨택 / 파워 / 제구 · 각 1~99",13));
         EditText contact=input(box,"컨택",true),power=input(box,"파워",true),control=input(box,"제구",true);
         contact.setText(""+p.contact); power.setText(""+p.power); control.setText(""+p.control);
         ScrollView form = new ScrollView(this); form.addView(box);
         AlertDialog dialog = new AlertDialog.Builder(this).setTitle("능력치 직접 수정").setView(form)
+            .setNeutralButton("특수 능력",(d,w)->office.skills(id))
             .setPositiveButton("저장",null).setNegativeButton("취소",null).create();
         dialog.setOnShowListener(v -> dialog.getButton(-1).setOnClickListener(w -> {
             try { engine.editRatings(id,rating(contact),rating(power),rating(control)); saveRatings(); dialog.dismiss(); home(); }
@@ -168,6 +174,7 @@ public final class MainActivity extends Activity {
         List<String> labels = new ArrayList<>();
         for (GameEngine.Player player : engine.roster) {
             if ((slot == -1) != player.position.equals("P")) continue;
+            if(engine.career.active && !engine.career.owns(player.id)) continue;
             choices.add(player);
             labels.add(slot == -1 ? player.label() + " · 제구 " + player.control : player.label());
         }
@@ -260,6 +267,7 @@ public final class MainActivity extends Activity {
     void refresh() {
         score.setText("VISITOR  " + engine.away + "   :   " + engine.home + "  MY DECK");
         status.setText(engine.message); controls.removeAllViews();
+        if(engine.finished) office.save();
         if (engine.finished) {
             controls.addView(button("다시 경기", () -> { engine.start(); refresh(); }));
         } else if (automatic) {
@@ -332,7 +340,7 @@ public final class MainActivity extends Activity {
     void toast(String message) { Toast.makeText(this,message,Toast.LENGTH_SHORT).show(); }
     @Override public void onBackPressed() { if (playing) leaveMatch(); else home(); }
     @Override protected void onPause() {
-        super.onPause(); handler.removeCallbacks(ticker); persist(); saveRatings();
+        super.onPause(); handler.removeCallbacks(ticker); persist(); saveRatings(); office.save();
         inFlight = false; if (field != null) field.progress = -1;
     }
     @Override protected void onResume() {
