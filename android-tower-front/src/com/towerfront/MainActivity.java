@@ -22,6 +22,7 @@ public final class MainActivity extends Activity {
     private SharedPreferences preferences;
     private ToneGenerator tone;
     private BattleView battle;
+    private boolean campaignPage;
     Engine engine;
     Profile profile;
     int mode=1;
@@ -66,7 +67,8 @@ public final class MainActivity extends Activity {
         if(tone!=null) tone.release();super.onDestroy();
     }
     @Override public void onBackPressed() {
-        if(battle!=null) {battle.pause();return;}
+        if(battle!=null) {battle.back();return;}
+        if(campaignPage) {showMenu();return;}
         super.onBackPressed();
     }
     void saveBattle(boolean immediate) {
@@ -114,6 +116,7 @@ public final class MainActivity extends Activity {
         button.setOnClickListener(view->action.run());return button;
     }
     void showMenu() {
+        campaignPage=false;
         saveBattle(false);
         LinearLayout panel=page("TOWER FRONT","타워 프론트 · 오프라인 전략 캠페인");
         panel.addView(label("점령하고, 성장하고, 전선을 넓히세요",18,Color.WHITE));
@@ -126,6 +129,7 @@ public final class MainActivity extends Activity {
         panel.addView(label("v3.1 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     void showCampaign() {
+        campaignPage=true;
         saveBattle(false);
         LinearLayout panel=page("작전 지도", "90초 이내 ★★★  ·  180초 이내 ★★  ·  승리 ★");
         addDifficulties(panel);

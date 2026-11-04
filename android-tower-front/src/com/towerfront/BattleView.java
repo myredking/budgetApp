@@ -26,7 +26,13 @@ public final class BattleView extends View {
     }
     public void suspend() {running=false;paused=true;controls.cancel();last=0;}
     public void wake() {running=true;last=0;invalidate();}
-    public void pause() {paused=true;controls.cancel();host.saveBattle(false);invalidate();}
+    public void pause() {
+        paused=true;controls.cancel();setContentDescription("전투 일시정지 · 작전 "+engine.level);
+        host.saveBattle(false);invalidate();
+    }
+    public void back() {
+        if(paused || engine.result()!=0) host.showMenu();else pause();
+    }
     private int color(int owner) {
         if(owner==1) return MainActivity.CYAN;
         return owner==2?Color.rgb(255,119,107):GRAY;
@@ -247,7 +253,9 @@ public final class BattleView extends View {
     }
     private void primaryAction() {
         int result=engine.result();
-        if(result==0) {paused=false;last=0;return;}
+        if(result==0) {
+            paused=false;last=0;setContentDescription("타워 프론트 전장 · 작전 "+engine.level);return;
+        }
         if(result==1) host.next();else host.start(engine.level);
     }
     private void upgrade() {
