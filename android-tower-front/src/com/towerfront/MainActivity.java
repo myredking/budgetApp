@@ -68,7 +68,7 @@ public final class MainActivity extends Activity {
             p.setColor(col);c.drawCircle(x,y,28,p);
             p.setColor(Color.argb(45,255,255,255));c.drawCircle(x-6,y-9,15,p);
             text(c,String.valueOf(t.units),x,y+7,21,Color.rgb(9,28,40));
-            text(c,t.owner==1?"ALLY":t.owner==2?"ENEMY":"NEUTRAL",x,y+46,9,col);
+            text(c,(t.kind==Engine.FACTORY?"생산":t.kind==Engine.RELAY?"기동":"기본")+" Lv."+t.rank,x,y+46,10,col);
         }
         private void drawFleet(Canvas c,Engine.Fleet f) {
             Engine.Tower a=engine.towers.get(f.from),b=engine.towers.get(f.to);
@@ -79,9 +79,14 @@ public final class MainActivity extends Activity {
             text(c,String.valueOf(f.units),fx,fy+4,10,Color.rgb(9,28,40));
         }
         private void drawFooter(Canvas c) {
-            text(c,"아군 선택 → 목표 터치 / 드래그",200,711,16,Color.WHITE);
-            text(c,"병력의 절반이 출병합니다 · 모든 적 타워를 점령하세요",200,738,11,Color.rgb(145,169,187));
-            text(c,"● 아군     ● 적군     ○ 중립",200,773,12,Color.rgb(145,169,187));
+            if(selected>=0 && engine.towers.get(selected).owner==1) {
+                Engine.Tower t=engine.towers.get(selected);
+                box(c,40,687,320,48,Color.rgb(35,70,85));
+                String label=t.rank>=3?"최대 레벨": "생산 강화 · 병력 "+(20*t.rank)+" 소모";
+                text(c,label,200,718,15,Color.WHITE);
+            } else text(c,"아군 선택 → 목표 터치 / 드래그",200,718,16,Color.WHITE);
+            text(c,"생산 타워: 생산 ×1.7 · 기동 타워: 이동 속도 증가",200,754,11,Color.rgb(145,169,187));
+            text(c,"업그레이드: 생산 +50%씩 · 최대 Lv.3",200,777,11,Color.rgb(145,169,187));
         }
         private void drawOverlay(Canvas c) {
             p.setColor(Color.argb(220,5,14,26));c.drawRect(0,0,400,800,p);
@@ -121,8 +126,14 @@ public final class MainActivity extends Activity {
             if(action==MotionEvent.ACTION_UP) handleUp(px,py);
             return true;
         }
+        private boolean inside(float px,float py,float left,float top,float right,float bottom) {
+            return px>=left && px<=right && py>=top && py<=bottom;
+        }
         private void handleDown(float px,float py) {
-            if(px>=280 && py>=84 && py<=124) {paused=true;return;}
+            if(inside(px,py,40,687,360,735)) {
+                engine.upgrade(selected);return;
+            }
+            if(inside(px,py,280,84,380,124)) {paused=true;return;}
             int target=hit(px,py);
             if(selected>=0 && target>=0 && selected!=target) {engine.send(selected,target);selected=-1;return;}
             if(target>=0 && engine.towers.get(target).owner==1) selected=target;

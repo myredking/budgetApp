@@ -2,9 +2,10 @@ package com.towerfront;
 import java.util.ArrayList;
 import java.util.Iterator;
 public final class Engine {
+    public static final int NORMAL=0, FACTORY=1, RELAY=2;
     public static final class Tower {
         public double x,y,growth;
-        public int owner,units;
+        public int owner,units,kind=0,rank=1;
         Tower(double px,double py,int team,int count) {x=px;y=py;owner=team;units=count;}
     }
     public static final class Fleet {
@@ -28,6 +29,21 @@ public final class Engine {
         towers.add(new Tower(.76,.76,0,8));
         if(stage>1) towers.add(new Tower(.48,.36,2,10+stage));
         if(stage>3) towers.add(new Tower(.48,.66,0,16));
+        configureMap(stage);
+    }
+    private void configureMap(int stage) {
+        int layout=(stage-1)%3;
+        if(layout==1) for(Tower t:towers) t.x=1-t.x;
+        if(layout==2) for(Tower t:towers) t.y=1-t.y;
+        towers.get(3).kind=FACTORY;
+        towers.get(4).kind=RELAY;
+    }
+    public boolean upgrade(int index) {
+        if(index<0 || index>=towers.size() || result()!=0) return false;
+        Tower t=towers.get(index);
+        if(t.owner!=1 || t.rank>=3 || t.units<20*t.rank) return false;
+        t.units-=20*t.rank;t.rank++;
+        return true;
     }
     public boolean send(int from,int to) { return dispatch(from,to,1); }
     private boolean dispatch(int from,int to,int team) {
@@ -37,6 +53,7 @@ public final class Engine {
         int count=a.units/2;
         a.units-=count;
         double duration=Math.hypot(a.x-b.x,a.y-b.y)*4;
+        if(a.kind==RELAY) duration*=.6;
         fleets.add(new Fleet(from,to,team,count,Math.max(.4,duration)));
         return true;
     }
@@ -53,7 +70,8 @@ public final class Engine {
     }
     private void produce(Tower t,double dt) {
         if(t.owner==0) return;
-        t.growth+=dt*(t.owner==1?1.8:1.3+Math.min(level,10)*.08);
+        double bonus=(t.kind==FACTORY?1.7:1)*(1+(t.rank-1)*.5);
+        t.growth+=dt*(t.owner==1?1.8:1.3+Math.min(level,10)*.08)*bonus;
         int gain=(int)t.growth;t.growth-=gain;
         t.units=Math.min(99,t.units+gain);
     }
