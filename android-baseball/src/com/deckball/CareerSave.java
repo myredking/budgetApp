@@ -13,23 +13,39 @@ public final class CareerSave {
         for(int id:club.signed) text.append(id).append(',');
         text.append(';');
         for(Map.Entry<Integer,Integer> entry:club.reports.entrySet()) text.append(entry.getKey()).append(',').append(entry.getValue()).append('|');
+        text.append(';');for(int id:club.favorites) text.append(id).append(',');
         return text.toString();
     }
     public static boolean restore(ClubCareer club,String saved) {
         if(saved==null) return false;
         try {
             String[] parts=saved.split(";",-1);
-            if(parts.length!=3) return false;
-            String[] header=parts[0].split(",",-1);
-            if(header.length!=3) return false;
-            int active=Integer.parseInt(header[0]),day=Integer.parseInt(header[1]),funds=Integer.parseInt(header[2]);
-            if(active<0 || active>1 || day<1 || funds<0) return false;
+            if(parts.length!=3 && parts.length!=4) return false;
+            int[] header=header(parts[0]);
+            int active=header[0],day=header[1],funds=header[2];
             Set<Integer> signed=owned(club,parts[1]);
             Map<Integer,Integer> reports=tasks(club,parts[2]);
+            Set<Integer> favorites=favorites(club,parts.length==4?parts[3]:"");
             club.active=active==1; club.day=day; club.funds=funds;
             club.signed.clear(); club.signed.addAll(signed); club.reports.clear(); club.reports.putAll(reports);
+            club.favorites.clear();club.favorites.addAll(favorites);
             return true;
         } catch(IllegalArgumentException e) { return false; }
+    }
+    private static int[] header(String text) {
+        String[] parts=text.split(",",-1);
+        if(parts.length!=3) throw new IllegalArgumentException("구단 저장 헤더 오류");
+        int active=Integer.parseInt(parts[0]),day=Integer.parseInt(parts[1]),funds=Integer.parseInt(parts[2]);
+        if(active<0 || active>1 || day<1 || funds<0) throw new IllegalArgumentException("구단 저장 값 오류");
+        return new int[]{active,day,funds};
+    }
+    private static Set<Integer> favorites(ClubCareer club,String text) {
+        Set<Integer> values=new LinkedHashSet<>();
+        if(text.isEmpty()) return values;
+        for(String part:text.split(",")) {
+            int id=Integer.parseInt(part);club.game.player(id);values.add(id);
+        }
+        return values;
     }
     private static Set<Integer> owned(ClubCareer club,String text) {
         Set<Integer> values=new LinkedHashSet<>();

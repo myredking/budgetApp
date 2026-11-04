@@ -17,7 +17,7 @@ public final class MainActivity extends Activity {
     final ClubScreens office=new ClubScreens(this);
     final Handler handler = new Handler();
     final int bg = Color.rgb(9,20,30), panel = Color.rgb(20,39,52), ink = Color.rgb(236,244,247);
-    LinearLayout root, controls;
+    LinearLayout root, controls, tools;
     BallparkView field;
     TextView status, score;
     boolean playing, automatic, inFlight;
@@ -53,6 +53,17 @@ public final class MainActivity extends Activity {
         root.addView(text(subtitle, 13));
         setContentView(root);
     }
+    int railWidth() {
+        android.util.DisplayMetrics metrics=getResources().getDisplayMetrics();
+        return dp(LayoutPolicy.railWidth(Math.round(metrics.widthPixels/metrics.density)));
+    }
+    LinearLayout workspace(String title,String subtitle) {
+        screen("", "");root.removeAllViews();root.setOrientation(0);
+        LinearLayout body=column();root.addView(body,new LinearLayout.LayoutParams(0,-1,1));
+        body.addView(text(title,22));body.addView(text(subtitle,12));
+        ScrollView scroll=new ScrollView(this);tools=column();scroll.addView(tools);
+        root.addView(scroll,new LinearLayout.LayoutParams(railWidth(),-1));return body;
+    }
     TextView text(String value, int size) {
         TextView view = new TextView(this); view.setText(value); view.setTextSize(size);
         view.setTextColor(ink); view.setPadding(4,8,4,8);
@@ -71,7 +82,7 @@ public final class MainActivity extends Activity {
         root.addView(field, new LinearLayout.LayoutParams(0,-1,1));
         LinearLayout menu = column();
         ScrollView scroll = new ScrollView(this); scroll.addView(menu);
-        root.addView(scroll,new LinearLayout.LayoutParams(dp(260),-1));
+        root.addView(scroll,new LinearLayout.LayoutParams(railWidth(),-1));
         menu.addView(text("DECK / BALL",26));
         menu.addView(text("2026 SEASON × LEGENDS · 3D",13));
         menu.addView(text("나의 선수, 나의 야구",20));
@@ -151,17 +162,19 @@ public final class MainActivity extends Activity {
             .setPositiveButton("확인", null).show();
     }
     void deck() {
-        screen("MY LINEUP · 2026", "2026 + LEGENDS · 타자 9명 / 투수 1명 · 선수 버튼으로 교체");
-        ScrollView scroll = new ScrollView(this); LinearLayout list = column();
-        scroll.addView(list); root.addView(scroll, new LinearLayout.LayoutParams(-1,0,1));
-        for (int i = 0; i < 9; i++) addSlot(list, i);
-        GameEngine.Player p = engine.player(engine.pitcher);
-        list.addView(button("SP  " + p.name + " · " + p.team + " · " + p.year + "  제구 " + p.control, () -> choose(-1)));
-        addButton("+  커스텀 선수 만들기", this::customDialog);
-        LinearLayout saves = new LinearLayout(this);
-        saves.addView(button("덱 저장", () -> savedDeck(true)), new LinearLayout.LayoutParams(0,-2,1));
-        saves.addView(button("덱 불러오기", () -> savedDeck(false)), new LinearLayout.LayoutParams(0,-2,1));
-        root.addView(saves); addButton("완료 / 홈", () -> { persist(); home(); });
+        LinearLayout body=workspace("MY LINEUP · 2026",engine.career.active?"구단 운영 · 영입한 선수만 편성":"자유 편성 · 선수 버튼으로 교체 / ↑ 타순 변경");
+        ScrollView scroll=new ScrollView(this);LinearLayout list=column();scroll.addView(list);
+        body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        for(int i=0;i<9;i++) addSlot(list,i);
+        GameEngine.Player p=engine.player(engine.pitcher);
+        list.addView(button("SP  "+p.name+" · "+p.team+" · "+p.year+"  제구 "+p.control,()->choose(-1)));
+        tools.addView(text("LINEUP TOOLS",17));
+        tools.addView(button("+ 커스텀 선수 만들기",this::customDialog));
+        tools.addView(button("덱 저장",()->savedDeck(true)));
+        tools.addView(button("덱 불러오기",()->savedDeck(false)));
+        tools.addView(button("능력치 / 특수 능력",this::editPlayer));
+        tools.addView(button("스카우트 / 영입",office::show));
+        tools.addView(button("완료 / 홈",()->{persist();home();}));
     }
     void addSlot(LinearLayout list, int index) {
         GameEngine.Player player = engine.player(engine.lineup[index]);

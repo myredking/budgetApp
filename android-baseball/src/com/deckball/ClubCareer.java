@@ -11,6 +11,7 @@ public final class ClubCareer {
     public boolean active;
     public int day=1,funds=25000;
     final Set<Integer> signed=new LinkedHashSet<>();
+    final Set<Integer> favorites=new LinkedHashSet<>();
     final Map<Integer,Integer> reports=new LinkedHashMap<>();
     public ClubCareer(GameEngine game) {
         this.game=game;
@@ -22,6 +23,11 @@ public final class ClubCareer {
         active=true;
         for(int i=0;i<9;i++) game.lineup[i]=i;
         game.pitcher=27;
+    }
+    public boolean isFavorite(int id) { return favorites.contains(id); }
+    public void setFavorite(int id,boolean favorite) {
+        game.player(id);
+        if(favorite) favorites.add(id);else favorites.remove(id);
     }
     public boolean owns(int id) { return signed.contains(id); }
     public boolean hasReport(int id) { return reports.containsKey(id); }

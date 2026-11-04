@@ -10,39 +10,43 @@ public final class ClubScreens {
     final MainActivity app;
     String team="전체";
     int role;
+    boolean recommended;
     public ClubScreens(MainActivity app) { this.app=app; }
     void save() { app.getPreferences(0).edit().putString(CareerSave.KEY,CareerSave.capture(app.engine.career)).apply(); }
     public void show() {
         ClubCareer club=app.engine.career;
-        app.screen("CLUB OFFICE · 구단 운영","스카우트 조사 → 보고서 → 계약 → 라인업 편성");
-        app.root.addView(app.text("DAY "+club.day+"  ·  예산 "+club.funds+"만원  ·  보유 "+club.signed.size()+"명",17));
+        LinearLayout body=app.workspace("CLUB OFFICE · 구단 운영","스카우트 조사 → 보고서 → 계약 → 라인업 편성");
+        body.addView(app.text("DAY "+club.day+" · 예산 "+club.funds+"만원 · 보유 "+club.signed.size()+"명",15));
         actions(club);
-        ScrollView scroll=new ScrollView(app); LinearLayout list=app.column(); scroll.addView(list);
-        app.root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        list.addView(app.text("조사비 500만원 / 2일 소요 · 완료 후 평가 범위와 특수 능력 공개",13));
-        for(GameEngine.Player p:app.engine.roster) {
-            if(!matches(p)) continue;
-            String state=club.owns(p.id)?"보유":(club.ready(p.id)?"보고서 완료":(club.hasReport(p.id)?"조사 중":"미조사"));
-            list.addView(app.button(p.name+" · "+p.team+" "+p.year+" · "+p.position+"  ["+state+"]",()->report(p.id)));
+        ScrollView scroll=new ScrollView(app);LinearLayout list=app.column();scroll.addView(list);
+        body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        list.addView(app.text(recommended?"예산 내 전력 향상 / 비용순 추천 · 조사비 포함":"조사비 500만원 / 2일 · ★로 관심 선수 저장",12));
+        List<GameEngine.Player> players=recommended?ScoutingDesk.recommendations(club):app.engine.roster;
+        int count=0;
+        for(GameEngine.Player p:players) {
+            if(!ScoutingDesk.matches(club,p,team,role)) continue;
+            String label=playerLabel(club,p);
+            if(recommended) label+=" · 전력 +"+ScoutingDesk.gain(club,p.id)+" / "+club.price(p.id)+"만원";
+            list.addView(app.button(label,()->report(p.id)));count++;
         }
-        app.addButton("홈으로",app::home);
+        if(count==0) list.addView(app.text("조건에 맞는 선수가 없습니다. 필터 또는 예산을 확인하세요.",15));
+        app.tools.addView(app.button("홈으로",app::home));
+    }
+    String playerLabel(ClubCareer club,GameEngine.Player p) {
+        String state=club.owns(p.id)?"보유":(club.ready(p.id)?"보고서 완료":(club.hasReport(p.id)?"조사 중":"미조사"));
+        return (club.isFavorite(p.id)?"★ ":"")+p.name+" · "+p.team+" "+p.year+" · "+p.position+" ["+state+"]";
     }
     void actions(ClubCareer club) {
-        LinearLayout row=new LinearLayout(app);
-        row.addView(app.button(club.active?"다음 날":"운영 모드 시작",()->{
-            if(club.active) club.advanceDay(); else club.activate();
-            save(); app.persist(); show();
-        }),new LinearLayout.LayoutParams(0,-2,1));
-        row.addView(app.button("구단: "+team,this::teams),new LinearLayout.LayoutParams(0,-2,1));
-        row.addView(app.button(new String[]{"전체 선수","타자","투수","역대 선수"}[role],()->{role=(role+1)%4;show();}),new LinearLayout.LayoutParams(0,-2,1));
-        row.addView(app.button("자유 편성 모드",()->{club.active=false;save();app.home();}),new LinearLayout.LayoutParams(0,-2,1));
-        app.root.addView(row);
-    }
-    boolean matches(GameEngine.Player p) {
-        if(!team.equals("전체") && !team.equals(p.team)) return false;
-        if(role==1) return !p.position.equals("P");
-        if(role==2) return p.position.equals("P");
-        return role!=3 || p.legend;
+        app.tools.addView(app.text("SCOUT DESK",18));
+        app.tools.addView(app.button(club.active?"다음 날":"운영 모드 시작",()->{
+            if(club.active) club.advanceDay();else club.activate();
+            save();app.persist();show();
+        }));
+        app.tools.addView(app.button("구단: "+team,this::teams));
+        app.tools.addView(app.button(new String[]{"전체 선수","타자","투수","역대 선수","관심 선수"}[role],()->{role=(role+1)%5;show();}));
+        app.tools.addView(app.button(recommended?"전체 명단 보기":"예산별 추천 보기",()->{recommended=!recommended;show();}));
+        app.tools.addView(app.button("라인업 편성",app::deck));
+        app.tools.addView(app.button("자유 편성 모드",()->{club.active=false;save();app.home();}));
     }
     void teams() {
         LinkedHashSet<String> values=new LinkedHashSet<>();values.add("전체");
@@ -54,7 +58,10 @@ public final class ClubScreens {
     void report(int id) {
         ClubCareer club=app.engine.career;
         AlertDialog.Builder builder=new AlertDialog.Builder(app).setTitle("스카우트 보고서").setMessage(club.report(id))
-            .setNegativeButton("닫기",null);
+            .setNegativeButton("닫기",null)
+            .setNeutralButton(club.isFavorite(id)?"★ 관심 해제":"☆ 관심 등록",(d,w)->{
+                club.setFavorite(id,!club.isFavorite(id));save();show();
+            });
         if(!club.owns(id) && !club.hasReport(id)) builder.setPositiveButton("조사 의뢰 · 500만원",(d,w)->act(id,false));
         if(!club.owns(id) && club.ready(id)) builder.setPositiveButton("영입 · "+club.price(id)+"만원",(d,w)->act(id,true));
         builder.show();
