@@ -2,7 +2,7 @@ package com.blockgarden;
 import java.util.*;
 public class Playability {
  static final int[][][] SHAPES={{{0,0}},{{0,0},{0,1}},{{0,0},{1,0}},{{0,0},{0,1},{0,2}},{{0,0},{1,0},{2,0}},{{0,0},{0,1},{1,0},{1,1}},{{0,0},{1,0},{1,1}},{{0,1},{1,0},{1,1},{1,2}},{{0,0},{1,0},{2,0},{2,1}},{{0,0},{0,1},{0,2},{0,3}},{{0,0},{0,1},{1,1},{1,2}},{{0,0},{0,1},{0,2},{1,0},{1,1},{1,2},{2,0},{2,1},{2,2}}};
- static Engine copy(Engine e){Engine n=new Engine();n.score=e.score;n.lines=e.lines;n.moves=e.moves;for(int r=0;r<8;r++){n.board[r]=e.board[r].clone();n.stars[r]=e.stars[r].clone();}return n;}
+ static Engine copy(Engine e){Engine n=new Engine();n.combo=e.combo;n.score=e.score;n.lines=e.lines;n.moves=e.moves;for(int r=0;r<8;r++){n.board[r]=e.board[r].clone();n.stars[r]=e.stars[r].clone();}return n;}
  static double value(Engine e,Engine old,Random random){
   return (e.lines-old.lines)*180+(old.starCount()-e.starCount())*70+structure(e)+random.nextDouble()*8;
  }

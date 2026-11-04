@@ -12,8 +12,9 @@ public class GameView extends View {
  private Bitmap boardBackdrop;
  private int touchSlop;
  private float fingerX,fingerY;
- private boolean resultShown=false;
+ private boolean resultShown=false,pendingHint=false;
  private AlertDialog resultDialog;
+ private PlacementGuide.Preview guide;
  private GameSnapshot undo;
  private boolean undoUsed=false;
  private final SharedPreferences prefs;
@@ -21,7 +22,7 @@ public class GameView extends View {
  private final GameAudio audio;
  private final int[][] burst=new int[8][8];
  private long burstStarted=0;
- private int burstLines=0,burstPoints=0;
+ private int burstLines=0,burstPoints=0,burstCombo=0;
  private Engine engine=new Engine();
  private final Random random=new Random();
  private final int[] colors={0xff26364d,0xff64d9bc,0xffffbd69,0xff9e9bff,0xffff8198,0xff6abaff};
@@ -44,7 +45,8 @@ public class GameView extends View {
   text(c,"블록 가든",left,87*scale,32,Color.WHITE);text(c,missionMode?"미션 "+mission.stage+" / "+Mission.COUNT:"자유 모드 · 광고 없음",left,116*scale,12,0xff9baac0);text(c,"모드 선택",265*scale,116*scale,13,0xff64d9bc);
   text(c,"점수  "+engine.score,left,161*scale,22,Color.WHITE);text(c,"최고  "+best,240*scale,161*scale,15,0xffffbd69);
   drawAnimatedBoard(c);text(c,missionMode?mission.label(engine):message,left,top+unit*8+35*scale,12,0xffb6c5d9);drawHand(c);drawFloating(c);
-  text(c,"블록 선택 → 보드 터치 · 끌어서 놓기도 가능",left,tray+120*scale,11,0xff9baac0);
+  text(c,"힌트 보기",left,tray+120*scale,15,0xff64d9bc);
+  text(c,"완성될 줄이 빛으로 표시돼요",left+115*scale,tray+120*scale,11,0xff9baac0);
   text(c,actionLabel(),left,tray+168*scale,17,0xff64d9bc);
   text(c,"소리 · 진동",left,tray+240*scale,13,0xff9baac0);
   text(c,undoUsed?"되돌리기 사용 완료":"1회 되돌리기",left+190*scale,tray+240*scale,13,undo!=null&&!undoUsed?0xff64d9bc:0xff9baac0);
@@ -64,7 +66,27 @@ public class GameView extends View {
   if(selected<0||hoverR<0)return;
   int[][] shape=shapes[hand[selected]];boolean valid=engine.fits(shape,hoverR,hoverC);
   for(int[] p:shape){int r=hoverR+p[0],col=hoverC+p[1];if(inBoard(r,col))tile(c,left+col*unit,top+r*unit,unit,valid?0xffb4ffe8:0xffa45369);}
+  drawGuide(c);
  }
+ private void drawGuide(Canvas c){
+  if(guide==null||!guide.valid||guide.lines==0)return;
+  paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2*scale);paint.setColor(0xffffe4a4);
+  for(int i=0;i<8;i++){
+   if((guide.rows&(1<<i))!=0)c.drawRoundRect(left+2*scale,top+i*unit+2*scale,left+8*unit-2*scale,top+(i+1)*unit-2*scale,6*scale,6*scale,paint);
+   if((guide.cols&(1<<i))!=0)c.drawRoundRect(left+i*unit+2*scale,top+2*scale,left+(i+1)*unit-2*scale,top+8*unit-2*scale,6*scale,6*scale,paint);
+  }paint.setStyle(Paint.Style.FILL);
+ }
+ private void refreshGuide(){
+  guide=null;if(selected<0||hoverR<0)return;
+  guide=PlacementGuide.preview(engine,shapes[hand[selected]],hoverR,hoverC);
+ }
+ private void showHint(){
+  if(over)return;
+  PlacementGuide.Hint hint=PlacementGuide.hint(engine,hand,shapes);if(hint==null)return;
+  selected=hint.slot;hoverR=hint.row;hoverC=hint.col;refreshGuide();
+  android.widget.Toast.makeText(getContext(),"표시된 블록과 위치를 참고하세요. 클리어를 보장하는 힌트는 아니에요.",android.widget.Toast.LENGTH_SHORT).show();invalidate();
+ }
+ private boolean hintTap(float y){if(y<tray+98*scale||y>tray+136*scale)return false;pendingHint=true;return true;}
  private void drawStars(Canvas c){
   for(int r=0;r<8;r++)for(int col=0;col<8;col++)if(engine.stars[r][col])text(c,"★",left+col*unit+10*scale,top+r*unit+30*scale,23,0xffffbd69);
  }
@@ -93,7 +115,7 @@ public class GameView extends View {
   for(int[] p:shape)tile(c,x+p[1]*unit,y+p[0]*unit,unit,colors[tones[selected]]);
  }
  private boolean inBoard(int r,int c){return r>=0&&c>=0&&r<8&&c<8;}
- private boolean selectHand(float x){int slot=(int)((x-left)/(118*scale));if(x<left||slot<0||slot>=3)return false;if(hand[slot]<0)return false;selected=slot;invalidate();return true;}
+ private boolean selectHand(float x){int slot=(int)((x-left)/(118*scale));if(x<left||slot<0||slot>=3)return false;if(hand[slot]<0)return false;selected=slot;hoverR=-1;hoverC=-1;guide=null;invalidate();return true;}
  private boolean settingsTap(float x,float y){if(y<=tray+216*scale||y>=tray+258*scale)return false;if(x>left+170*scale)undoMove();else audio.settings();return true;}
  private boolean handTap(float x,float y){
   if(y<tray-20*scale||y>=tray+95*scale)return false;
@@ -104,6 +126,7 @@ public class GameView extends View {
   if(y>90*scale&&y<135*scale){modeMenu();return true;}
   if(y>tray+140*scale&&y<tray+190*scale){stageAction();return true;}
   if(over)return true;
+  if(hintTap(y))return true;
   if(handTap(x,y))return true;
   if(selected>=0)touch.begin(x,y,false);
   preview(x,y);return true;
@@ -116,17 +139,20 @@ public class GameView extends View {
   int index=event.findPointerIndex(activePointer);if(index<0)return true;
   float x=event.getX(index),y=event.getY(index);
   if(action==MotionEvent.ACTION_MOVE){updateTouch(x,y);return true;}
-  if(action==MotionEvent.ACTION_UP){if(touch.active){updateTouch(x,y);place();performClick();}cancelTouch();return true;}
+  if(action==MotionEvent.ACTION_UP){releaseTouch(x,y);return true;}
   return true;
  }
- private void cancelTouch(){touch.cancel();activePointer=-1;hoverR=-1;hoverC=-1;if(getParent()!=null)getParent().requestDisallowInterceptTouchEvent(false);invalidate();}
+ private void releaseTouch(float x,float y){
+  boolean hint=pendingHint;if(touch.active){updateTouch(x,y);place();performClick();}cancelTouch();if(hint)showHint();
+ }
+ private void cancelTouch(){pendingHint=false;guide=null;touch.cancel();activePointer=-1;hoverR=-1;hoverC=-1;if(getParent()!=null)getParent().requestDisallowInterceptTouchEvent(false);invalidate();}
  @Override public boolean performClick(){super.performClick();return true;}
  private void updateTouch(float x,float y){fingerX=x;fingerY=y;touch.move(x,y,touchSlop);preview(x,y);}
  private void preview(float x,float y){
   hoverR=-1;hoverC=-1;if(selected<0){invalidate();return;}
   int height=1,width=1;for(int[] p:shapes[hand[selected]]){height=Math.max(height,p[0]+1);width=Math.max(width,p[1]+1);}
   int[] anchor=touch.anchor(x,y,left,top,unit,height,width);
-  if(anchor!=null){hoverR=anchor[0];hoverC=anchor[1];}postInvalidateOnAnimation();
+  if(anchor!=null){hoverR=anchor[0];hoverC=anchor[1];}refreshGuide();postInvalidateOnAnimation();
  }
  private void place(){
   if(selected<0||hoverR<0||over)return;
@@ -163,7 +189,7 @@ public class GameView extends View {
   int lines=engine.lines-oldLines;audio.play(lines>0?"clear":"place");
   if(audio.enabled("haptics"))performHapticFeedback(lines>0?HapticFeedbackConstants.LONG_PRESS:HapticFeedbackConstants.KEYBOARD_TAP);
   if(lines==0)return;
-  burstStarted=android.os.SystemClock.uptimeMillis();burstLines=lines;burstPoints=engine.score-oldScore;
+  burstStarted=android.os.SystemClock.uptimeMillis();burstLines=lines;burstCombo=engine.combo;burstPoints=engine.score-oldScore;
   for(int r=0;r<8;r++)System.arraycopy(engine.cleared[r],0,burst[r],0,8);
  }
  private void drawAnimatedBoard(Canvas c){
@@ -171,7 +197,7 @@ public class GameView extends View {
   boolean animate=burstStarted>0&&t<1;
   c.save();if(animate)c.translate((float)Math.sin(t*48)*5*scale*(1-t),0);drawBoard(c);c.restore();
   if(!animate)return;
-  drawBurst(c,t);text(c,(burstLines>1?burstLines+"줄 동시 제거! ":"줄 제거! ")+"+"+burstPoints,left,top-12*scale,18,0xffffbd69);postInvalidateOnAnimation();
+  drawBurst(c,t);text(c,(burstCombo>1?burstCombo+"콤보! ":"")+(burstLines>1?burstLines+"줄 동시 제거! ":"줄 제거! ")+"+"+burstPoints,left,top-12*scale,18,0xffffbd69);postInvalidateOnAnimation();
  }
  private void drawBurst(Canvas c,float t){
   for(int r=0;r<8;r++)for(int col=0;col<8;col++){
@@ -197,7 +223,7 @@ public class GameView extends View {
   StringBuilder data=new StringBuilder();for(int[] row:engine.board)for(int value:row)data.append(value);
   SharedPreferences.Editor edit=slot().edit().putBoolean("undoUsed",undoUsed).putString("board",data.toString()).putInt("score",engine.score).putInt("best",best);
   StringBuilder stars=new StringBuilder();for(boolean[] row:engine.stars)for(boolean star:row)stars.append(star?'1':'0');
-  edit.putString("stars",stars.toString()).putInt("lines",engine.lines).putInt("moves",engine.moves).putInt("savedStage",mission.stage);
+  edit.putString("stars",stars.toString()).putInt("combo",engine.combo).putInt("lines",engine.lines).putInt("moves",engine.moves).putInt("savedStage",mission.stage);
   for(int i=0;i<3;i++)edit.putInt("hand"+i,hand[i]).putInt("tone"+i,tones[i]);edit.apply();
  }
  private void restore(){
@@ -209,6 +235,7 @@ public class GameView extends View {
   if(!SavedState.valid(data,savedHand,savedTones,shapes.length)){if(missionMode)mission.setup(engine);return;}
   for(int r=0;r<8;r++)for(int c=0;c<8;c++)engine.board[r][c]=data.charAt(r*8+c)-'0';
   hand=savedHand;tones=savedTones;engine.score=Math.max(0,saved.getInt("score",0));
+  engine.combo=Math.max(0,saved.getInt("combo",0));
   engine.lines=Math.max(0,saved.getInt("lines",0));engine.moves=Math.max(0,saved.getInt("moves",0));
   restoreStars(saved);
   if(handEmpty())deal();

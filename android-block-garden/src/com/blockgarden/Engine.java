@@ -2,7 +2,7 @@ package com.blockgarden;
 public class Engine {
  public final int[][] board=new int[8][8];
  public final int[][] cleared=new int[8][8];
- public int score=0,lines=0,moves=0;
+ public int score=0,lines=0,moves=0,combo=0;
  public final boolean[][] stars=new boolean[8][8];
  public int starCount(){int count=0;for(boolean[] row:stars)for(boolean star:row)if(star)count++;return count;}
  public boolean fits(int[][] shape,int r,int c){
@@ -14,7 +14,7 @@ public class Engine {
  public boolean place(int[][] shape,int r,int c,int color){
   if(!fits(shape,r,c))return false;
   for(int[] p:shape)board[r+p[0]][c+p[1]]=color;
-  int cleared=clear();lines+=cleared;moves++;score+=shape.length*10+cleared*cleared*100;return true;
+  int cleared=clear();combo=cleared>0?combo+1:0;lines+=cleared;moves++;score+=shape.length*10+cleared*cleared*100+Math.max(0,combo-1)*100;return true;
  }
  public int clear(){
   for(int[] row:cleared)java.util.Arrays.fill(row,0);

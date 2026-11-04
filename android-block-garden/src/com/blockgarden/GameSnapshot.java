@@ -7,7 +7,7 @@ public final class GameSnapshot {
  public int[] hand(){return hand.clone();}
  public int[] tones(){return tones.clone();}
  private Engine copy(Engine source){
-  Engine target=new Engine();target.score=source.score;target.moves=source.moves;target.lines=source.lines;
+  Engine target=new Engine();target.combo=source.combo;target.score=source.score;target.moves=source.moves;target.lines=source.lines;
   for(int r=0;r<8;r++){System.arraycopy(source.board[r],0,target.board[r],0,8);System.arraycopy(source.stars[r],0,target.stars[r],0,8);}return target;
  }
 }

@@ -26,7 +26,7 @@ public class EngineTest {
   check(!SavedState.valid(null,new int[]{0,0,0},new int[]{1,1,1},12),"missing save");
   check(!SavedState.validStars("x".repeat(64)),"corrupt stars");
   check(SavedState.validStars("01".repeat(32)),"valid stars");
-  undoTests();resultTests();feedbackTests();balance97();missionTests();campaignTests();
+  comboTests();undoTests();resultTests();feedbackTests();balance97();missionTests();campaignTests();
   System.out.println("Campaign checks passed");
  }
  static void missionTests(){
@@ -83,6 +83,16 @@ public class EngineTest {
   Engine restored=snapshot.engine();check(restored.score==300&&restored.moves==4&&restored.lines==2,"undo counters");
   check(restored.board[1][2]==3&&restored.stars[1][2],"undo board stars");
   check(snapshot.hand()[0]==1&&snapshot.tones()[0]==2,"undo independent hand");
+ }
+ static void comboTests(){
+  Engine e=new Engine();int[][] dot={{0,0}};
+  for(int i=0;i<7;i++){e.board[0][i]=1;e.board[1][i]=1;}
+  e.place(dot,0,7,1);check(e.combo==1&&e.score==110,"first clear combo");
+  e.place(dot,1,7,1);check(e.combo==2&&e.score==320,"second clear bonus");
+  GameSnapshot snapshot=new GameSnapshot(e,new int[]{0,0,0},new int[]{1,1,1});
+  check(snapshot.engine().combo==2,"undo retains combo");
+  e.place(dot,2,2,1);check(e.combo==0,"nonclear resets combo");
+  e.combo=3;check(!e.place(dot,2,2,1)&&e.combo==3,"invalid preserves combo");
  }
  static void checkStage(int stage){
   Mission m=new Mission(stage);Engine e=new Engine();m.setup(e);

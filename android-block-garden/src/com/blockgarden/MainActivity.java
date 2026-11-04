@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
  }
  private void showHelp(){
   new android.app.AlertDialog.Builder(this).setTitle("게임 방법")
-   .setMessage("① 아래 블록을 끌어 보드에 놓으세요. 선택 후 보드 칸을 눌러도 됩니다.\n\n② 가로나 세로 한 줄을 채우면 블록이 사라져요. 블록 회전은 없어요.\n\n③ 블록 3개를 모두 쓰면 새 블록이 나와요. 놓을 공간이 없으면 게임이 끝나요.\n\n④ 미션 모드에서는 표시된 목표를 제한 횟수 안에 달성하세요. 별·장애물이 있는 줄을 완성하면 해당 목표도 제거돼요.\n\n⑤ 게임당 한 번 직전 배치를 되돌릴 수 있어요. 앱을 다시 켜면 이전 배치의 되돌리기 기록은 사라져요.")
+   .setMessage("① 아래 블록을 끌어 보드에 놓으세요. 선택 후 보드 칸을 눌러도 됩니다.\n\n② 가로나 세로 한 줄을 채우면 블록이 사라져요. 블록 회전은 없어요.\n\n③ 블록 3개를 모두 쓰면 새 블록이 나와요. 놓을 공간이 없으면 게임이 끝나요.\n\n④ 미션 모드에서는 표시된 목표를 제한 횟수 안에 달성하세요. 별·장애물이 있는 줄을 완성하면 해당 목표도 제거돼요.\n\n⑤ 힌트 보기는 놓을 수 있는 위치를 알려줘요. 연속 배치로 줄을 지우면 2콤보부터 보너스를 받아요.\n\n⑥ 게임당 한 번 직전 배치를 되돌릴 수 있어요. 앱을 다시 켜면 이전 배치의 되돌리기 기록은 사라져요.")
    .setPositiveButton("알겠어요",null).show();
  }
  private void startGame(boolean mission){navigation.choose(mission);game=new GameView(this,navigation.isMission(),()->returnHome(),audio);setContentView(game);}
