@@ -12,7 +12,9 @@ public class TouchTest {
   p=t.anchor(28+43*7+20,190+43*7+20,28,190,43,1,1);
   check(p[0]==7&&p[1]==7,"tap keeps exact cell");
   p=t.anchor(27,200,28,190,43,1,1);check(p==null,"outside rejects");
-  System.out.println("7 touch checks passed");
+  t.begin(0,0,true);t.move(6,0,10);check(t.dragging,"short drag reacts early");
+  System.out.println("8 touch checks passed");
  }
  static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
 }
+

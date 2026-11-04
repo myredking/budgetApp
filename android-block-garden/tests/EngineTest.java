@@ -26,7 +26,7 @@ public class EngineTest {
   check(!SavedState.valid(null,new int[]{0,0,0},new int[]{1,1,1},12),"missing save");
   check(!SavedState.validStars("x".repeat(64)),"corrupt stars");
   check(SavedState.validStars("01".repeat(32)),"valid stars");
-  feedbackTests();balance97();missionTests();campaignTests();
+  undoTests();resultTests();feedbackTests();balance97();missionTests();campaignTests();
   System.out.println("Campaign checks passed");
  }
  static void missionTests(){
@@ -68,6 +68,21 @@ public class EngineTest {
   check(cells==15,"cross particles deduplicated");
   check(e.cleared[0][0]==2,"cleared color preserved");
   check(e.clear()==0&&e.cleared[0][0]==0,"old particles reset");
+ }
+ static void resultTests(){
+  Engine e=new Engine();e.score=123;e.lines=2;e.moves=7;
+  check(EndSummary.title(false,new Mission(1),e).equals("게임 종료"),"free end title");
+  check(EndSummary.message(false,new Mission(1),e,500).contains("123"),"result score");
+  e.moves=20;check(EndSummary.message(true,new Mission(3),e,500).contains("배치 횟수"),"limit reason");
+  e.lines=5;check(EndSummary.title(true,new Mission(3),e).equals("미션 성공!"),"success title");
+ }
+ static void undoTests(){
+  Engine e=new Engine();e.score=300;e.moves=4;e.lines=2;e.board[1][2]=3;e.stars[1][2]=true;
+  int[] hand={1,-1,4},tones={2,3,4};GameSnapshot snapshot=new GameSnapshot(e,hand,tones);
+  e.board[1][2]=0;e.stars[1][2]=false;hand[0]=-1;tones[0]=5;
+  Engine restored=snapshot.engine();check(restored.score==300&&restored.moves==4&&restored.lines==2,"undo counters");
+  check(restored.board[1][2]==3&&restored.stars[1][2],"undo board stars");
+  check(snapshot.hand()[0]==1&&snapshot.tones()[0]==2,"undo independent hand");
  }
  static void checkStage(int stage){
   Mission m=new Mission(stage);Engine e=new Engine();m.setup(e);

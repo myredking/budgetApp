@@ -6,7 +6,7 @@ public final class TouchControl {
  public void begin(float x,float y,boolean hand){active=true;dragging=false;fromHand=hand;startX=x;startY=y;}
  public void move(float x,float y,float slop){
   if(!active||!fromHand)return;
-  float dx=x-startX,dy=y-startY;if(dx*dx+dy*dy>slop*slop)dragging=true;
+  float dx=x-startX,dy=y-startY;if(dx*dx+dy*dy>slop*slop*0.25f)dragging=true;
  }
  public void cancel(){active=false;dragging=false;fromHand=false;}
  public int[] anchor(float x,float y,float left,float top,float unit,int height,int width){
