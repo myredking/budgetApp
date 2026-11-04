@@ -17,10 +17,17 @@ public final class Engine {
     }
     public final ArrayList<Tower> towers=new ArrayList<>();
     public final ArrayList<Fleet> fleets=new ArrayList<>();
-    private double aiTime;
-    public final int level;
+    double aiTime;
+    public double elapsed;
+    public int captures,dispatched;
+    public final int level,difficulty;
     public Engine(int stage) {
-        level=stage;
+        this(stage,1);
+    }
+    public Engine(int stage,int mode) {
+        level=Math.max(1,Math.min(Campaign.COUNT,stage));
+        difficulty=Math.max(0,Math.min(2,mode));
+        stage=level;
         towers.add(new Tower(.22,.82,1,32));
         towers.add(new Tower(.78,.18,2,24+stage*2));
         towers.add(new Tower(.25,.56,0,8));
@@ -30,6 +37,7 @@ public final class Engine {
         if(stage>1) towers.add(new Tower(.48,.36,2,10+stage));
         if(stage>3) towers.add(new Tower(.48,.66,0,16));
         configureMap(stage);
+        Campaign.configure(this);
     }
     private void configureMap(int stage) {
         int layout=(stage-1)%3;
@@ -45,7 +53,12 @@ public final class Engine {
         t.units-=20*t.rank;t.rank++;
         return true;
     }
-    public boolean send(int from,int to) { return dispatch(from,to,1); }
+    public boolean send(int from,int to) {
+        if(result()!=0) return false;
+        boolean sent=dispatch(from,to,1);
+        if(sent) dispatched++;
+        return sent;
+    }
     private boolean dispatch(int from,int to,int team) {
         if(from<0 || to<0 || from>=towers.size() || to>=towers.size()) return false;
         Tower a=towers.get(from),b=towers.get(to);
@@ -58,7 +71,9 @@ public final class Engine {
         return true;
     }
     public void update(double dt) {
+        if(!Double.isFinite(dt) || dt<=0) return;
         if(result()!=0) return;
+        elapsed+=dt;
         for(Tower t:towers) produce(t,dt);
         Iterator<Fleet> it=fleets.iterator();
         while(it.hasNext()) {
@@ -66,12 +81,13 @@ public final class Engine {
             if(f.progress>=1) {arrive(f);it.remove();}
         }
         aiTime+=dt;
-        if(aiTime>=2.8) {aiTime=0;think();}
+        if(aiTime>=3.6-difficulty*.8) {aiTime=0;think();}
     }
     private void produce(Tower t,double dt) {
         if(t.owner==0) return;
         double bonus=(t.kind==FACTORY?1.7:1)*(1+(t.rank-1)*.5);
-        t.growth+=dt*(t.owner==1?1.8:1.3+Math.min(level,10)*.08)*bonus;
+        double enemyRate=(1.3+Math.min(level,10)*.08)*(.75+difficulty*.25);
+        t.growth+=dt*(t.owner==1?1.8:enemyRate)*bonus;
         int gain=(int)t.growth;t.growth-=gain;
         t.units=Math.min(99,t.units+gain);
     }
@@ -79,7 +95,10 @@ public final class Engine {
         Tower t=towers.get(f.to);
         if(t.owner==f.owner) {t.units=Math.min(99,t.units+f.units);return;}
         t.units-=f.units;
-        if(t.units<0) {t.owner=f.owner;t.units=-t.units;t.growth=0;}
+        if(t.units<0) {
+            t.owner=f.owner;t.units=-t.units;t.growth=0;
+            if(f.owner==1) captures++;
+        }
     }
     private void think() {
         for(int i=0;i<towers.size();i++) {
@@ -105,5 +124,10 @@ public final class Engine {
         for(Fleet f:fleets) {blue|=f.owner==1;red|=f.owner==2;}
         if(!blue) return 2;
         return red?0:1;
+    }
+    public int medals() {
+        if(result()!=1) return 0;
+        if(elapsed<=90) return 3;
+        return elapsed<=180?2:1;
     }
 }
