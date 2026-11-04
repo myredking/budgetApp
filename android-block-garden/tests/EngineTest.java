@@ -26,7 +26,7 @@ public class EngineTest {
   check(!SavedState.valid(null,new int[]{0,0,0},new int[]{1,1,1},12),"missing save");
   check(!SavedState.validStars("x".repeat(64)),"corrupt stars");
   check(SavedState.validStars("01".repeat(32)),"valid stars");
-  missionTests();campaignTests();
+  balance97();missionTests();campaignTests();
   System.out.println("Campaign checks passed");
  }
  static void missionTests(){
@@ -51,6 +51,15 @@ public class EngineTest {
   check(new Mission(8).nextStage()==9,"continue old finale");
   check(new Mission(100).nextStage()==1,"campaign wrap");
   for(int stage=9;stage<=100;stage++)checkStage(stage);
+ }
+ static void balance97(){
+  Mission m=new Mission(97);Engine e=new Engine();
+  check(m.scoreGoal()==2800,"97 reduced goal");check(m.limit()==50,"97 extra moves");
+  e.score=2799;check(!m.complete(e),"97 below goal");
+  e.moves=50;check(m.failed(e),"97 limit fails");
+  e.score=2800;check(m.complete(e)&&!m.failed(e),"97 last turn win");
+  check(new Mission(93).scoreGoal()==3950,"93 unchanged");
+  check(new Mission(98).limit()==38,"98 unchanged");
  }
  static void checkStage(int stage){
   Mission m=new Mission(stage);Engine e=new Engine();m.setup(e);

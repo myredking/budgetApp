@@ -14,7 +14,7 @@ public final class Mission {
  public int nextStage(){return stage==COUNT?1:stage+1;}
  private int tier(){return (stage-9)/4;}
  private int kind(){return (stage-9)%4;}
- public int scoreGoal(){return 800+tier()*150;}
+ public int scoreGoal(){if(stage==97)return 2800;return 800+tier()*150;}
  public int lineGoal(){return 5+tier()/2;}
  private void setupAdvanced(Engine e){
   if(kind()<2)return;
@@ -22,7 +22,7 @@ public final class Mission {
   for(int i=0;i<count;i++){int r=(i*3+stage)%8,c=(i*5+stage/8)%8;e.stars[r][c]=true;}
   if(kind()==3)seedObstacles(e);
  }
- public int limit(){if(stage>8)return 60-tier();if(stage==8)return 25;return stage==3?20:(stage>=5?35:0);}
+ public int limit(){if(stage==97)return 50;if(stage>8)return 60-tier();if(stage==8)return 25;return stage==3?20:(stage>=5?35:0);}
  public boolean complete(Engine e){
   if(stage>8)return advancedComplete(e);
   if(stage==1)return e.score>=500;

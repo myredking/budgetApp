@@ -14,3 +14,5 @@ winning-moves.csv의 좌표는 0부터 시작하며 블록/슬롯 번호는 Play
 실제 Android 기기 화면·터치·모드 전환·저장소 실행 검증은 수행하지 못했습니다. 정상 저장 데이터 기준 추가 진행 차단 오류는 코드 검토에서 발견하지 못했습니다.
 
 재실행: JDK로 src/com/blockgarden/Engine.java, Mission.java와 tests/Playability.java를 함께 컴파일하고 com.blockgarden.Playability에 출력 CSV 경로 인수 하나를 전달합니다.
+
+1.2.2 난이도 조정: 97단계 2,800점/50회. Balance97.java로 기존과 같은 300개 seed를 플레이한 결과 100회 성공(기존 1회). 성공한 100경로 모두 재생 검증, 첫 성공 기록 stage97-v1.2.2-moves.csv. 기존 results.csv는 1.2.1 기준 기록입니다.
