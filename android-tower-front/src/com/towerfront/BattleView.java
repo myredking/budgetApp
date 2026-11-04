@@ -2,8 +2,6 @@ package com.towerfront;
 
 import android.graphics.*;
 import android.view.*;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Locale;
 
 public final class BattleView extends View {
@@ -12,24 +10,18 @@ public final class BattleView extends View {
     private final BattleControls controls;
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Typeface bold=Typeface.create("sans-serif",Typeface.BOLD);
-    private final ArrayList<Pulse> pulses=new ArrayList<>();
-    private final int[] owners;
+    private final BattleEffects effects=new BattleEffects();
+    private final EffectRenderer renderer=new EffectRenderer();
     private float scale=1,left,top,dragX,dragY;
     private boolean running=true,paused,dragging,reported;
     private int pressedButton=-1;
     private long last;
-    private double sinceSave;
+    private double sinceSave,soundCooldown;
     private String notice="아군을 선택한 뒤 목표를 터치하세요";
     private double noticeTime=5;
     private static final int WHITE=Color.rgb(237,246,251),GRAY=Color.rgb(139,161,179);
-    private static final class Pulse {
-        float x,y,age;int color;
-        Pulse(float px,float py,int c) {x=px;y=py;color=c;}
-    }
     public BattleView(MainActivity activity,Engine state) {
         super(activity);host=activity;engine=state;controls=new BattleControls(engine);
-        owners=new int[engine.towers.size()];
-        for(int i=0;i<owners.length;i++) owners[i]=engine.towers.get(i).owner;
         setFocusable(true);setContentDescription("타워 프론트 전장. 아군 선택 후 목표 터치 또는 드래그.");
     }
     public void suspend() {running=false;paused=true;controls.cancel();last=0;}
@@ -59,27 +51,34 @@ public final class BattleView extends View {
         board(real);header(real);
         for(Engine.Fleet f:engine.fleets) fleet(real,f);
         for(int i=0;i<engine.towers.size();i++) tower(real,i);
-        drawPulses(real);drawDrag(real);footer(real);
-        if(paused || engine.result()!=0) overlay(real);
+        renderer.drawBursts(real,effects);drawDrag(real);footer(real);
+        drawOverlay(real);
         real.restore();if(running) postInvalidateDelayed(paused?100:16);
+    }
+    private void drawOverlay(Canvas c) {
+        if(paused || engine.result()!=0) overlay(c);
+        if(engine.result()==1 && !paused) renderer.drawConfetti(c,effects);
     }
     private void tick(double dt) {
         engine.update(dt);controls.validate();noticeTime=Math.max(0,noticeTime-dt);
-        for(Pulse p:pulses) p.age+=dt;
-        Iterator<Pulse> it=pulses.iterator();while(it.hasNext()) if(it.next().age>1) it.remove();
-        detectCaptures();sinceSave+=dt;
+        effects.update(dt);soundCooldown=Math.max(0,soundCooldown-dt);
+        processImpacts();sinceSave+=dt;
         if(sinceSave>=5) {host.saveBattle(false);sinceSave=0;}
         if(engine.result()!=0 && !reported) {
             reported=true;host.saveBattle(true);host.feedback(engine.result()==1);
+            if(host.visuals && engine.result()==1) effects.celebrate();
         }
     }
-    private void detectCaptures() {
-        for(int i=0;i<owners.length;i++) {
-            Engine.Tower t=engine.towers.get(i);
-            if(owners[i]==t.owner) continue;
-            owners[i]=t.owner;
-            pulses.add(new Pulse(BattleControls.x(t),BattleControls.y(t),color(t.owner)));
-            if(t.owner==1) {notice("타워 점령! 전선이 확장되었습니다");host.feedback(true);}
+    private void processImpacts() {
+        int sound=-1;
+        for(Engine.Impact event:engine.drainImpacts()) {
+            Engine.Tower t=engine.towers.get(event.target);
+            if(host.visuals) effects.impact(event,BattleControls.x(t),BattleControls.y(t));
+            sound=Math.max(sound,event.kind);
+            if(event.kind==Engine.CAPTURE && event.owner==1) notice("타워 점령! 전선이 확장되었습니다");
+        }
+        if(sound>=0 && soundCooldown==0 && engine.result()==0) {
+            host.battleSound(sound);soundCooldown=.15;
         }
     }
     private void board(Canvas c) {
@@ -107,6 +106,7 @@ public final class BattleView extends View {
     }
     private void tower(Canvas c,int index) {
         Engine.Tower t=engine.towers.get(index);float x=BattleControls.x(t),y=BattleControls.y(t);
+        c.save();float pop=effects.towerScale(index);c.scale(pop,pop,x,y);
         int col=color(t.owner);
         if(controls.selected==index) {
             paint.setColor(WHITE);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2);
@@ -119,6 +119,7 @@ public final class BattleView extends View {
         String kind=t.kind==Engine.FACTORY?"생산":t.kind==Engine.RELAY?"기동":"기본";
         text(c,team+" "+kind,x,y+44,10,col);
         for(int i=0;i<t.rank;i++) {paint.setColor(col);c.drawCircle(x+(i-(t.rank-1)/2f)*8,y-36,2.5f,paint);}
+        c.restore();
     }
     private void drawTowerShape(Canvas c,Engine.Tower t,float x,float y,int col) {
         paint.setColor(col);
@@ -142,14 +143,6 @@ public final class BattleView extends View {
         }
         paint.setColor(color(f.owner));c.drawCircle(fx,fy,11,paint);
         text(c,String.valueOf(f.units),fx,fy+4,10,MainActivity.BG);
-    }
-    private void drawPulses(Canvas c) {
-        paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(3);
-        for(Pulse p:pulses) {
-            paint.setColor(p.color);paint.setAlpha((int)(255*(1-p.age)));
-            c.drawCircle(p.x,p.y,30+p.age*34,paint);
-        }
-        paint.setAlpha(255);paint.setStyle(Paint.Style.FILL);
     }
     private void drawDrag(Canvas c) {
         if(!dragging || controls.selected<0) return;

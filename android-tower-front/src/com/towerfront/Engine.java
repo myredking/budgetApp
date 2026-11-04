@@ -3,6 +3,13 @@ import java.util.ArrayList;
 import java.util.Iterator;
 public final class Engine {
     public static final int NORMAL=0, FACTORY=1, RELAY=2;
+    public static final int HIT=0,REINFORCE=1,CAPTURE=2;
+    public static final class Impact {
+        public final int target,owner,amount,kind;
+        public Impact(int tower,int team,int count,int effect) {
+            target=tower;owner=team;amount=count;kind=effect;
+        }
+    }
     public static final class Tower {
         public double x,y,growth;
         public int owner,units,kind=0,rank=1;
@@ -17,6 +24,7 @@ public final class Engine {
     }
     public final ArrayList<Tower> towers=new ArrayList<>();
     public final ArrayList<Fleet> fleets=new ArrayList<>();
+    private final ArrayList<Impact> impacts=new ArrayList<>();
     double aiTime;
     public double elapsed;
     public int captures,dispatched;
@@ -103,12 +111,25 @@ public final class Engine {
     }
     private void arrive(Fleet f) {
         Tower t=towers.get(f.to);
-        if(t.owner==f.owner) {t.units=Math.min(99,t.units+f.units);return;}
+        if(t.owner==f.owner) {
+            int received=Math.min(f.units,99-t.units);t.units+=received;
+            if(received>0) recordImpact(f,REINFORCE,received);
+            return;
+        }
         t.units-=f.units;
         if(t.units<0) {
             t.owner=f.owner;t.units=-t.units;t.growth=0;
             if(f.owner==1) captures++;
+            recordImpact(f,CAPTURE,f.units);return;
         }
+        recordImpact(f,HIT,f.units);
+    }
+    private void recordImpact(Fleet f,int kind,int amount) {
+        if(impacts.size()>=64) impacts.remove(0);
+        impacts.add(new Impact(f.to,f.owner,amount,kind));
+    }
+    public ArrayList<Impact> drainImpacts() {
+        ArrayList<Impact> result=new ArrayList<>(impacts);impacts.clear();return result;
     }
     private void think() {
         for(int i=0;i<towers.size();i++) {

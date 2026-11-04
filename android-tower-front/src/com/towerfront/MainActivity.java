@@ -25,7 +25,7 @@ public final class MainActivity extends Activity {
     Engine engine;
     Profile profile;
     int mode=1;
-    boolean sound=true,haptics=true;
+    boolean sound=true,haptics=true,visuals=true;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -34,6 +34,7 @@ public final class MainActivity extends Activity {
         profile=Profile.decode(preferences.getString("profile",""));
         mode=preferences.getInt("mode",1);mode=Math.max(0,Math.min(2,mode));
         sound=preferences.getBoolean("sound",true);haptics=preferences.getBoolean("haptics",true);
+        visuals=preferences.getBoolean("visuals",true);
         migrateProgress();
         engine=SaveCodec.decode(preferences.getString("battle",""));
         try {tone=new ToneGenerator(AudioManager.STREAM_MUSIC,45);} catch(RuntimeException ex) {tone=null;}
@@ -78,6 +79,11 @@ public final class MainActivity extends Activity {
         if(!sound || tone==null) return;
         tone.startTone(positive?ToneGenerator.TONE_PROP_ACK:ToneGenerator.TONE_PROP_NACK,90);
     }
+    void battleSound(int kind) {
+        if(!sound || tone==null) return;
+        int[] tones={ToneGenerator.TONE_PROP_BEEP,ToneGenerator.TONE_PROP_BEEP2,ToneGenerator.TONE_PROP_ACK};
+        tone.startTone(tones[kind],kind==Engine.CAPTURE?140:65);
+    }
     void message(String text) {Toast.makeText(this,text,Toast.LENGTH_SHORT).show();}
     private int dp(int value) {return Math.round(value*getResources().getDisplayMetrics().density);}
     private GradientDrawable surface(int color) {
@@ -115,9 +121,9 @@ public final class MainActivity extends Activity {
         if(engine!=null) button(panel,engine.result()==0?"작전 "+engine.level+" 이어하기":"지난 전투 결과",true,()->openBattle(engine));
         button(panel,"캠페인 · 작전 선택",engine==null,()->showCampaign());
         button(panel,"플레이 방법",false,()->showHelp());
-        button(panel,"소리와 진동 설정",false,()->showSettings());
+        button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 36",16,CYAN));
-        panel.addView(label("v3.0 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v3.1 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     void showCampaign() {
         saveBattle(false);
@@ -169,11 +175,14 @@ public final class MainActivity extends Activity {
         start(Campaign.next(engine.level));
     }
     private void showSettings() {
-        String[] names={"효과음","터치 진동"};boolean[] checked={sound,haptics};
-        new AlertDialog.Builder(this).setTitle("소리와 진동")
+        String[] names={"효과음","터치 진동","전투 연출"};boolean[] checked={sound,haptics,visuals};
+        new AlertDialog.Builder(this).setTitle("소리·진동·연출")
             .setMultiChoiceItems(names,checked,(dialog,which,value)->{
-                if(which==0) sound=value;else haptics=value;
-                preferences.edit().putBoolean("sound",sound).putBoolean("haptics",haptics).apply();
+                if(which==0) sound=value;
+                if(which==1) haptics=value;
+                if(which==2) visuals=value;
+                preferences.edit().putBoolean("sound",sound).putBoolean("haptics",haptics)
+                    .putBoolean("visuals",visuals).apply();
             }).setPositiveButton("완료",null).show();
     }
     void showHelp() {
