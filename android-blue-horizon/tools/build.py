@@ -21,11 +21,13 @@ def run(args: list[str | Path]) -> None:
 def test() -> None:
     target = BUILD / "test"
     target.mkdir(parents=True, exist_ok=True)
-    names = ["Engine", "Story", "SaveCodec"]
+    names = ["Engine", "Story", "SaveCodec", "World", "WorldRoutes", "Route", "MapProjection", "MapLabels", "SeaPaths"]
     sources = [PROJECT / f"src/com/bluehorizon/{name}.java" for name in names]
     run([JAVA / "javac.exe", "-encoding", "UTF-8", "-d", target,
          *sources, *list((PROJECT / "tests").glob("*.java"))])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.EngineTest"])
+    run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.WorldTest"])
+    run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.SeaRouteTest"])
 
 
 def compile_app() -> Path:
@@ -44,6 +46,8 @@ def compile_app() -> Path:
          "AndroidManifest.xml", "-o", "build/unsigned.apk", "build/resources.zip"])
     with zipfile.ZipFile(unsigned, "a", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.write(dex / "classes.dex", "classes.dex")
+        for asset in (PROJECT / "assets").glob("*"):
+            archive.write(asset, "assets/" + asset.name)
     aligned = BUILD / "aligned.apk"
     run([SDK / "zipalign.exe", "-f", "-p", "4", unsigned, aligned])
     return aligned

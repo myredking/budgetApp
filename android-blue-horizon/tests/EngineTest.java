@@ -20,7 +20,7 @@ public final class EngineTest {
     }
     private static void voyages() {
         Engine e = new Engine();
-        check(!e.sail(0, 0) && !e.sail(5, 0), "reject invalid destination");
+        check(!e.sail(0, 0) && !e.sail(World.COUNT, 0), "reject invalid destination");
         int cost = e.travelCost(1, 0);
         check(e.sail(1, 0), "sail to second port");
         check(e.gold == 1800 - cost && e.day > 1, "voyage consumes time and gold");
@@ -45,10 +45,7 @@ public final class EngineTest {
         check(e.sail(2, 0) && e.sail(3, 0), "visit lighthouse ports");
         e.fame = 10; e.advanceStory();
         check(e.chapter == 2, "second story chapter");
-        check(e.buy(3, 5) && e.sail(4, 0) && e.sell(3, 5), "spice route");
-        check(e.chapter == 3, "third story chapter");
-        e.gold = 6000; check(e.sail(0, 0), "return home");
-        check(e.chapter == 4, "story ending reached");
+        check(e.chapter < Story.REVEALS.length, "northern visit is not world ending");
     }
     private static void persistence() {
         Engine e = new Engine(); e.buy(0, 5); e.sail(1, 1);
@@ -73,7 +70,7 @@ public final class EngineTest {
         check(Engine.decode(e.encode()) != null, "max influence save valid");
     }
     private static void malformedStates() {
-        Engine e=new Engine(); e.port=9;
+        Engine e=new Engine(); e.port=World.COUNT;
         check(Engine.decode(e.encode())==null,"invalid harbor rejected");
         e=new Engine(); e.level=0;
         check(Engine.decode(e.encode())==null,"invalid level rejected before capacity lookup");
@@ -85,12 +82,12 @@ public final class EngineTest {
         check(Engine.decode(e.encode())==null,"invalid influence rejected");
         e=new Engine(); e.port=2;
         check(Engine.decode(e.encode())==null,"unvisited current port rejected");
-        e=new Engine(); e.chapter=5;
+        e=new Engine(); e.chapter=Story.REVEALS.length+1;
         check(Engine.decode(e.encode())==null,"invalid chapter rejected");
         e=new Engine(); e.hull=101;
         check(Engine.decode(e.encode())==null,"invalid hull rejected");
         String good=new Engine().encode();
-        check(Engine.decode(good.replace("BLUE1", "BLUE2"))==null,"unknown save version rejected");
+        check(Engine.decode(good.replace("BLUE2", "BLUE9"))==null,"unknown save version rejected");
         check(Engine.decode(good.substring(0,good.length()-1)+"A")==null,"checksum corruption rejected");
     }
     private static void tradingCircuit(Engine e) {
@@ -106,15 +103,26 @@ public final class EngineTest {
         for(int i=0;i<9;i++) tradingCircuit(e);
         check(e.chapter==1 && e.fame>=10,"earn story reputation through play");
         check(e.upgrade(),"fund second ship through trading");
-        check(e.sail(2,1) && e.sail(3,1),"discover both lighthouses");
-        check(e.chapter==2,"natural campaign chapter two");
-        check(e.buy(3,5) && e.sail(4,1) && e.sell(3,5),"complete natural spice delivery");
-        check(e.chapter==3,"natural campaign chapter three");
-        check(e.sail(0,1),"return from haran");
-        int trips=0;
-        while(e.chapter<4 && trips++<20) tradingCircuit(e);
-        check(e.chapter==4,"campaign can finish without state edits or cheat money");
+        sailFunded(e,2);sailFunded(e,3);
+        check(e.chapter==2,"northern archives complete");
+        sailFunded(e,13);check(e.invest(),"support Alexandrian archive");
+        check(e.chapter==3,"Mediterranean chapter complete");
+        sailFunded(e,21);check(e.chapter==4,"Cape chapter complete");
+        sailFunded(e,28);check(e.buy(3,5),"buy Indian spices");
+        sailFunded(e,32);check(e.sell(3,5) && e.chapter==5,"monsoon trade chapter");
+        sailFunded(e,42);check(e.buy(4,5),"buy East Asian tea");
+        sailFunded(e,44);check(e.sell(4,5) && e.chapter==6,"East Asian chapter");
+        sailFunded(e,48);sailFunded(e,53);
+        check(e.chapter==7,"Atlantic archives complete");
+        while(e.gold<e.travelCost(0,1)+12000) e.work();
+        sailFunded(e,0);
+        check(e.chapter==Story.REVEALS.length,"global campaign finishes without state edits");
         check(Engine.decode(e.encode())!=null,"finished campaign save reloads");
+    }
+    private static void sailFunded(Engine e,int port) {
+        while(e.gold<e.travelCost(port,1)+e.repairCost()+1500) e.work();
+        if(e.hull<e.maxHull()) check(e.repair(),"repair before ocean crossing");
+        check(e.sail(port,1),"fund and sail through normal port actions");
     }
     private static void randomizedActions() {
         Engine e=new Engine(); java.util.Random random=new java.util.Random(1741);
