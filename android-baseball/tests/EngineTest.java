@@ -90,7 +90,7 @@ public final class EngineTest {
         check(game.home == 0 && game.away == 0 && !game.finished, "Restart");
     }
     public static void main(String[] args) {
-        SceneTest.run(); ClubTest.run(); autoAbilities(); settingsRoundTrip(); kboSeason(); difficultyAndEditing(); deckAndScoring(); manualControls();
+        FeedbackTest.run(); SceneTest.run(); ClubTest.run(); autoAbilities(); settingsRoundTrip(); kboSeason(); difficultyAndEditing(); deckAndScoring(); manualControls();
         System.out.println(checks + " engine checks passed");
     }
     static void kboSeason() {

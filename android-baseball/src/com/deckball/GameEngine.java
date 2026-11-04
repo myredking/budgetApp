@@ -34,6 +34,7 @@ public final class GameEngine {
     public int pitcher = 27, inning = 1, outs, balls, strikes, home, away, batter;
     public boolean batting, finished;
     public boolean[] bases = new boolean[3];
+    public String feedback="",lastSkills="";
     public String message = "나만의 덱으로 경기를 시작하세요";
     private final Random random;
 
@@ -124,7 +125,7 @@ public final class GameEngine {
         } catch (IllegalArgumentException e) { return false; }
     }
     public void start() {
-        lastHit=0; inning = 1; outs = balls = strikes = home = away = batter = 0;
+        feedback="";lastSkills="";lastHit=0; inning = 1; outs = balls = strikes = home = away = batter = 0;
         batting = finished = false; Arrays.fill(bases, false);
         message = "1회 초 · 구종과 코스를 고른 뒤 투구하세요";
     }
@@ -179,6 +180,8 @@ public final class GameEngine {
         if (finished || !batting) return;
         validateTiming(timing); lastHit=0;
         Player hitter = player(lineup[batter]);
+        feedback=TimingFeedback.grade(timing,.78,timingWindow());
+        lastSkills=PlayerSkills.activeDescription(hitter,bases[1] || bases[2]);
         double quality = timingQuality(timing, .78);
         if (random.nextDouble() > quality * (.60 + contactRating(hitter) / 200.0 - controlRating(player(opponentPitcher)) / 500.0)) { strike(); return; }
         double roll = random.nextDouble();
@@ -188,13 +191,15 @@ public final class GameEngine {
     }
     public void take() {
         if (finished || !batting) return;
-        lastHit=0;
+        lastHit=0;feedback="지켜보기";lastSkills="";
         if (random.nextDouble() < .32) ball(); else strike();
     }
     public void pitch(int kind, int location, double timing) {
         if (finished || batting) return;
         validateTiming(timing);
         validatePitch(kind,location); lastHit=0;
+        feedback=TimingFeedback.grade(timing,.65,timingWindow());
+        lastSkills=PlayerSkills.activeDescription(player(pitcher),bases[1] || bases[2]);
         double control = controlRating(player(pitcher)) / 100.0;
         double precision = timingQuality(timing, .65);
         double roll = random.nextDouble();
@@ -210,6 +215,7 @@ public final class GameEngine {
         lastHit=0;
         Player hitter = player(batting ? lineup[batter] : opponentHitter);
         Player bowler = player(batting ? opponentPitcher : pitcher);
+        feedback="감독 모드";lastSkills=PlayerSkills.activeDescription(batting?hitter:bowler,bases[1] || bases[2]);
         double advantage = (batting ? 1 - difficulty : difficulty - 1) * .04;
         double homeRun = Math.max(.002, .01 + powerRating(hitter) / 1800.0 - controlRating(bowler) / 5000.0 + advantage / 3);
         double skill = Math.max(.01, .10 + contactRating(hitter) / 400.0 - controlRating(bowler) / 650.0 + advantage);

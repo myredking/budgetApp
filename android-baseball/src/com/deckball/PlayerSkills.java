@@ -25,12 +25,19 @@ public final class PlayerSkills {
     }
     public static int power(GameEngine.Player p) { return Math.min(110,p.power+bonus(p,POWER,8)+bonus(p,LEGEND,3)); }
     public static int control(GameEngine.Player p) { return Math.min(110,p.control+bonus(p,ACE,8)+bonus(p,LEGEND,3)); }
-    public static String describe(GameEngine.Player p) {
+    public static int activeMask(GameEngine.Player p,boolean scoring) {
+        return scoring?p.skills:p.skills & ~CLUTCH;
+    }
+    public static String activeDescription(GameEngine.Player p,boolean scoring) {
+        return describeMask(activeMask(p,scoring),false);
+    }
+    public static String describe(GameEngine.Player p) { return describeMask(p.skills,true); }
+    private static String describeMask(int mask,boolean full) {
         StringBuilder text=new StringBuilder();
         for(int i=0;i<VALUES.length;i++) {
-            if((p.skills & VALUES[i])==0) continue;
+            if((mask & VALUES[i])==0) continue;
             if(text.length()>0) text.append(" / ");
-            text.append(NAMES[i]);
+            text.append(full?NAMES[i]:NAMES[i].split(" · ")[0]);
         }
         return text.length()==0 ? "특수 능력 없음" : text.toString();
     }

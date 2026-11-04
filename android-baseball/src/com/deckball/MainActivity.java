@@ -304,7 +304,7 @@ public final class MainActivity extends Activity {
                 (dialog, which) -> { location = which; refresh(); }).show();
     }
     double progress() { return Math.min(1, (SystemClock.elapsedRealtime() - pitchStart) / (double)engine.pitchDuration()); }
-    void beginPitch() { engine.lastHit=0; inFlight = true; pitchStart = SystemClock.elapsedRealtime(); refresh(); }
+    void beginPitch() { engine.feedback="";engine.lastSkills="";engine.lastHit=0; inFlight = true; pitchStart = SystemClock.elapsedRealtime(); refresh(); }
     void resolve() { if(engine.lastHit>0) field.contact(); inFlight = false; field.progress = -1; refresh(); }
     void batAction() {
         if (!inFlight) { beginPitch(); return; }
