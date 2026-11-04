@@ -12,6 +12,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -24,7 +25,7 @@ public final class MainActivity extends Activity {
     static final int NAVY=0xff101f30, PANEL=0xff1a3041, GOLD=0xffe4bf7b;
     static final int INK=0xffecede5, MUTED=0xff9eb7bd, TEAL=0xff65c9b5;
     private Engine game;
-    private int tab=0, quantity=5;
+    private int tab=0, quantity=5, mapRegion=-1;
     private SharedPreferences prefs;
     private LinearLayout root, content;
     private TextView status;
@@ -42,14 +43,16 @@ public final class MainActivity extends Activity {
         if(game==null) { game=Engine.decode(prefs.getString("backup",null)); recovered=game!=null; }
         boolean fresh=game==null;
         if(fresh) game=new Engine();
-        if(state!=null) { tab=state.getInt("tab",0); quantity=state.getInt("quantity",5); }
+        if(state!=null) { tab=state.getInt("tab",0); quantity=state.getInt("quantity",5);mapRegion=state.getInt("region",-1); }
         save(); render();
         if(fresh) dialog("푸른 수평선", Story.introduction());
         if(recovered) dialog("저장 복원", "최근 저장을 읽을 수 없어 이전 자동 저장을 복원했습니다.");
+        if(game.message.startsWith("세계 확장 버전")) dialog("세계 항해 버전으로 이전",game.message);
     }
     @Override protected void onPause() { super.onPause(); if(game!=null) save(); }
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out); out.putInt("tab",tab); out.putInt("quantity",quantity);
+        out.putInt("region",mapRegion);
     }
     private void save() {
         String previous=prefs.getString("save",null);
@@ -62,8 +65,8 @@ public final class MainActivity extends Activity {
         int previousChapter=shownChapter;
         save(); render();
         Toast.makeText(this,game.message,Toast.LENGTH_LONG).show();
-        if(success && game.chapter==4 && previousChapter<4) {
-            dialog("푸른 수평선 너머로",Story.REVEALS[3]+"\n\n이제 자유롭게 항해할 수 있습니다.");
+        if(success && game.chapter==Story.REVEALS.length && previousChapter<game.chapter) {
+            dialog("세계 해도의 완성",Story.REVEALS[Story.REVEALS.length-1]+"\n\n이제 자유롭게 항해할 수 있습니다.");
         }
     }
     private void render() {
@@ -98,10 +101,12 @@ public final class MainActivity extends Activity {
         stats.setPadding(0,dp(4),0,dp(9)); root.addView(stats);
     }
     private void harbor() {
-        label(content,"THE AZURE ARCHIPELAGO",11,TEAL);
+        label(content,"WORLD ATLAS · 7 SEAS · 56 PORTS",11,TEAL);
         label(content,Engine.PORTS[game.port]+" 항구",27,INK);
-        label(content,"지도에서 항구를 누르면 항로를 정할 수 있어요.",12,MUTED);
-        OceanView ocean=new OceanView(this,game, target -> voyage(target));
+        label(content,World.REGIONS[World.region(game.port)]+" · 방문 "+game.visitedCount()+" / "+World.COUNT+"개 항구",12,MUTED);
+        regionSelector();
+        label(content,mapRegion<0?"세계 지도 · 해역을 선택하면 항구가 확대됩니다.":World.REGIONS[mapRegion]+" · 지도 또는 아래 목록에서 출항",12,MUTED);
+        OceanView ocean=new OceanView(this,game,mapRegion, target -> voyage(target));
         content.addView(ocean,new LinearLayout.LayoutParams(-1,dp(300)));
         LinearLayout quest=card(content);
         label(quest,Story.TITLES[game.chapter],17,GOLD);
@@ -109,18 +114,40 @@ public final class MainActivity extends Activity {
         LinearLayout actions=row(); content.addView(actions);
         action(actions,"교역소",()-> {tab=1;render();},true);
         action(actions,"조선소",()-> {tab=2;render();},false);
-        LinearLayout ports=card(content); label(ports,"출항할 항구 선택",16,GOLD);
-        for(int i=0;i<5;i++) addDestination(ports,i);
+        LinearLayout ports=card(content); label(ports,mapRegion<0?"전 세계 출항 항구":"출항할 항구 · "+World.REGIONS[mapRegion],16,GOLD);
+        addPortList(ports);
         label(content,game.message,13,MUTED);
     }
+    private void regionSelector() {
+        HorizontalScrollView selector=new HorizontalScrollView(this);selector.setHorizontalScrollBarEnabled(false);
+        LinearLayout regions=row();selector.addView(regions);content.addView(selector);
+        regionButton(regions,-1,"세계 전체");
+        for(int i=0;i<World.REGIONS.length;i++) regionButton(regions,i,World.REGIONS[i]);
+        selector.post(()->selector.scrollTo(Math.max(0,regions.getChildAt(mapRegion+1).getLeft()-dp(12)),0));
+        fullAction(content,"현재 항구 해역 보기",()->{mapRegion=World.region(game.port);render();},false);
+    }
+    private void regionButton(LinearLayout row,int region,String name) {
+        Button button=button(name,mapRegion==region);
+        LinearLayout.LayoutParams params=buttonParams();params.width=-2;
+        button.setPadding(dp(14),dp(8),dp(14),dp(8));row.addView(button,params);
+        button.setOnClickListener(v->{mapRegion=region;render();});
+    }
+    private void addPortList(LinearLayout ports) {
+        for(int target:World.portsIn(mapRegion)) {
+            if(mapRegion<0 && target%8==0) label(ports,World.REGIONS[World.region(target)],15,TEAL);
+            addDestination(ports,target);
+        }
+    }
     private void addDestination(LinearLayout box,int target) {
-        if(target==game.port) return;
-        Button button=button(Engine.PORTS[target]+"  ·  "+game.travelDays(target)+"일  ·  "+game.travelCost(target,0)+" G부터",false);
+        if(target==game.port) { label(box,"⚑ "+Engine.PORTS[target]+" · 현재 항구",15,GOLD);return; }
+        String visited=game.hasVisited(target)?"✓ ":"";
+        Button button=button(visited+Engine.PORTS[target]+"  ·  "+game.travelDays(target)+"일  ·  "+game.travelCost(target,0)+" G부터",false);
         button.setOnClickListener(v->voyage(target)); box.addView(button,buttonParams());
     }
     private void voyage(int target) {
         if(target==game.port) { Toast.makeText(this,"현재 머무는 항구입니다.",Toast.LENGTH_SHORT).show(); return; }
-        String info=Engine.PORTS[game.port]+" → "+Engine.PORTS[target]+"\n"+game.travelDays(target)+"일 항해\n\n일반 항로: 보급 "+game.travelCost(target,0)+" G, 선체 5~18 소모\n안전 항로: 보급 "+game.travelCost(target,1)+" G, 선체 2 소모\n\n선체 25 이상이면 출항할 수 있습니다.";
+        Route route=WorldRoutes.between(game.port,target);
+        String info=route.description()+"\n\n약 "+Math.round(route.miles)+"해리 · "+route.days()+"일 항해\n\n일반 항로: "+game.travelCost(target,0)+" G · 선체 −"+game.travelDamage(target,0)+"\n안전 항로: "+game.travelCost(target,1)+" G · 선체 −"+game.travelDamage(target,1)+"\n\n선체 25 이상이면 출항할 수 있습니다. 경유 항구는 정박하지 않으며, 방문 기록은 목적지에만 남습니다.";
         new AlertDialog.Builder(this).setTitle("출항 준비").setMessage(info)
             .setPositiveButton("일반 항로",(d,w)->changed(game.sail(target,0)))
             .setNeutralButton("안전 항로",(d,w)->changed(game.sail(target,1)))
@@ -133,7 +160,7 @@ public final class MainActivity extends Activity {
         for(int amount:new int[]{1,5,10}) action(quantities,amount+"개씩",()->{quantity=amount;render();},quantity==amount);
         for(int good=0;good<6;good++) goodsCard(good);
         LinearLayout tip=card(content); label(tip,"초보 선장의 무역 수첩",16,GOLD);
-        label(tip,"목재: 루미아 → 베르단\n직물: 베르단 → 사피라\n도자기: 사피라 → 나마르\n향신료: 나마르 → 하란\n차·은: 하란 → 루미아\n\n출항 보급비를 남겨 두세요. 금화가 부족하면 조선소의 항구 일거리로 다시 시작할 수 있어요.",14,INK);
+        label(tip,World.marketTip(game.port),14,INK);
     }
     private void goodsCard(int good) {
         LinearLayout box=card(content);
@@ -174,7 +201,7 @@ public final class MainActivity extends Activity {
         fullAction(backup,"새 항해 시작",()->newGame(),false);
     }
     private String help() {
-        return "1. 교역소에서 목재 5개를 매입하세요.\n2. 지도에서 베르단을 누르고 출항하세요.\n3. 도착 후 목재 5개를 한 번에 판매하면 첫 이야기가 열립니다.\n\n항해일지에 다음 목표가 표시됩니다. 판매와 투자로 명성을 높이고 조선소에서 배를 키우세요.\n\n초기에는 5개 단위 거래가 편리합니다. 작은 거래는 1개씩 선택할 수 있어요.\n\n가격은 항구마다 고정되어 있습니다. 보급비·수리비를 고려해 거래하세요.\n\n전투·해적·보물 탐색은 이번 시제품에 포함되지 않았습니다.";
+        return "1. 리스본에서 목재 5개를 매입하세요.\n2. 항해 지도에서 세비야를 선택해 출항하세요.\n3. 도착 후 목재 5개를 한 번에 판매하면 첫 장이 열립니다.\n\n세계 지도와 위쪽 해역 버튼을 이용해 7해역·56개 항구를 탐험하세요. 해역 버튼은 좌우로 밀 수 있습니다.\n\n먼 항해는 해상 경유 항구를 거치며 보급비가 증가합니다. 경유만으로는 방문 기록이 남지 않으니 목표 항구에 직접 정박하세요.\n\n항해일지의 8장 목표를 따라가세요. 금화가 부족하면 조선소에서 항구 일거리로 보급·수리비를 마련할 수 있습니다.\n\n원작과 별개의 창작 이야기입니다. 전투·해적·보물 탐색은 아직 포함되지 않았습니다.\n\n지도: Natural Earth (공개 지도 데이터). 항구 좌표와 항로는 게임용 근사치입니다.";
     }
     private void navigation() {
         status=text(saved?"● 기기에 자동 저장됨 · 오프라인":"저장 실패 · 백업 필요",11,saved?TEAL:GOLD);
@@ -187,7 +214,7 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this).setTitle("새 항해를 시작할까요?")
             .setMessage("현재 진행이 초기화됩니다. 필요하면 먼저 저장 파일을 내보내세요.")
             .setPositiveButton("새로 시작",(d,w)->{
-                game=new Engine(); tab=0; prefs.edit().remove("backup").remove("save").remove("ending").commit();
+                game=new Engine(); tab=0;mapRegion=-1; prefs.edit().remove("backup").remove("save").remove("ending").commit();
                 save();render();dialog("새로운 항해",Story.introduction());
             }).setNegativeButton("취소",null).show();
     }
@@ -231,7 +258,10 @@ public final class MainActivity extends Activity {
         }
         Engine restored=Engine.decode(new String(bytes.toByteArray(),StandardCharsets.UTF_8));
         if(restored==null) { dialog("불러오기 실패","올바른 푸른 수평선 저장 파일이 아닙니다. 현재 진행은 유지됩니다.");return; }
-        game=restored;tab=0;save();render();dialog("불러오기 완료",game.day+"일째 항해를 복원했습니다.");
+        game=restored;tab=0;mapRegion=-1;save();render();
+        String summary=game.day+"일째 항해를 복원했습니다.";
+        if(game.message.startsWith("세계 확장 버전")) summary+="\n\n"+game.message;
+        dialog("불러오기 완료",summary);
     }
     private void dialog(String title,String body) {
         new AlertDialog.Builder(this).setTitle(title).setMessage(body).setPositiveButton("확인",null).show();
