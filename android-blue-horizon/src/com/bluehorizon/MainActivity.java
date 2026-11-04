@@ -16,6 +16,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.Switch;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,6 +26,7 @@ public final class MainActivity extends Activity {
     static final int NAVY=0xff101f30, PANEL=0xff1a3041, GOLD=0xffe4bf7b;
     static final int INK=0xffecede5, MUTED=0xff9eb7bd, TEAL=0xff65c9b5;
     private Engine game;
+    private AudioController audio;
     private int tab=0, quantity=5, mapRegion=-1;
     private SharedPreferences prefs;
     private LinearLayout root, content;
@@ -43,13 +45,16 @@ public final class MainActivity extends Activity {
         if(game==null) { game=Engine.decode(prefs.getString("backup",null)); recovered=game!=null; }
         boolean fresh=game==null;
         if(fresh) game=new Engine();
+        audio=new AudioController(this,prefs);
         if(state!=null) { tab=state.getInt("tab",0); quantity=state.getInt("quantity",5);mapRegion=state.getInt("region",-1); }
         save(); render();
         if(fresh) dialog("푸른 수평선", Story.introduction());
         if(recovered) dialog("저장 복원", "최근 저장을 읽을 수 없어 이전 자동 저장을 복원했습니다.");
         if(game.message.startsWith("세계 확장 버전")) dialog("세계 항해 버전으로 이전",game.message);
     }
-    @Override protected void onPause() { super.onPause(); if(game!=null) save(); }
+    @Override protected void onResume() { super.onResume();if(audio!=null) audio.resume(); }
+    @Override protected void onPause() { if(audio!=null) audio.pause();super.onPause();if(game!=null) save(); }
+    @Override protected void onDestroy() { if(audio!=null) audio.release();super.onDestroy(); }
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out); out.putInt("tab",tab); out.putInt("quantity",quantity);
         out.putInt("region",mapRegion);
@@ -62,12 +67,16 @@ public final class MainActivity extends Activity {
         if(!saved) Toast.makeText(this,"저장 실패: 저장 공간을 확인하고 백업해 주세요.",Toast.LENGTH_LONG).show();
     }
     private void changed(boolean success) {
+        changed(success,"trade");
+    }
+    private void changed(boolean success,String effect) {
         int previousChapter=shownChapter;
         save(); render();
+        String sound=success?effect:"error";
+        if(game.chapter>previousChapter) sound="chapter";
+        audio.play(sound);
         Toast.makeText(this,game.message,Toast.LENGTH_LONG).show();
-        if(success && game.chapter==Story.REVEALS.length && previousChapter<game.chapter) {
-            dialog("세계 해도의 완성",Story.REVEALS[Story.REVEALS.length-1]+"\n\n이제 자유롭게 항해할 수 있습니다.");
-        }
+        if(success && game.chapter>previousChapter) storyReveal(previousChapter);
     }
     private void render() {
         shownChapter=game.chapter;
@@ -80,8 +89,10 @@ public final class MainActivity extends Activity {
         if(tab==0) harbor();
         if(tab==1) market();
         if(tab==2) shipyard();
-        if(tab==3) journal();
+        if(tab==3) crewPage();
+        if(tab==4) journal();
         navigation();
+        audio.scene(tab==0?"sea":"harbor");
     }
     private void applyInsets(LinearLayout layout) {
         layout.setOnApplyWindowInsetsListener((view,insets)->{
@@ -100,10 +111,68 @@ public final class MainActivity extends Activity {
         TextView stats=text(String.format(java.util.Locale.KOREA,"%,d G   ·   화물 %d/%d   ·   명성 %d",game.gold,game.cargo(),game.capacity(),game.fame),14,INK);
         stats.setPadding(0,dp(4),0,dp(9)); root.addView(stats);
     }
+    private void guideCard() {
+        int person=Crew.guidePerson(game.chapter);LinearLayout box=card(content),line=row();box.addView(line);
+        line.addView(new PortraitView(this,person),new LinearLayout.LayoutParams(dp(80),dp(80)));
+        LinearLayout words=column();words.setPadding(dp(12),0,0,0);
+        line.addView(words,new LinearLayout.LayoutParams(0,-2,1));
+        label(words,Crew.NAMES[person],17,GOLD);label(words,Crew.GUIDES[game.chapter],13,INK);
+    }
+    private void goalShortcut(LinearLayout parent) {
+        fullAction(parent,game.chapter==Story.REVEALS.length?"세계 지도 보기":"다음 목표 해역 보기",()->{
+            tab=0;mapRegion=Crew.guideRegion(game);render();
+        },false);
+    }
+    private void crewPage() {
+        label(content,"COMPANIONS OF THE SEVEN SEAS",11,TEAL);label(content,"함께 만드는 세계 해도",25,INK);
+        label(content,"이야기가 진행되면 새로운 동료가 합류합니다. 초상화와 소개를 확인해 보세요.",13,MUTED);
+        for(int person=0;person<Crew.NAMES.length;person++) crewCard(person);
+    }
+    private void crewCard(int person) {
+        boolean aboard=Crew.available(person,game.chapter);
+        LinearLayout box=card(content),line=row();box.addView(line);
+        PortraitView portrait=new PortraitView(this,person);portrait.setAlpha(aboard?1f:.4f);
+        line.addView(portrait,new LinearLayout.LayoutParams(dp(112),dp(112)));
+        LinearLayout info=column();info.setPadding(dp(12),0,0,0);
+        line.addView(info,new LinearLayout.LayoutParams(0,-2,1));
+        label(info,Crew.NAMES[person],22,aboard?GOLD:MUTED);label(info,Crew.ROLES[person],13,INK);
+        String joined=aboard?"● 함께 항해 중":Crew.JOINS[person]+"장 완료 후 합류";
+        label(info,joined,12,aboard?TEAL:MUTED);label(box,Crew.BIO[person],14,INK);
+    }
+    private void storyReveal(int previous) {
+        LinearLayout panel=column();panel.setPadding(dp(20),dp(12),dp(20),dp(12));
+        panel.setBackgroundColor(NAVY);int person=Crew.guidePerson(game.chapter);
+        panel.addView(new PortraitView(this,person),new LinearLayout.LayoutParams(dp(144),dp(144)));
+        label(panel,Crew.NAMES[person]+" · "+Crew.ROLES[person],16,GOLD);
+        for(int index=previous;index<game.chapter;index++) label(panel,Story.REVEALS[index],15,INK);
+        label(panel,"다음 목표: "+Story.GOALS[game.chapter],14,TEAL);
+        ScrollView scroll=new ScrollView(this);scroll.addView(panel);
+        new AlertDialog.Builder(this).setTitle(game.chapter==Story.REVEALS.length?"세계 해도의 완성":"새로운 항해 기록")
+            .setView(scroll).setPositiveButton("계속 항해하기",null).show();
+    }
+    private void audioSettings() {
+        LinearLayout box=card(content);label(box,"음악과 효과음",18,GOLD);
+        label(box,"항해 지도와 항구 화면에서 서로 다른 창작 연주곡이 재생됩니다. 앱을 벗어나면 소리가 멈춥니다.",13,INK);
+        soundSwitch(box,"배경음악",audio.musicEnabled(),true);
+        soundSwitch(box,"효과음",audio.effectsEnabled(),false);
+    }
+    private void soundSwitch(LinearLayout parent,String title,boolean checked,boolean music) {
+        Switch toggle=new Switch(this);toggle.setText(title);toggle.setTextSize(16);toggle.setTextColor(INK);
+        toggle.setChecked(checked);toggle.setMinHeight(dp(48));toggle.setSoundEffectsEnabled(false);
+        toggle.setOnCheckedChangeListener((view,value)->{if(music) audio.musicEnabled(value);else audio.effectsEnabled(value);});
+        parent.addView(toggle,new LinearLayout.LayoutParams(-1,-2));
+    }
+    private void tradeHint(LinearLayout box,int good) {
+        TradeHint hint=TradeHint.best(game,good,quantity);if(hint==null) return;
+        if(hint.net<=0) { label(box,quantity+"개 기준, 보급비를 넘는 추천 거래가 없습니다.",12,MUTED);return; }
+        label(box,"추천 판매처: "+World.PORTS[hint.port]+" · 예상 차익 +"+hint.net+" G",13,TEAL);
+        label(box,"현재 매입가·"+quantity+"개·일반항로 편도 기준 / 수리·귀환비 별도\n매입+보급 필요 "+hint.cost+" G",11,MUTED);
+    }
     private void harbor() {
         label(content,"WORLD ATLAS · 7 SEAS · 56 PORTS",11,TEAL);
         label(content,Engine.PORTS[game.port]+" 항구",27,INK);
         label(content,World.REGIONS[World.region(game.port)]+" · 방문 "+game.visitedCount()+" / "+World.COUNT+"개 항구",12,MUTED);
+        guideCard();
         regionSelector();
         label(content,mapRegion<0?"세계 지도 · 해역을 선택하면 항구가 확대됩니다.":World.REGIONS[mapRegion]+" · 지도 또는 아래 목록에서 출항",12,MUTED);
         OceanView ocean=new OceanView(this,game,mapRegion, target -> voyage(target));
@@ -111,6 +180,7 @@ public final class MainActivity extends Activity {
         LinearLayout quest=card(content);
         label(quest,Story.TITLES[game.chapter],17,GOLD);
         label(quest,Story.GOALS[game.chapter],14,INK);
+        goalShortcut(quest);
         LinearLayout actions=row(); content.addView(actions);
         action(actions,"교역소",()-> {tab=1;render();},true);
         action(actions,"조선소",()-> {tab=2;render();},false);
@@ -149,8 +219,8 @@ public final class MainActivity extends Activity {
         Route route=WorldRoutes.between(game.port,target);
         String info=route.description()+"\n\n약 "+Math.round(route.miles)+"해리 · "+route.days()+"일 항해\n\n일반 항로: "+game.travelCost(target,0)+" G · 선체 −"+game.travelDamage(target,0)+"\n안전 항로: "+game.travelCost(target,1)+" G · 선체 −"+game.travelDamage(target,1)+"\n\n선체 25 이상이면 출항할 수 있습니다. 경유 항구는 정박하지 않으며, 방문 기록은 목적지에만 남습니다.";
         new AlertDialog.Builder(this).setTitle("출항 준비").setMessage(info)
-            .setPositiveButton("일반 항로",(d,w)->changed(game.sail(target,0)))
-            .setNeutralButton("안전 항로",(d,w)->changed(game.sail(target,1)))
+            .setPositiveButton("일반 항로",(d,w)->changed(game.sail(target,0),"depart"))
+            .setNeutralButton("안전 항로",(d,w)->changed(game.sail(target,1),"depart"))
             .setNegativeButton("취소",null).show();
     }
     private void market() {
@@ -166,6 +236,7 @@ public final class MainActivity extends Activity {
         LinearLayout box=card(content);
         label(box,Engine.GOODS[good]+"     보유 "+game.inventory[good]+"개",18,INK);
         label(box,"매입 "+game.buyPrice(good)+" G   /   판매 "+game.sellPrice(good)+" G",14,GOLD);
+        tradeHint(box,good);
         LinearLayout buttons=row(); box.addView(buttons);
         action(buttons,quantity+"개 매입",()->changed(game.buy(good,quantity)),true);
         action(buttons,quantity+"개 판매",()->changed(game.sell(good,quantity)),false);
@@ -177,7 +248,7 @@ public final class MainActivity extends Activity {
         label(ship,"항해마다 선체가 소모됩니다. 25 미만이면 수리가 필요해요.",13,MUTED);
         fullAction(ship,"선체 수리 · "+game.repairCost()+" G",()->changed(game.repair()),false);
         String upgrade=game.level==3?"최고 등급 선박":Engine.SHIPS[game.level]+" 구입 · "+game.upgradeCost()+" G";
-        fullAction(ship,upgrade,()->changed(game.upgrade()),true);
+        fullAction(ship,upgrade,()->changed(game.upgrade(),"upgrade"),true);
         LinearLayout ally=card(content); label(ally,Engine.PORTS[game.port]+" 교역 동맹",18,GOLD);
         label(ally,"동맹 "+game.influence[game.port]+" / 3 · 단계마다 판매가 +2%, 명성 +3",13,INK);
         String invest=game.influence[game.port]==3?"동맹 완성":"교역소 투자 · "+((game.influence[game.port]+1)*300)+" G";
@@ -190,6 +261,7 @@ public final class MainActivity extends Activity {
         label(content,"CAPTAIN'S JOURNAL",11,TEAL); label(content,"서린의 항해일지",26,INK);
         LinearLayout quest=card(content); label(quest,Story.TITLES[game.chapter],18,GOLD);
         label(quest,Story.GOALS[game.chapter],14,INK);
+        goalShortcut(quest);audioSettings();
         for(int i=0;i<game.chapter;i++) { LinearLayout story=card(content); label(story,Story.REVEALS[i],14,INK); }
         LinearLayout entries=card(content); label(entries,"최근 항해 기록",17,TEAL);
         for(int i=game.log.size()-1;i>=0;i--) label(entries,game.log.get(i),13,INK);
@@ -207,8 +279,8 @@ public final class MainActivity extends Activity {
         status=text(saved?"● 기기에 자동 저장됨 · 오프라인":"저장 실패 · 백업 필요",11,saved?TEAL:GOLD);
         status.setPadding(0,dp(5),0,dp(3)); root.addView(status);
         LinearLayout nav=row(); root.addView(nav);
-        String[] names={"항해 지도","교역소","선박","일지"};
-        for(int i=0;i<4;i++) { final int index=i; action(nav,names[i],()->{tab=index;render();},tab==i); }
+        String[] names={"항해","교역소","선박","동료","일지"};
+        for(int i=0;i<5;i++) { final int index=i; action(nav,names[i],()->{tab=index;render();},tab==i); }
     }
     private void newGame() {
         new AlertDialog.Builder(this).setTitle("새 항해를 시작할까요?")
@@ -287,6 +359,7 @@ public final class MainActivity extends Activity {
     }
     private Button button(String value,boolean active) {
         Button button=new Button(this);button.setText(value);button.setTextSize(13);button.setAllCaps(false);
+        button.setSoundEffectsEnabled(false);
         button.setTextColor(active?NAVY:INK);button.setMinHeight(dp(48));button.setMinimumWidth(0);
         button.setPadding(dp(6),dp(6),dp(6),dp(6));
         button.setBackground(background(active?GOLD:0xff234151,active?GOLD:0xff3c5b68));
@@ -296,11 +369,11 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);params.setMargins(dp(3),dp(5),dp(3),dp(3));return params;
     }
     private void action(LinearLayout parent,String value,Runnable run,boolean active) {
-        Button button=button(value,active);button.setOnClickListener(v->run.run());
+        Button button=button(value,active);button.setOnClickListener(v->{audio.play("click");run.run();});
         LinearLayout.LayoutParams params=buttonParams();params.width=0;params.weight=1;parent.addView(button,params);
     }
     private void fullAction(LinearLayout parent,String value,Runnable run,boolean active) {
-        Button button=button(value,active);button.setOnClickListener(v->run.run());parent.addView(button,buttonParams());
+        Button button=button(value,active);button.setOnClickListener(v->{audio.play("click");run.run();});parent.addView(button,buttonParams());
     }
     private int dp(int value) { return Math.round(value*getResources().getDisplayMetrics().density); }
 }
