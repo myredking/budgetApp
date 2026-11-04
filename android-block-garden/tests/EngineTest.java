@@ -24,8 +24,8 @@ public class EngineTest {
   check(!SavedState.valid("0".repeat(64),new int[]{12,0,0},new int[]{1,1,1},12),"bad shape");
   check(!SavedState.valid("0".repeat(64),new int[]{0,0,0},new int[]{0,1,1},12),"bad color");
   check(!SavedState.valid(null,new int[]{0,0,0},new int[]{1,1,1},12),"missing save");
-  missionTests();
-  System.out.println("29 checks passed");
+  missionTests();campaignTests();
+  System.out.println("Campaign checks passed");
  }
  static void missionTests(){
   Mission m=new Mission(1);Engine e=new Engine();
@@ -41,6 +41,26 @@ public class EngineTest {
   check(obstacle.board[3][3]!=0,"obstacle seeded");
   check(!obstacle.fits(new int[][]{{0,0}},3,3),"obstacle blocks placement");
   check(new Mission(8).limit()==25,"final challenge limit");
+ }
+ static void campaignTests(){
+  check(Mission.COUNT==100,"100 stages");
+  check(new Mission(101).stage==100,"upper bound");
+  check(new Mission(0).stage==1,"lower bound");
+  check(new Mission(8).nextStage()==9,"continue old finale");
+  check(new Mission(100).nextStage()==1,"campaign wrap");
+  for(int stage=9;stage<=100;stage++)checkStage(stage);
+ }
+ static void checkStage(int stage){
+  Mission m=new Mission(stage);Engine e=new Engine();m.setup(e);
+  check(!m.complete(e),"not initially won "+stage);
+  check(m.limit()>=25,"reasonable move budget "+stage);
+  check(e.canFit(new int[][]{{0,0},{0,1},{1,0},{1,1}}),"initial room "+stage);
+  e.moves=m.limit();check(m.failed(e),"limit failure "+stage);
+  e.score=m.scoreGoal();e.lines=m.lineGoal();
+  for(boolean[] row:e.stars)java.util.Arrays.fill(row,false);
+  check(m.complete(e),"goal success "+stage);
+  check(!m.failed(e),"last turn success "+stage);
+  check(!m.label(e).isEmpty(),"goal label "+stage);
  }
  static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
 }

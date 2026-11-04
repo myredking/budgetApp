@@ -55,7 +55,7 @@ public class GameView extends View {
   save();missionMode=enabled;mission=new Mission(prefs.getInt("stage",1));engine=new Engine();selected=-1;hoverR=-1;over=false;deal();restore();save();invalidate();
  }
  private void stageAction(){
-  if(missionMode&&mission.complete(engine)){int next=mission.stage%Mission.COUNT+1;mission=new Mission(next);reset();return;}
+  if(missionMode&&mission.complete(engine)){int next=mission.nextStage();mission=new Mission(next);reset();return;}
   confirmReset();
  }
  private void drawHand(Canvas c){
