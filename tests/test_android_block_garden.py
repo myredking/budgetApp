@@ -8,3 +8,10 @@ def test_block_engine(tmp_path: Path) -> None:
     source = root / 'android-block-garden'
     subprocess.run([str(java / 'javac.exe'), '-encoding', 'UTF-8', '-d', str(tmp_path), str(source / 'src/com/blockgarden/Engine.java'), str(source / 'src/com/blockgarden/Mission.java'), str(source / 'src/com/blockgarden/SavedState.java'), str(source / 'tests/EngineTest.java')], check=True)
     subprocess.run([str(java / 'java.exe'), '-cp', str(tmp_path), 'com.blockgarden.EngineTest'], check=True)
+
+
+def test_block_touch(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1] / 'android-block-garden'
+    java = Path.home() / '.codex/android-deckball-tools/jdk/bin'
+    subprocess.run([str(java / 'javac.exe'), '-encoding', 'UTF-8', '-d', str(tmp_path), str(root / 'src/com/blockgarden/TouchControl.java'), str(root / 'tests/TouchTest.java')], check=True)
+    subprocess.run([str(java / 'java.exe'), '-cp', str(tmp_path), 'com.blockgarden.TouchTest'], check=True)

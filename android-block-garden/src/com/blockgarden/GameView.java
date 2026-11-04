@@ -15,7 +15,9 @@ public class GameView extends View {
  private int[] hand=new int[3],tones=new int[3];
  private int selected=-1,best,hoverR=-1,hoverC=-1;
  private float unit,left,top,scale,tray;
- private boolean over=false,drag=false;
+ private boolean over=false;
+ private final TouchControl touch=new TouchControl();
+ private int activePointer=-1;
  private boolean missionMode=false;
  private Mission mission=new Mission(1);
  private String message="블록을 골라 보드에 놓아보세요";
@@ -65,23 +67,35 @@ public class GameView extends View {
   }
  }
  private boolean inBoard(int r,int c){return r>=0&&c>=0&&r<8&&c<8;}
- private void selectHand(float x){int slot=(int)((x-left)/(118*scale));if(x<left||slot<0||slot>=3)return;if(hand[slot]<0)return;selected=slot;drag=true;invalidate();}
+ private boolean selectHand(float x){int slot=(int)((x-left)/(118*scale));if(x<left||slot<0||slot>=3)return false;if(hand[slot]<0)return false;selected=slot;invalidate();return true;}
  private boolean touchDown(float x,float y){
   if(y>90*scale&&y<135*scale){modeMenu();return true;}
   if(y>tray+140*scale&&y<tray+190*scale){stageAction();return true;}
   if(over)return true;
-  if(y>=tray-20*scale&&y<tray+95*scale){selectHand(x);return true;}
+  if(y>=tray-20*scale&&y<tray+95*scale){if(selectHand(x))touch.begin(x,y,true);return true;}
+  if(selected>=0)touch.begin(x,y,false);
   preview(x,y);return true;
  }
  @Override public boolean onTouchEvent(android.view.MotionEvent event){
-  float x=event.getX(),y=event.getY();int action=event.getActionMasked();
-  if(action==MotionEvent.ACTION_DOWN)return touchDown(x,y);
-  if(action==MotionEvent.ACTION_MOVE){preview(x,y);return true;}
-  if(action==MotionEvent.ACTION_UP){preview(x,y);place();drag=false;performClick();return true;}
-  if(action==MotionEvent.ACTION_CANCEL){hoverR=-1;drag=false;invalidate();}return true;
+  int action=event.getActionMasked();
+  if(action==MotionEvent.ACTION_DOWN){touch.cancel();activePointer=event.getPointerId(0);getParent().requestDisallowInterceptTouchEvent(true);return touchDown(event.getX(),event.getY());}
+  if(action==MotionEvent.ACTION_CANCEL){cancelTouch();return true;}
+  if(action==MotionEvent.ACTION_POINTER_UP){if(event.getPointerId(event.getActionIndex())==activePointer)cancelTouch();return true;}
+  int index=event.findPointerIndex(activePointer);if(index<0)return true;
+  float x=event.getX(index),y=event.getY(index);
+  if(action==MotionEvent.ACTION_MOVE){updateTouch(x,y);return true;}
+  if(action==MotionEvent.ACTION_UP){if(touch.active){updateTouch(x,y);place();performClick();}cancelTouch();return true;}
+  return true;
  }
+ private void cancelTouch(){touch.cancel();activePointer=-1;hoverR=-1;hoverC=-1;getParent().requestDisallowInterceptTouchEvent(false);invalidate();}
  @Override public boolean performClick(){super.performClick();return true;}
- private void preview(float x,float y){hoverR=-1;hoverC=-1;if(y>=top&&y<top+8*unit&&x>=left&&x<left+8*unit){hoverR=(int)((y-top)/unit);hoverC=(int)((x-left)/unit);}invalidate();}
+ private void updateTouch(float x,float y){touch.move(x,y,ViewConfiguration.get(getContext()).getScaledTouchSlop());preview(x,y);}
+ private void preview(float x,float y){
+  hoverR=-1;hoverC=-1;if(selected<0){invalidate();return;}
+  int height=1,width=1;for(int[] p:shapes[hand[selected]]){height=Math.max(height,p[0]+1);width=Math.max(width,p[1]+1);}
+  int[] anchor=touch.anchor(x,y,left,top,unit,height,width);
+  if(anchor!=null){hoverR=anchor[0];hoverC=anchor[1];}postInvalidateOnAnimation();
+ }
  private void place(){
   if(selected<0||hoverR<0||over)return;
   if(!engine.place(shapes[hand[selected]],hoverR,hoverC,tones[selected])){message="여기는 놓을 수 없어요";invalidate();return;}
