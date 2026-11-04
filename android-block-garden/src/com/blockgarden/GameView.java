@@ -9,6 +9,10 @@ public class GameView extends View {
  private final Paint paint=new Paint(3);
  private final SharedPreferences prefs;
  private final Runnable home;
+ private final GameAudio audio;
+ private final int[][] burst=new int[8][8];
+ private long burstStarted=0;
+ private int burstLines=0,burstPoints=0;
  private Engine engine=new Engine();
  private final Random random=new Random();
  private final int[] colors={0xff26364d,0xff64d9bc,0xffffbd69,0xff9e9bff,0xffff8198,0xff6abaff};
@@ -22,17 +26,18 @@ public class GameView extends View {
  private boolean missionMode=false;
  private Mission mission=new Mission(1);
  private String message="블록을 골라 보드에 놓아보세요";
- public GameView(Context context,boolean missionMode,Runnable home){super(context);prefs=context.getSharedPreferences("game",0);best=prefs.getInt("best",0);this.missionMode=missionMode;this.home=home;mission=new Mission(prefs.getInt("stage",1));deal();restore();save();setContentDescription("블록 가든 게임 보드");}
+ public GameView(Context context,boolean missionMode,Runnable home,GameAudio audio){super(context);prefs=context.getSharedPreferences("game",0);best=prefs.getInt("best",0);this.missionMode=missionMode;this.home=home;this.audio=audio;mission=new Mission(prefs.getInt("stage",1));deal();restore();save();setContentDescription("블록 가든 게임 보드");}
  private void deal(){for(int i=0;i<3;i++){hand[i]=random.nextInt(shapes.length);tones[i]=1+random.nextInt(5);}}
  private void text(Canvas c,String s,float x,float y,float size,int color){paint.setColor(color);paint.setTextSize(size*scale);paint.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));c.drawText(s,x,y,paint);}
  @Override protected void onDraw(Canvas c){
-  scale=Math.min(getWidth()/400f,getHeight()/850f);unit=43*scale;left=(getWidth()-unit*8)/2;top=190*scale;tray=top+unit*8+70*scale;
+  scale=Math.min(getWidth()/400f,getHeight()/890f);unit=43*scale;left=(getWidth()-unit*8)/2;top=190*scale;tray=top+unit*8+70*scale;
   c.drawColor(0xff101c30);text(c,"BLOCK GARDEN",left,44*scale,18,0xff64d9bc);
   text(c,"블록 가든",left,87*scale,32,Color.WHITE);text(c,missionMode?"미션 "+mission.stage+" / "+Mission.COUNT:"자유 모드 · 광고 없음",left,116*scale,12,0xff9baac0);text(c,"모드 선택",265*scale,116*scale,13,0xff64d9bc);
   text(c,"점수  "+engine.score,left,161*scale,22,Color.WHITE);text(c,"최고  "+best,240*scale,161*scale,15,0xffffbd69);
-  drawBoard(c);text(c,missionMode?mission.label(engine):message,left,top+unit*8+35*scale,12,0xffb6c5d9);drawHand(c);
+  drawAnimatedBoard(c);text(c,missionMode?mission.label(engine):message,left,top+unit*8+35*scale,12,0xffb6c5d9);drawHand(c);
   text(c,"블록 선택 → 보드 터치 · 끌어서 놓기도 가능",left,tray+120*scale,11,0xff9baac0);
   text(c,actionLabel(),left,tray+168*scale,17,0xff64d9bc);
+  text(c,"소리 · 진동",left,tray+240*scale,13,0xff9baac0);
   if(over)text(c,missionMode?(mission.complete(engine)?"미션 성공! 다음 스테이지를 누르세요":"미션 실패 · 다시 도전해요!"):"놓을 공간이 없어요. 다시 도전해요!",left,tray+204*scale,16,0xffffbd69);
  }
  private void tile(Canvas c,float x,float y,float size,int color){paint.setColor(color);c.drawRoundRect(x+2*scale,y+2*scale,x+size-2*scale,y+size-2*scale,6*scale,6*scale,paint);paint.setColor(0x22ffffff);c.drawRoundRect(x+5*scale,y+4*scale,x+size-5*scale,y+8*scale,2,2,paint);}
@@ -65,11 +70,17 @@ public class GameView extends View {
  }
  private boolean inBoard(int r,int c){return r>=0&&c>=0&&r<8&&c<8;}
  private boolean selectHand(float x){int slot=(int)((x-left)/(118*scale));if(x<left||slot<0||slot>=3)return false;if(hand[slot]<0)return false;selected=slot;invalidate();return true;}
+ private boolean settingsTap(float y){if(y>tray+216*scale&&y<tray+258*scale){audio.settings();return true;}return false;}
+ private boolean handTap(float x,float y){
+  if(y<tray-20*scale||y>=tray+95*scale)return false;
+  if(selectHand(x))touch.begin(x,y,true);return true;
+ }
  private boolean touchDown(float x,float y){
+  if(settingsTap(y))return true;
   if(y>90*scale&&y<135*scale){modeMenu();return true;}
   if(y>tray+140*scale&&y<tray+190*scale){stageAction();return true;}
   if(over)return true;
-  if(y>=tray-20*scale&&y<tray+95*scale){if(selectHand(x))touch.begin(x,y,true);return true;}
+  if(handTap(x,y))return true;
   if(selected>=0)touch.begin(x,y,false);
   preview(x,y);return true;
  }
@@ -95,16 +106,46 @@ public class GameView extends View {
  }
  private void place(){
   if(selected<0||hoverR<0||over)return;
-  if(!engine.place(shapes[hand[selected]],hoverR,hoverC,tones[selected])){message="여기는 놓을 수 없어요";invalidate();return;}
+  int previousLines=engine.lines,previousScore=engine.score;
+  if(!engine.place(shapes[hand[selected]],hoverR,hoverC,tones[selected])){audio.play("invalid");message="여기는 놓을 수 없어요";invalidate();return;}
+  placementFeedback(previousLines,previousScore);
   hand[selected]=-1;selected=-1;hoverR=-1;best=Math.max(best,engine.score);
   if(handEmpty())deal();
-  over=finished();message=over?"게임 종료 · 새 게임으로 다시 시작":"좋아요! 가로 또는 세로를 채워보세요";save();invalidate();
+  over=finished();if(over)audio.play(missionWon()?"win":"fail");message=over?"게임 종료 · 새 게임으로 다시 시작":"좋아요! 가로 또는 세로를 채워보세요";save();invalidate();
+ }
+ private boolean missionWon(){return missionMode&&mission.complete(engine);}
+ private void placementFeedback(int oldLines,int oldScore){
+  int lines=engine.lines-oldLines;audio.play(lines>0?"clear":"place");
+  if(audio.enabled("haptics"))performHapticFeedback(lines>0?HapticFeedbackConstants.LONG_PRESS:HapticFeedbackConstants.KEYBOARD_TAP);
+  if(lines==0)return;
+  burstStarted=android.os.SystemClock.uptimeMillis();burstLines=lines;burstPoints=engine.score-oldScore;
+  for(int r=0;r<8;r++)System.arraycopy(engine.cleared[r],0,burst[r],0,8);
+ }
+ private void drawAnimatedBoard(Canvas c){
+  float t=(android.os.SystemClock.uptimeMillis()-burstStarted)/550f;
+  boolean animate=burstStarted>0&&t<1;
+  c.save();if(animate)c.translate((float)Math.sin(t*48)*5*scale*(1-t),0);drawBoard(c);c.restore();
+  if(!animate)return;
+  drawBurst(c,t);text(c,(burstLines>1?burstLines+"줄 동시 제거! ":"줄 제거! ")+"+"+burstPoints,left,top-12*scale,18,0xffffbd69);postInvalidateOnAnimation();
+ }
+ private void drawBurst(Canvas c,float t){
+  for(int r=0;r<8;r++)for(int col=0;col<8;col++){
+   int color=burst[r][col];if(color==0)continue;
+   float x=left+(col+0.5f)*unit,y=top+(r+0.5f)*unit;
+   paint.setColor(colors[color]);paint.setAlpha((int)(255*(1-t)));
+   float half=unit*0.45f*(1-t);c.drawRoundRect(x-half,y-half,x+half,y+half,6*scale,6*scale,paint);
+   for(int i=0;i<4;i++)drawParticle(c,x,y,t,i);
+  }paint.setAlpha(255);
+ }
+ private void drawParticle(Canvas c,float x,float y,float t,int direction){
+  double angle=direction*Math.PI/2+0.7;float distance=t*unit*1.5f;
+  c.drawCircle(x+(float)Math.cos(angle)*distance,y+(float)Math.sin(angle)*distance+t*t*unit,4*scale*(1-t),paint);
  }
  private boolean finished(){if(missionMode&&mission.complete(engine))return true;if(missionMode&&mission.failed(engine))return true;return !hasMove();}
  private boolean handEmpty(){return hand[0]<0&&hand[1]<0&&hand[2]<0;}
  private boolean hasMove(){for(int id:hand)if(id>=0&&engine.canFit(shapes[id]))return true;return false;}
  private void confirmReset(){new AlertDialog.Builder(getContext()).setTitle("새 게임을 시작할까요?").setMessage("최고 기록은 유지됩니다.").setNegativeButton("계속하기",null).setPositiveButton("새 게임",(dialog,which)->reset()).show();}
- private void reset(){engine=new Engine();selected=-1;hoverR=-1;over=false;message="블록을 골라 보드에 놓아보세요";deal();if(missionMode)mission.setup(engine);save();invalidate();}
+ private void reset(){burstStarted=0;engine=new Engine();selected=-1;hoverR=-1;over=false;message="블록을 골라 보드에 놓아보세요";deal();if(missionMode)mission.setup(engine);save();invalidate();}
  private SharedPreferences slot(){return getContext().getSharedPreferences(missionMode?"mission":"game",0);}
  private void save(){
   prefs.edit().putBoolean("missionMode",missionMode).putInt("best",best).putInt("stage",mission.stage).apply();

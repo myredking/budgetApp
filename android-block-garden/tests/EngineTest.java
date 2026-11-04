@@ -26,7 +26,7 @@ public class EngineTest {
   check(!SavedState.valid(null,new int[]{0,0,0},new int[]{1,1,1},12),"missing save");
   check(!SavedState.validStars("x".repeat(64)),"corrupt stars");
   check(SavedState.validStars("01".repeat(32)),"valid stars");
-  balance97();missionTests();campaignTests();
+  feedbackTests();balance97();missionTests();campaignTests();
   System.out.println("Campaign checks passed");
  }
  static void missionTests(){
@@ -60,6 +60,14 @@ public class EngineTest {
   e.score=2800;check(m.complete(e)&&!m.failed(e),"97 last turn win");
   check(new Mission(93).scoreGoal()==3950,"93 unchanged");
   check(new Mission(98).limit()==38,"98 unchanged");
+ }
+ static void feedbackTests(){
+  Engine e=new Engine();for(int i=0;i<8;i++){e.board[0][i]=1;e.board[i][0]=2;}
+  check(e.clear()==2,"cross clear feedback");int cells=0;
+  for(int[] row:e.cleared)for(int color:row)if(color!=0)cells++;
+  check(cells==15,"cross particles deduplicated");
+  check(e.cleared[0][0]==2,"cleared color preserved");
+  check(e.clear()==0&&e.cleared[0][0]==0,"old particles reset");
  }
  static void checkStage(int stage){
   Mission m=new Mission(stage);Engine e=new Engine();m.setup(e);

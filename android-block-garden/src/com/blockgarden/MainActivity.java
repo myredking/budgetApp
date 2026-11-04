@@ -9,8 +9,9 @@ import android.widget.*;
 public class MainActivity extends Activity {
  private final Navigation navigation=new Navigation();
  private GameView game;
+ private GameAudio audio;
  @Override public void onCreate(Bundle state){
-  super.onCreate(state);getWindow().setStatusBarColor(0xff101c30);getWindow().setNavigationBarColor(0xff101c30);showMenu();
+  super.onCreate(state);getWindow().setStatusBarColor(0xff101c30);getWindow().setNavigationBarColor(0xff101c30);audio=new GameAudio(this);showMenu();
  }
  private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
  private TextView label(String text,int size,int color){
@@ -26,6 +27,7 @@ public class MainActivity extends Activity {
   addMode(panel,"자유 모드","제한 없이 최고 점수에 도전하세요",false);
   int stage=getSharedPreferences("mission",0).getInt("savedStage",1);stage=new Mission(stage).stage;
   addMode(panel,"미션 모드","100개 미션 · "+stage+"단계부터 이어하기",true);
+  Button sound=new Button(this);sound.setText("소리 · 진동 설정");sound.setOnClickListener(view->audio.settings());panel.addView(sound);
   panel.addView(label("진행 상황 자동 저장 · 광고 없이 오프라인 플레이",12,0xff9baac0));
   scroll.addView(panel);setContentView(scroll);
  }
@@ -35,8 +37,10 @@ public class MainActivity extends Activity {
   LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);params.topMargin=dp(18);panel.addView(button,params);
   button.setOnClickListener(view->startGame(mission));
  }
- private void startGame(boolean mission){navigation.choose(mission);game=new GameView(this,navigation.isMission(),()->returnHome());setContentView(game);}
+ private void startGame(boolean mission){navigation.choose(mission);game=new GameView(this,navigation.isMission(),()->returnHome(),audio);setContentView(game);}
  private void returnHome(){if(game!=null)game.persist();showMenu();}
  @Override public void onBackPressed(){if(!navigation.isMenu()){returnHome();return;}super.onBackPressed();}
- @Override protected void onPause(){if(game!=null)game.persist();super.onPause();}
+ @Override protected void onPause(){if(game!=null)game.persist();if(audio!=null)audio.pause();super.onPause();}
+ @Override protected void onResume(){super.onResume();if(audio!=null)audio.resume();}
+ @Override protected void onDestroy(){if(audio!=null)audio.close();super.onDestroy();}
 }

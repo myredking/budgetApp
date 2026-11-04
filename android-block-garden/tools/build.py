@@ -28,6 +28,8 @@ def build() -> None:
     run([BUILD_TOOLS / 'aapt2.exe', 'link', '-I', ANDROID, '--manifest', PROJECT / 'AndroidManifest.xml', '-o', unsigned])
     with zipfile.ZipFile(unsigned, 'a', compression=zipfile.ZIP_DEFLATED) as archive:
         archive.write(dex / 'classes.dex', 'classes.dex')
+        for asset in (PROJECT / 'assets').glob('*.wav'):
+            archive.write(asset, 'assets/' + asset.name, compress_type=zipfile.ZIP_STORED)
     aligned = BUILD / 'aligned.apk'
     run([BUILD_TOOLS / 'zipalign.exe', '-f', '4', unsigned, aligned])
     key = TOOLS / 'deckball-debug.jks'
