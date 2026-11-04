@@ -60,16 +60,26 @@ public final class Engine {
         return sent;
     }
     private boolean dispatch(int from,int to,int team) {
-        if(from<0 || to<0 || from>=towers.size() || to>=towers.size()) return false;
+        return dispatchAmount(from,to,team,false);
+    }
+    public boolean sendAll(int from,int to) {
+        if(result()!=0) return false;
+        boolean sent=dispatchAmount(from,to,1,true);
+        if(sent) dispatched++;
+        return sent;
+    }
+    private boolean dispatchAmount(int from,int to,int team,boolean all) {
+        if(!validIndex(from) || !validIndex(to)) return false;
         Tower a=towers.get(from),b=towers.get(to);
-        if(from==to || a.owner!=team || a.units<2) return false;
-        int count=a.units/2;
+        if(from==to || a.owner!=team || a.units<(all?1:2)) return false;
+        int count=all?a.units:a.units/2;
         a.units-=count;
         double duration=Math.hypot(a.x-b.x,a.y-b.y)*4;
         if(a.kind==RELAY) duration*=.6;
         fleets.add(new Fleet(from,to,team,count,Math.max(.4,duration)));
         return true;
     }
+    private boolean validIndex(int index) {return index>=0 && index<towers.size();}
     public void update(double dt) {
         if(!Double.isFinite(dt) || dt<=0) return;
         if(result()!=0) return;

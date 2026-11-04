@@ -1,146 +1,189 @@
 package com.towerfront;
+
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
+import android.os.Build;
 import android.os.Bundle;
-import android.graphics.*;
-import android.view.*;
+import android.view.Gravity;
+import android.view.View;
+import android.view.WindowInsets;
+import android.widget.*;
+
 public final class MainActivity extends Activity {
-    private BattleView game;
+    static final int BG=Color.rgb(9,18,31),CARD=Color.rgb(24,42,59);
+    static final int CYAN=Color.rgb(63,207,238),MUTED=Color.rgb(153,178,196);
+    private FrameLayout root;
+    private SharedPreferences preferences;
+    private ToneGenerator tone;
+    private BattleView battle;
+    Engine engine;
+    Profile profile;
+    int mode=1;
+    boolean sound=true,haptics=true;
+
     @Override public void onCreate(Bundle state) {
-        super.onCreate(state);game=new BattleView();setContentView(game);
+        super.onCreate(state);
+        getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
+        preferences=getPreferences(0);
+        profile=Profile.decode(preferences.getString("profile",""));
+        mode=preferences.getInt("mode",1);mode=Math.max(0,Math.min(2,mode));
+        sound=preferences.getBoolean("sound",true);haptics=preferences.getBoolean("haptics",true);
+        migrateProgress();
+        engine=SaveCodec.decode(preferences.getString("battle",""));
+        try {tone=new ToneGenerator(AudioManager.STREAM_MUSIC,45);} catch(RuntimeException ex) {tone=null;}
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
+        root=new FrameLayout(this);root.setBackgroundColor(BG);setContentView(root);
+        root.setOnApplyWindowInsetsListener((view,insets)->applyInsets(view,insets));
+        root.requestApplyInsets();showMenu();
     }
-    @Override public void onPause() {super.onPause();game.running=false;}
-    @Override public void onResume() {super.onResume();if(game!=null) {game.last=0;game.running=true;game.invalidate();}}
-    private final class BattleView extends View {
-        private final Paint p=new Paint(3);
-        private Engine engine;
-        private int selected=-1,stage;
-        private boolean paused=false,running=true;
-        private long last;
-        private float scale=1,top=0;
-        BattleView() {
-            super(MainActivity.this);
-            stage=getPreferences(0).getInt("stage",1);engine=new Engine(stage);
-            setLayerType(View.LAYER_TYPE_SOFTWARE,null);
-            setContentDescription("타워 프론트 전장. 아군 타워 선택 후 목표 타워를 터치하세요.");
+    private WindowInsets applyInsets(View view,WindowInsets insets) {
+        if(Build.VERSION.SDK_INT>=30) {
+            android.graphics.Insets safe=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());
+            view.setPadding(safe.left,safe.top,safe.right,safe.bottom);
+        } else view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),
+            insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());
+        return insets;
+    }
+    private void migrateProgress() {
+        if(preferences.contains("profile")) return;
+        int old=Math.min(Campaign.COUNT,preferences.getInt("stage",1));
+        for(int i=1;i<old;i++) profile.record(i,1,1);
+        preferences.edit().putString("profile",profile.encode()).apply();
+    }
+    @Override public void onPause() {
+        if(battle!=null) battle.suspend();
+        saveBattle(true);super.onPause();
+    }
+    @Override public void onResume() {super.onResume();if(battle!=null) battle.wake();}
+    @Override public void onDestroy() {
+        if(tone!=null) tone.release();super.onDestroy();
+    }
+    @Override public void onBackPressed() {
+        if(battle!=null) {battle.pause();return;}
+        super.onBackPressed();
+    }
+    void saveBattle(boolean immediate) {
+        if(engine!=null && engine.result()==1) profile.record(engine.level,engine.difficulty,engine.medals());
+        SharedPreferences.Editor edit=preferences.edit().putString("profile",profile.encode());
+        if(engine!=null) edit.putString("battle",SaveCodec.encode(engine));
+        if(immediate) edit.commit();else edit.apply();
+    }
+    void feedback(boolean positive) {
+        if(!sound || tone==null) return;
+        tone.startTone(positive?ToneGenerator.TONE_PROP_ACK:ToneGenerator.TONE_PROP_NACK,90);
+    }
+    void message(String text) {Toast.makeText(this,text,Toast.LENGTH_SHORT).show();}
+    private int dp(int value) {return Math.round(value*getResources().getDisplayMetrics().density);}
+    private GradientDrawable surface(int color) {
+        GradientDrawable shape=new GradientDrawable();shape.setColor(color);shape.setCornerRadius(dp(16));
+        return shape;
+    }
+    private TextView label(String text,int size,int color) {
+        TextView view=new TextView(this);view.setText(text);view.setTextSize(size);view.setTextColor(color);
+        view.setPadding(0,dp(8),0,dp(8));view.setGravity(Gravity.CENTER);
+        return view;
+    }
+    private LinearLayout page(String title,String subtitle) {
+        if(battle!=null) battle.suspend();battle=null;
+        root.removeAllViews();
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);
+        LinearLayout layout=new LinearLayout(this);layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dp(24),dp(20),dp(24),dp(28));
+        scroll.addView(layout);root.addView(scroll);
+        TextView heading=label(title,30,Color.WHITE);heading.setTypeface(null,Typeface.BOLD);
+        layout.addView(heading);layout.addView(label(subtitle,13,MUTED));
+        return layout;
+    }
+    private Button button(LinearLayout parent,String title,boolean primary,Runnable action) {
+        Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextSize(16);
+        button.setTextColor(primary?BG:Color.WHITE);button.setBackground(surface(primary?CYAN:CARD));
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,dp(58));
+        params.topMargin=dp(12);parent.addView(button,params);
+        button.setOnClickListener(view->action.run());return button;
+    }
+    void showMenu() {
+        saveBattle(false);
+        LinearLayout panel=page("TOWER FRONT","타워 프론트 · 오프라인 전략 캠페인");
+        panel.addView(label("점령하고, 성장하고, 전선을 넓히세요",18,Color.WHITE));
+        panel.addView(label("12개 작전  /  3가지 난이도  /  전투 자동 저장",12,MUTED));
+        if(engine!=null) button(panel,engine.result()==0?"작전 "+engine.level+" 이어하기":"지난 전투 결과",true,()->openBattle(engine));
+        button(panel,"캠페인 · 작전 선택",engine==null,()->showCampaign());
+        button(panel,"플레이 방법",false,()->showHelp());
+        button(panel,"소리와 진동 설정",false,()->showSettings());
+        panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 36",16,CYAN));
+        panel.addView(label("v3.0 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+    }
+    void showCampaign() {
+        saveBattle(false);
+        LinearLayout panel=page("작전 지도", "90초 이내 ★★★  ·  180초 이내 ★★  ·  승리 ★");
+        addDifficulties(panel);
+        for(int stage=1;stage<=Campaign.COUNT;stage++) addOperation(panel,stage);
+        button(panel,"시작 화면",false,()->showMenu());
+    }
+    private void addDifficulties(LinearLayout panel) {
+        LinearLayout row=new LinearLayout(this);panel.addView(row);
+        for(int i=0;i<3;i++) {
+            final int choice=i;Button b=new Button(this);
+            b.setText(Campaign.difficultyName(i));b.setTextColor(i==mode?BG:Color.WHITE);
+            b.setBackground(surface(i==mode?CYAN:CARD));
+            LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(52),1);
+            params.setMargins(dp(3),dp(8),dp(3),dp(8));row.addView(b,params);
+            b.setOnClickListener(view->{mode=choice;preferences.edit().putInt("mode",mode).apply();showCampaign();});
         }
-        private int color(int owner) {return owner==1?Color.rgb(63,207,238):owner==2?Color.rgb(255,114,103):Color.rgb(129,146,164);}
-        private void text(Canvas c,String s,float x,float y,float size,int color) {
-            p.setColor(color);p.setTextSize(size);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-            p.setTextAlign(Paint.Align.CENTER);c.drawText(s,x,y,p);
-        }
-        private void box(Canvas c,float x,float y,float w,float h,int color) {
-            p.setColor(color);c.drawRoundRect(x,y,x+w,y+h,18,18,p);
-        }
-        @Override protected void onDraw(Canvas real) {
-            long now=System.nanoTime();
-            if(last!=0 && running && !paused) engine.update(Math.min(.05,(now-last)/1e9));
-            last=now;real.drawColor(Color.rgb(9,18,31));
-            scale=Math.min(getWidth()/400f,getHeight()/800f);top=(getHeight()-800*scale)/2;
-            real.save();real.translate((getWidth()-400*scale)/2,top);real.scale(scale,scale);
-            drawBoard(real);drawHeader(real);
-            for(Engine.Fleet f:engine.fleets) drawFleet(real,f);
-            for(int i=0;i<engine.towers.size();i++) drawTower(real,i);
-            drawFooter(real);
-            if(paused || engine.result()!=0) drawOverlay(real);
-            real.restore();if(running) postInvalidateDelayed(16);
-        }
-        private void drawBoard(Canvas c) {
-            box(c,16,142,368,530,Color.rgb(17,34,49));
-            p.setColor(Color.rgb(28,48,62));p.setStrokeWidth(1);
-            for(int x=32;x<380;x+=28) c.drawLine(x,154,x,660,p);
-            for(int y=154;y<670;y+=28) c.drawLine(26,y,374,y,p);
-            p.setColor(Color.rgb(42,64,74));p.setStrokeWidth(2);
-            c.drawLine(28,400,372,400,p);
-        }
-        private void drawHeader(Canvas c) {
-            text(c,"TOWER / FRONT",200,43,23,Color.WHITE);
-            text(c,"TACTICAL CONQUEST",200,65,10,Color.rgb(121,150,170));
-            text(c,String.format("작전 %02d",stage),80,112,19,Color.WHITE);
-            box(c,280,84,100,40,Color.rgb(35,53,70));
-            text(c,"일시정지",330,110,13,Color.WHITE);
-        }
-        private float x(Engine.Tower t) {return 36+(float)t.x*328;}
-        private float y(Engine.Tower t) {return 155+(float)t.y*500;}
-        private void drawTower(Canvas c,int index) {
-            Engine.Tower t=engine.towers.get(index);float x=x(t),y=y(t);int col=color(t.owner);
-            if(selected==index) {p.setColor(Color.WHITE);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(3);c.drawCircle(x,y,37,p);p.setStyle(Paint.Style.FILL);}
-            p.setColor(Color.rgb(6,17,27));c.drawCircle(x,y+7,29,p);
-            p.setColor(col);c.drawCircle(x,y,28,p);
-            p.setColor(Color.argb(45,255,255,255));c.drawCircle(x-6,y-9,15,p);
-            text(c,String.valueOf(t.units),x,y+7,21,Color.rgb(9,28,40));
-            text(c,(t.kind==Engine.FACTORY?"생산":t.kind==Engine.RELAY?"기동":"기본")+" Lv."+t.rank,x,y+46,10,col);
-        }
-        private void drawFleet(Canvas c,Engine.Fleet f) {
-            Engine.Tower a=engine.towers.get(f.from),b=engine.towers.get(f.to);
-            float ax=x(a),ay=y(a),bx=x(b),by=y(b),v=(float)f.progress;
-            p.setColor(Color.argb(60,150,190,210));p.setStrokeWidth(2);c.drawLine(ax,ay,bx,by,p);
-            float fx=ax+(bx-ax)*v,fy=ay+(by-ay)*v;
-            p.setColor(color(f.owner));c.drawCircle(fx,fy,12,p);
-            text(c,String.valueOf(f.units),fx,fy+4,10,Color.rgb(9,28,40));
-        }
-        private void drawFooter(Canvas c) {
-            if(selected>=0 && engine.towers.get(selected).owner==1) {
-                Engine.Tower t=engine.towers.get(selected);
-                box(c,40,687,320,48,Color.rgb(35,70,85));
-                String label=t.rank>=3?"최대 레벨": "생산 강화 · 병력 "+(20*t.rank)+" 소모";
-                text(c,label,200,718,15,Color.WHITE);
-            } else text(c,"아군 선택 → 목표 터치 / 드래그",200,718,16,Color.WHITE);
-            text(c,"생산 타워: 생산 ×1.7 · 기동 타워: 이동 속도 증가",200,754,11,Color.rgb(145,169,187));
-            text(c,"업그레이드: 생산 +50%씩 · 최대 Lv.3",200,777,11,Color.rgb(145,169,187));
-        }
-        private void drawOverlay(Canvas c) {
-            p.setColor(Color.argb(220,5,14,26));c.drawRect(0,0,400,800,p);
-            int result=engine.result();
-            text(c,paused?"작전 일시정지":result==1?"작전 성공":"작전 실패",200,335,32,Color.WHITE);
-            text(c,result==1?"전장을 확보했습니다": "병력을 모아 새로운 전략을 시도하세요",200,376,13,Color.rgb(150,177,195));
-            box(c,70,415,260,58,color(1));
-            text(c,paused?"계속하기":result==1?"다음 작전":"다시 도전",200,451,18,Color.rgb(9,28,40));
-            box(c,70,495,260,48,Color.rgb(39,58,77));text(c,"현재 작전 다시 시작",200,525,15,Color.WHITE);
-        }
-        private int hit(float px,float py) {
-            for(int i=0;i<engine.towers.size();i++) {
-                Engine.Tower t=engine.towers.get(i);
-                if(Math.hypot(px-x(t),py-y(t))<36) return i;
-            }
-            return -1;
-        }
-        private void restart(boolean next) {
-            if(next) stage++;
-            getPreferences(0).edit().putInt("stage",stage).apply();
-            engine=new Engine(stage);selected=-1;paused=false;last=0;
-        }
-        private void overlayTouch(float px,float py) {
-            if(px<70 || px>330) return;
-            if(py>=495 && py<=543) {restart(false);return;}
-            if(py<415 || py>473) return;
-            if(paused) {paused=false;last=0;return;}
-            restart(engine.result()==1);
-        }
-        @Override public boolean onTouchEvent(android.view.MotionEvent event) {
-            float px=(event.getX()-(getWidth()-400*scale)/2)/scale;
-            float py=(event.getY()-top)/scale;
-            int action=event.getActionMasked();
-            if(action==MotionEvent.ACTION_CANCEL) {selected=-1;return true;}
-            if(paused || engine.result()!=0) {if(action==MotionEvent.ACTION_UP) overlayTouch(px,py);return true;}
-            if(action==MotionEvent.ACTION_DOWN) handleDown(px,py);
-            if(action==MotionEvent.ACTION_UP) handleUp(px,py);
-            return true;
-        }
-        private boolean inside(float px,float py,float left,float top,float right,float bottom) {
-            return px>=left && px<=right && py>=top && py<=bottom;
-        }
-        private void handleDown(float px,float py) {
-            if(inside(px,py,40,687,360,735)) {
-                engine.upgrade(selected);return;
-            }
-            if(inside(px,py,280,84,380,124)) {paused=true;return;}
-            int target=hit(px,py);
-            if(selected>=0 && target>=0 && selected!=target) {engine.send(selected,target);selected=-1;return;}
-            if(target>=0 && engine.towers.get(target).owner==1) selected=target;
-        }
-        private void handleUp(float px,float py) {
-            int target=hit(px,py);
-            if(selected>=0 && target>=0 && target!=selected) {engine.send(selected,target);selected=-1;}
-        }
+    }
+    private void addOperation(LinearLayout panel,int stage) {
+        boolean open=profile.available(stage,mode);int score=profile.stars(stage,mode);
+        String stars="★★★".substring(0,score)+"☆☆☆".substring(score);
+        String title=String.format("%02d  %s   %s",stage,Campaign.name(stage),open?stars:"잠김");
+        Button b=button(panel,title,false,()->chooseStage(stage));b.setEnabled(open);b.setAlpha(open?1:.38f);
+    }
+    private void chooseStage(int stage) {
+        if(engine!=null && engine.result()==0) {
+            new AlertDialog.Builder(this).setTitle("새 작전을 시작할까요?")
+                .setMessage("저장된 전투를 새 작전으로 바꿉니다. 별 기록은 유지됩니다.")
+                .setNegativeButton("취소",null).setPositiveButton("시작",(dialog,which)->start(stage)).show();
+        } else start(stage);
+    }
+    void start(int stage) {
+        engine=new Engine(stage,mode);saveBattle(true);openBattle(engine);
+        if(stage==1) message("아군을 선택한 뒤 목표를 터치하거나 드래그하세요");
+    }
+    void openBattle(Engine state) {
+        engine=state;mode=state.difficulty;
+        if(battle!=null) battle.suspend();
+        root.removeAllViews();battle=new BattleView(this,state);root.addView(battle);
+    }
+    void retry() {
+        new AlertDialog.Builder(this).setTitle("현재 작전 다시 시작")
+            .setMessage("이번 전투를 처음부터 시작합니다.").setNegativeButton("취소",null)
+            .setPositiveButton("다시 시작",(dialog,which)->start(engine.level)).show();
+    }
+    void next() {
+        if(engine.level>=Campaign.COUNT) {showCampaign();return;}
+        start(Campaign.next(engine.level));
+    }
+    private void showSettings() {
+        String[] names={"효과음","터치 진동"};boolean[] checked={sound,haptics};
+        new AlertDialog.Builder(this).setTitle("소리와 진동")
+            .setMultiChoiceItems(names,checked,(dialog,which,value)->{
+                if(which==0) sound=value;else haptics=value;
+                preferences.edit().putBoolean("sound",sound).putBoolean("haptics",haptics).apply();
+            }).setPositiveButton("완료",null).show();
+    }
+    void showHelp() {
+        new AlertDialog.Builder(this).setTitle("지휘관 안내서")
+            .setMessage("① 아군 타워를 터치한 뒤 목표를 터치하거나 드래그해 출병하세요.\n\n"
+                +"② 하단에서 50% / 100% 출병을 전환합니다. 아군 타워로 보내면 증원합니다.\n\n"
+                +"③ 생산 타워는 생산량 1.7배, 기동 타워는 이동 시간이 40% 짧습니다. 중립은 생산하지 않습니다.\n\n"
+                +"④ 선택한 아군 타워는 병력 20 / 40을 사용해 강화할 수 있습니다. 생산량은 레벨마다 50% 증가합니다.\n\n"
+                +"⑤ 적 타워와 이동 병력을 모두 제거하면 승리합니다. 90초 / 180초 이내 승리로 별을 모으세요.\n\n"
+                +"⑥ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.")
+            .setPositiveButton("알겠습니다",null).show();
     }
 }

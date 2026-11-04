@@ -10,7 +10,7 @@ def test_tower_front(tmp_path: Path) -> None:
     project = ROOT / "android-tower-front"
     java = Path.home() / ".codex/android-deckball-tools/jdk/bin"
     suffix = ".exe" if os.name == "nt" else ""
-    names = ("Engine", "Campaign", "Profile", "SaveCodec")
+    names = ("Engine", "Campaign", "Profile", "SaveCodec", "BattleControls")
     sources = [project / f"src/com/towerfront/{name}.java" for name in names]
     suites = sorted((project / "tests").glob("*.java"))
     subprocess.run([str(java / f"javac{suffix}"), "-encoding", "UTF-8",
