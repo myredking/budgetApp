@@ -17,7 +17,7 @@ public class GameView extends View {
  private float unit,left,top,scale,tray;
  private boolean over=false,drag=false;
  private String message="블록을 골라 보드에 놓아보세요";
- public GameView(Context context){super(context);prefs=context.getSharedPreferences("game",0);best=prefs.getInt("best",0);deal();restore();setContentDescription("블록 가든 게임 보드");}
+ public GameView(Context context){super(context);prefs=context.getSharedPreferences("game",0);best=prefs.getInt("best",0);deal();restore();save();setContentDescription("블록 가든 게임 보드");}
  private void deal(){for(int i=0;i<3;i++){hand[i]=random.nextInt(shapes.length);tones[i]=1+random.nextInt(5);}}
  private void text(Canvas c,String s,float x,float y,float size,int color){paint.setColor(color);paint.setTextSize(size*scale);paint.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));c.drawText(s,x,y,paint);}
  @Override protected void onDraw(Canvas c){
@@ -76,9 +76,14 @@ public class GameView extends View {
   for(int i=0;i<3;i++)edit.putInt("hand"+i,hand[i]).putInt("tone"+i,tones[i]);edit.apply();
  }
  private void restore(){
-  String data=prefs.getString("board","");if(data.length()!=64)return;
+  String data=prefs.getString("board","");
+  int[] savedHand=new int[3],savedTones=new int[3];
+  for(int i=0;i<3;i++){savedHand[i]=prefs.getInt("hand"+i,0);savedTones[i]=prefs.getInt("tone"+i,1);}
+  if(!SavedState.valid(data,savedHand,savedTones,shapes.length))return;
   for(int r=0;r<8;r++)for(int c=0;c<8;c++)engine.board[r][c]=data.charAt(r*8+c)-'0';
-  engine.score=prefs.getInt("score",0);for(int i=0;i<3;i++){hand[i]=prefs.getInt("hand"+i,0);tones[i]=prefs.getInt("tone"+i,1);}over=!hasMove();
+  hand=savedHand;tones=savedTones;engine.score=Math.max(0,prefs.getInt("score",0));
+  if(hand[0]<0&&hand[1]<0&&hand[2]<0)deal();
+  best=Math.max(best,engine.score);over=!hasMove();
+  if(over)message="게임 종료 · 새 게임으로 다시 시작";
  }
 }
-

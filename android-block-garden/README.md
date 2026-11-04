@@ -12,3 +12,5 @@ BlockGarden.apk를 휴대폰으로 옮겨 열고 설치하세요. 요청 시 해
 Android SDK 35 및 JDK는 기존 ~/.codex/android-deckball-tools 환경을 사용합니다.
 개발용 서명 APK이며 Play Store 등록용 배포 서명은 별도입니다.
 JVM 엔진 테스트 및 APK v2/v3 서명 검증 완료. 실제 Android 기기 화면·터치 검증은 수행하지 못했습니다.
+
+1.0.1: 저장된 보드·블록·색상 범위 검증, 초기 패 즉시 저장, 종료 안내 복원. 17개 검사 통과. 실제 기기 실행 검증은 미수행.
