@@ -121,7 +121,7 @@ public class GameView extends View {
  private void restoreStars(SharedPreferences saved){
   if(!missionMode)return;
   String stars=saved.getString("stars","");
-  if(stars.length()!=64){mission.setup(engine);return;}
+  if(!SavedState.validStars(stars)){mission.setup(engine);return;}
   for(int r=0;r<8;r++)for(int c=0;c<8;c++)engine.stars[r][c]=stars.charAt(r*8+c)=='1';
  }
 

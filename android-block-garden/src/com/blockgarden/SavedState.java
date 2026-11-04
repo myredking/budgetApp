@@ -1,5 +1,10 @@
 package com.blockgarden;
 public final class SavedState {
+ public static boolean validStars(String stars){
+  if(stars==null||stars.length()!=64)return false;
+  for(int i=0;i<64;i++)if(stars.charAt(i)!='0'&&stars.charAt(i)!='1')return false;
+  return true;
+ }
  public static boolean valid(String board,int[] hand,int[] tones,int shapeCount){
   return validBoard(board)&&validRange(hand,-1,shapeCount-1)&&validRange(tones,1,5);
  }

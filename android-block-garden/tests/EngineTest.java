@@ -24,6 +24,8 @@ public class EngineTest {
   check(!SavedState.valid("0".repeat(64),new int[]{12,0,0},new int[]{1,1,1},12),"bad shape");
   check(!SavedState.valid("0".repeat(64),new int[]{0,0,0},new int[]{0,1,1},12),"bad color");
   check(!SavedState.valid(null,new int[]{0,0,0},new int[]{1,1,1},12),"missing save");
+  check(!SavedState.validStars("x".repeat(64)),"corrupt stars");
+  check(SavedState.validStars("01".repeat(32)),"valid stars");
   missionTests();campaignTests();
   System.out.println("Campaign checks passed");
  }
