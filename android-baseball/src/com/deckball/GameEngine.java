@@ -30,6 +30,7 @@ public final class GameEngine {
     public final List<Player> roster = new ArrayList<>();
     public int difficulty = 1, opponentHitter = 3, opponentPitcher = 27;
     public int[] lineup = {0,1,2,3,4,5,6,7,8};
+    public int lastHit;
     public int pitcher = 27, inning = 1, outs, balls, strikes, home, away, batter;
     public boolean batting, finished;
     public boolean[] bases = new boolean[3];
@@ -123,7 +124,7 @@ public final class GameEngine {
         } catch (IllegalArgumentException e) { return false; }
     }
     public void start() {
-        inning = 1; outs = balls = strikes = home = away = batter = 0;
+        lastHit=0; inning = 1; outs = balls = strikes = home = away = batter = 0;
         batting = finished = false; Arrays.fill(bases, false);
         message = "1회 초 · 구종과 코스를 고른 뒤 투구하세요";
     }
@@ -148,7 +149,7 @@ public final class GameEngine {
     }
     public void hit(int distance) {
         if (finished) return;
-        validateDistance(distance);
+        validateDistance(distance); lastHit=distance;
         int runs = distance == 4 ? 1 : 0;
         boolean[] advanced = new boolean[3];
         for (int i = 0; i < 3; i++) {
@@ -176,7 +177,7 @@ public final class GameEngine {
     }
     public void swing(double timing) {
         if (finished || !batting) return;
-        validateTiming(timing);
+        validateTiming(timing); lastHit=0;
         Player hitter = player(lineup[batter]);
         double quality = timingQuality(timing, .78);
         if (random.nextDouble() > quality * (.60 + contactRating(hitter) / 200.0 - controlRating(player(opponentPitcher)) / 500.0)) { strike(); return; }
@@ -187,12 +188,13 @@ public final class GameEngine {
     }
     public void take() {
         if (finished || !batting) return;
+        lastHit=0;
         if (random.nextDouble() < .32) ball(); else strike();
     }
     public void pitch(int kind, int location, double timing) {
         if (finished || batting) return;
         validateTiming(timing);
-        validatePitch(kind,location);
+        validatePitch(kind,location); lastHit=0;
         double control = controlRating(player(pitcher)) / 100.0;
         double precision = timingQuality(timing, .65);
         double roll = random.nextDouble();
@@ -205,6 +207,7 @@ public final class GameEngine {
     }
     public void autoPlate() {
         if (finished) return;
+        lastHit=0;
         Player hitter = player(batting ? lineup[batter] : opponentHitter);
         Player bowler = player(batting ? opponentPitcher : pitcher);
         double advantage = (batting ? 1 - difficulty : difficulty - 1) * .04;

@@ -15,6 +15,7 @@ public class Canvas {
   if(p.shader instanceof LinearGradient) g.setPaint(((LinearGradient)p.shader).value);
   g.setStroke(new BasicStroke(p.width,BasicStroke.CAP_ROUND,BasicStroke.JOIN_ROUND));
  }
+ public void drawRoundRect(float x,float y,float xx,float yy,float rx,float ry,Paint p) { apply(p); g.fill(new RoundRectangle2D.Float(x,y,xx-x,yy-y,rx*2,ry*2)); }
  public void drawRect(float x,float y,float xx,float yy,Paint p) { apply(p); g.fill(new Rectangle2D.Float(x,y,xx-x,yy-y)); }
  public void drawOval(float x,float y,float xx,float yy,Paint p) { apply(p); g.fill(new Ellipse2D.Float(x,y,xx-x,yy-y)); }
  public void drawCircle(float x,float y,float r,Paint p) { drawOval(x-r,y-r,x+r,y+r,p); }
@@ -22,6 +23,6 @@ public class Canvas {
  public void drawPath(Path path,Paint p) { apply(p); g.fill(path.value); }
  public void drawText(String text,float x,float y,Paint p) {
   apply(p); g.setFont(new Font("Malgun Gothic",Font.PLAIN,Math.round(p.size)));
-  g.drawString(text,x-g.getFontMetrics().stringWidth(text)/2f,y);
+  g.drawString(text,x-(p.align==Paint.Align.CENTER?g.getFontMetrics().stringWidth(text)/2f:0),y);
  }
 }

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.View;
@@ -17,7 +18,7 @@ public final class MainActivity extends Activity {
     final Handler handler = new Handler();
     final int bg = Color.rgb(9,20,30), panel = Color.rgb(20,39,52), ink = Color.rgb(236,244,247);
     LinearLayout root, controls;
-    FieldView field;
+    BallparkView field;
     TextView status, score;
     boolean playing, automatic, inFlight;
     long pitchStart;
@@ -45,6 +46,7 @@ public final class MainActivity extends Activity {
         return view;
     }
     void screen(String title, String subtitle) {
+        if(field!=null) {field.pause();field=null;}
         playing = false; automatic = false; inFlight = false; handler.removeCallbacks(ticker);
         root = column();
         TextView heading = text(title, 28); root.addView(heading);
@@ -65,13 +67,13 @@ public final class MainActivity extends Activity {
     void addButton(String label, Runnable action) { root.addView(button(label, action)); }
     void home() {
         screen("", ""); root.removeAllViews(); root.setOrientation(0);
-        FieldView preview = new FieldView(this, engine);
-        root.addView(preview, new LinearLayout.LayoutParams(0,-1,1));
+        field = new BallparkView(this, engine);
+        root.addView(field, new LinearLayout.LayoutParams(0,-1,1));
         LinearLayout menu = column();
         ScrollView scroll = new ScrollView(this); scroll.addView(menu);
         root.addView(scroll,new LinearLayout.LayoutParams(dp(260),-1));
         menu.addView(text("DECK / BALL",26));
-        menu.addView(text("2026 SEASON × LEGENDS",13));
+        menu.addView(text("2026 SEASON × LEGENDS · 3D",13));
         menu.addView(text("나의 선수, 나의 야구",20));
         menu.addView(button("▶ 경기 시작", () -> { engine.start(); match(); }));
         menu.addView(button("선수 덱 / 타순 편집",this::deck));
@@ -254,7 +256,7 @@ public final class MainActivity extends Activity {
     }
     void match() {
         screen("", ""); root.removeAllViews(); root.setOrientation(0); playing = true;
-        field = new FieldView(this,engine);
+        field = new BallparkView(this,engine);
         root.addView(field,new LinearLayout.LayoutParams(0,-1,1));
         ScrollView rail = new ScrollView(this); LinearLayout box = column(); rail.addView(box);
         root.addView(rail,new LinearLayout.LayoutParams(dp(200),-1));
@@ -273,8 +275,9 @@ public final class MainActivity extends Activity {
         } else if (automatic) {
             controls.addView(button("감독 모드 · 자동 진행 중 / 직접 조작으로 전환", () -> { automatic = false; refresh(); }));
         } else manualControls();
+        controls.addView(button("카메라 전환",()->field.switchCamera()));
         controls.addView(button("홈으로", this::leaveMatch));
-        field.invalidate();
+        field.refresh();
     }
     void manualControls() {
         if (engine.batting) {
@@ -292,7 +295,7 @@ public final class MainActivity extends Activity {
             controls.addView(options);
             controls.addView(button(inFlight ? "릴리스!" : "투구 준비", this::pitchAction));
         }
-        controls.addView(button("감독 모드 / 자동 진행", () -> { inFlight = false; automatic = true; pitchStart = System.currentTimeMillis(); refresh(); }));
+        controls.addView(button("감독 모드 / 자동 진행", () -> { inFlight = false; field.progress=-1; automatic = true; pitchStart = SystemClock.elapsedRealtime(); refresh(); }));
     }
     void chooseLocation() {
         if (inFlight) return;
@@ -300,12 +303,12 @@ public final class MainActivity extends Activity {
             .setItems(new String[]{"좌측 높은 공","우측 높은 공","좌측 낮은 공","우측 낮은 공","중앙"},
                 (dialog, which) -> { location = which; refresh(); }).show();
     }
-    double progress() { return Math.min(1, (System.currentTimeMillis() - pitchStart) / (double)engine.pitchDuration()); }
-    void beginPitch() { inFlight = true; pitchStart = System.currentTimeMillis(); refresh(); }
-    void resolve() { inFlight = false; field.progress = -1; refresh(); }
+    double progress() { return Math.min(1, (SystemClock.elapsedRealtime() - pitchStart) / (double)engine.pitchDuration()); }
+    void beginPitch() { engine.lastHit=0; inFlight = true; pitchStart = SystemClock.elapsedRealtime(); refresh(); }
+    void resolve() { if(engine.lastHit>0) field.contact(); inFlight = false; field.progress = -1; refresh(); }
     void batAction() {
         if (!inFlight) { beginPitch(); return; }
-        engine.swing(progress()); resolve();
+        field.swing(); engine.swing(progress()); resolve();
     }
     void pitchAction() {
         if (!inFlight) { beginPitch(); return; }
@@ -313,26 +316,26 @@ public final class MainActivity extends Activity {
     }
     void tick() {
         if (!playing) return;
-        if (automatic && !engine.finished && System.currentTimeMillis() - pitchStart > 900) {
-            engine.autoPlate(); pitchStart = System.currentTimeMillis(); refresh();
+        if (automatic && !engine.finished && SystemClock.elapsedRealtime() - pitchStart > 900) {
+            engine.autoPlate(); if(engine.lastHit>0) field.contact(); pitchStart = SystemClock.elapsedRealtime(); refresh();
         }
         if (inFlight) {
-            field.progress = (float)progress(); field.invalidate();
+            field.progress = (float)progress(); field.refresh();
             if (progress() >= 1) {
                 if (engine.batting) engine.take(); else engine.pitch(kind,location,1);
                 resolve();
             }
         }
-        handler.postDelayed(ticker,30);
+        field.refresh(); handler.postDelayed(ticker,30);
     }
     void leaveMatch() {
         handler.removeCallbacks(ticker);
-        final long pausedAt = System.currentTimeMillis();
+        final long pausedAt = SystemClock.elapsedRealtime();
         AlertDialog exit = new AlertDialog.Builder(this).setTitle("경기를 종료할까요?")
             .setMessage("덱은 보관되며 진행 중인 경기는 종료됩니다.")
             .setPositiveButton("홈으로",(d,w) -> home()).setNegativeButton("계속 경기",null).create();
         exit.setOnDismissListener(d -> {
-            pitchStart += System.currentTimeMillis() - pausedAt;
+            pitchStart += SystemClock.elapsedRealtime() - pausedAt;
             if (playing) { handler.removeCallbacks(ticker); handler.postDelayed(ticker,30); }
         });
         exit.show();
@@ -341,10 +344,11 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed() { if (playing) leaveMatch(); else home(); }
     @Override protected void onPause() {
         super.onPause(); handler.removeCallbacks(ticker); persist(); saveRatings(); office.save();
-        inFlight = false; if (field != null) field.progress = -1;
+        inFlight = false; if (field != null) {field.progress = -1;field.pause();}
     }
     @Override protected void onResume() {
         super.onResume();
+        if(field!=null) field.resume();
         if (playing) { refresh(); handler.removeCallbacks(ticker); handler.postDelayed(ticker,30); }
     }
 }
