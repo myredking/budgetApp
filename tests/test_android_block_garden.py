@@ -15,3 +15,10 @@ def test_block_touch(tmp_path: Path) -> None:
     java = Path.home() / '.codex/android-deckball-tools/jdk/bin'
     subprocess.run([str(java / 'javac.exe'), '-encoding', 'UTF-8', '-d', str(tmp_path), str(root / 'src/com/blockgarden/TouchControl.java'), str(root / 'tests/TouchTest.java')], check=True)
     subprocess.run([str(java / 'java.exe'), '-cp', str(tmp_path), 'com.blockgarden.TouchTest'], check=True)
+
+
+def test_start_navigation(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1] / 'android-block-garden'
+    java = Path.home() / '.codex/android-deckball-tools/jdk/bin'
+    subprocess.run([str(java / 'javac.exe'), '-encoding', 'UTF-8', '-d', str(tmp_path), str(root / 'src/com/blockgarden/Navigation.java'), str(root / 'tests/NavigationTest.java')], check=True)
+    subprocess.run([str(java / 'java.exe'), '-cp', str(tmp_path), 'com.blockgarden.NavigationTest'], check=True)

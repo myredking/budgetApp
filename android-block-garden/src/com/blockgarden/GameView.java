@@ -8,6 +8,7 @@ import java.util.Random;
 public class GameView extends View {
  private final Paint paint=new Paint(3);
  private final SharedPreferences prefs;
+ private final Runnable home;
  private Engine engine=new Engine();
  private final Random random=new Random();
  private final int[] colors={0xff26364d,0xff64d9bc,0xffffbd69,0xff9e9bff,0xffff8198,0xff6abaff};
@@ -21,7 +22,7 @@ public class GameView extends View {
  private boolean missionMode=false;
  private Mission mission=new Mission(1);
  private String message="블록을 골라 보드에 놓아보세요";
- public GameView(Context context){super(context);prefs=context.getSharedPreferences("game",0);best=prefs.getInt("best",0);missionMode=prefs.getBoolean("missionMode",false);mission=new Mission(prefs.getInt("stage",1));deal();restore();save();setContentDescription("블록 가든 게임 보드");}
+ public GameView(Context context,boolean missionMode,Runnable home){super(context);prefs=context.getSharedPreferences("game",0);best=prefs.getInt("best",0);this.missionMode=missionMode;this.home=home;mission=new Mission(prefs.getInt("stage",1));deal();restore();save();setContentDescription("블록 가든 게임 보드");}
  private void deal(){for(int i=0;i<3;i++){hand[i]=random.nextInt(shapes.length);tones[i]=1+random.nextInt(5);}}
  private void text(Canvas c,String s,float x,float y,float size,int color){paint.setColor(color);paint.setTextSize(size*scale);paint.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));c.drawText(s,x,y,paint);}
  @Override protected void onDraw(Canvas c){
@@ -50,12 +51,8 @@ public class GameView extends View {
   if(!mission.complete(engine))return "미션 다시 시작";
   return mission.stage==Mission.COUNT?"전체 미션 완료! 처음부터":"미션 성공! 다음 스테이지 →";
  }
- private void modeMenu(){
-  new AlertDialog.Builder(getContext()).setTitle("모드 선택").setItems(new String[]{"자유 모드 이어하기","미션 모드 이어하기"},(dialog,which)->switchMode(which==1)).show();
- }
- private void switchMode(boolean enabled){
-  save();missionMode=enabled;mission=new Mission(prefs.getInt("stage",1));engine=new Engine();selected=-1;hoverR=-1;over=false;deal();restore();save();invalidate();
- }
+ public void persist(){save();}
+ private void modeMenu(){cancelTouch();save();home.run();}
  private void stageAction(){
   if(missionMode&&mission.complete(engine)){int next=mission.nextStage();mission=new Mission(next);reset();return;}
   confirmReset();
@@ -78,7 +75,7 @@ public class GameView extends View {
  }
  @Override public boolean onTouchEvent(android.view.MotionEvent event){
   int action=event.getActionMasked();
-  if(action==MotionEvent.ACTION_DOWN){touch.cancel();activePointer=event.getPointerId(0);getParent().requestDisallowInterceptTouchEvent(true);return touchDown(event.getX(),event.getY());}
+  if(action==MotionEvent.ACTION_DOWN){touch.cancel();activePointer=event.getPointerId(0);if(getParent()!=null)getParent().requestDisallowInterceptTouchEvent(true);return touchDown(event.getX(),event.getY());}
   if(action==MotionEvent.ACTION_CANCEL){cancelTouch();return true;}
   if(action==MotionEvent.ACTION_POINTER_UP){if(event.getPointerId(event.getActionIndex())==activePointer)cancelTouch();return true;}
   int index=event.findPointerIndex(activePointer);if(index<0)return true;
@@ -87,7 +84,7 @@ public class GameView extends View {
   if(action==MotionEvent.ACTION_UP){if(touch.active){updateTouch(x,y);place();performClick();}cancelTouch();return true;}
   return true;
  }
- private void cancelTouch(){touch.cancel();activePointer=-1;hoverR=-1;hoverC=-1;getParent().requestDisallowInterceptTouchEvent(false);invalidate();}
+ private void cancelTouch(){touch.cancel();activePointer=-1;hoverR=-1;hoverC=-1;if(getParent()!=null)getParent().requestDisallowInterceptTouchEvent(false);invalidate();}
  @Override public boolean performClick(){super.performClick();return true;}
  private void updateTouch(float x,float y){touch.move(x,y,ViewConfiguration.get(getContext()).getScaledTouchSlop());preview(x,y);}
  private void preview(float x,float y){
