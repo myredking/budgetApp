@@ -90,7 +90,76 @@ public final class EngineTest {
         check(game.home == 0 && game.away == 0 && !game.finished, "Restart");
     }
     public static void main(String[] args) {
-        deckAndScoring(); manualControls();
+        autoAbilities(); settingsRoundTrip(); kboSeason(); difficultyAndEditing(); deckAndScoring(); manualControls();
         System.out.println(checks + " engine checks passed");
+    }
+    static void kboSeason() {
+        GameEngine game = new GameEngine(1);
+        java.util.Set<String> teams = new java.util.HashSet<>();
+        int legends = 0;
+        for (GameEngine.Player p : game.roster) {
+            if (p.year == 2026) teams.add(p.team);
+            if (p.legend) legends++;
+            check(!p.record.isEmpty() && !p.source.isEmpty(), "Record provenance");
+        }
+        check(teams.size() == 10, "2026 ten clubs");
+        check(legends >= 10, "Historical season legends");
+    }
+    static void autoAbilities() {
+        GameEngine weak = new GameEngine(10), strong = new GameEngine(10);
+        weak.editRatings(weak.opponentPitcher,40,40,1);
+        strong.editRatings(strong.opponentPitcher,40,40,99);
+        int weakHits=0, strongHits=0;
+        for(int i=0;i<1000;i++) {
+            weak.start(); strong.start(); weak.batting=strong.batting=true;
+            weak.autoPlate(); strong.autoPlate();
+            if(weak.bases[0] || weak.home>0) weakHits++;
+            if(strong.bases[0] || strong.home>0) strongHits++;
+        }
+        check(weakHits > strongHits + 50,"Opponent pitcher affects manager mode");
+        weak = new GameEngine(10); strong = new GameEngine(10);
+        weak.editRatings(weak.opponentHitter,1,1,40);
+        strong.editRatings(strong.opponentHitter,99,99,40);
+        int weakRuns=0, strongRuns=0;
+        for(int i=0;i<1000;i++) {
+            weak.start(); strong.start(); weak.autoPlate(); strong.autoPlate();
+            weakRuns+=weak.away; strongRuns+=strong.away;
+        }
+        check(strongRuns>weakRuns+10,"Opponent hitter affects manager mode");
+    }
+    static void settingsRoundTrip() {
+        GameEngine game = new GameEngine(1), restored = new GameEngine(2);
+        game.editRatings(7, 99, 98, 97); game.setDifficulty(2); game.selectOpponent(7,29);
+        String saved = GameSettings.capture(game);
+        check(GameSettings.restore(restored,saved), "Restore settings");
+        check(restored.player(7).contact == 99 && restored.difficulty == 2, "Persist ratings/difficulty");
+        check(restored.opponentHitter == 7 && restored.opponentPitcher == 29, "Persist opponent");
+        check(!GameSettings.restore(restored,saved + ";0,0,0,0"), "Reject bad ratings");
+        check(GameSettings.capture(restored).equals(saved), "Atomic settings restore");
+        check(!GameSettings.DECK_KEY.equals("deck"), "Isolate old roster deck keys");
+        check(!GameSettings.slotKey(0).equals("slot0"), "Isolate old saved slots");
+    }
+    static void difficultyAndEditing() {
+        GameEngine easy = new GameEngine(42), hard = new GameEngine(42);
+        easy.setDifficulty(0); hard.setDifficulty(2);
+        check(easy.pitchDuration() > hard.pitchDuration(), "Pitch speed");
+        check(easy.timingWindow() > hard.timingWindow(), "Timing window");
+        expectReject(() -> easy.setDifficulty(3));
+        easy.editRatings(0, 99, 98, 97);
+        check(easy.player(0).contact == 99 && easy.player(0).power == 98, "Edit real player");
+        expectReject(() -> easy.editRatings(0, 0, 50, 50));
+        check(easy.player(0).contact == 99, "Atomic edit");
+        int a = 0, b = 0;
+        for (int i = 0; i < 500; i++) {
+            easy.start(); hard.start(); easy.batting = hard.batting = true;
+            easy.swing(.60); hard.swing(.60);
+            if (easy.bases[0] || easy.home > 0) a++;
+            if (hard.bases[0] || hard.home > 0) b++;
+        }
+        check(a > b + 50, "Easy is more forgiving");
+        easy.selectOpponent(7, 29);
+        check(easy.opponentHitter == 7 && easy.opponentPitcher == 29, "Opponent selection");
+        expectReject(() -> easy.selectOpponent(29, 7));
+        check(easy.opponentHitter == 7, "Atomic opponent selection");
     }
 }

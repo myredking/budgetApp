@@ -7,17 +7,26 @@ import java.util.Random;
 
 public final class GameEngine {
     public static final class Player {
-        public final int id, contact, power, control;
+        public final int id, year;
+        public int contact, power, control;
+        public final boolean legend;
+        public final String record, source;
         public final String name, position, team;
         public Player(int id, String name, String position, String team, int contact, int power, int control) {
+            this(id,name,position,team,contact,power,control,0,false,"사용자 선수","사용자 입력");
+        }
+        public Player(int id, String name, String position, String team, int contact, int power, int control,
+                      int year, boolean legend, String record, String source) {
+            this.year = year; this.legend = legend; this.record = record; this.source = source;
             this.id = id; this.name = name; this.position = position; this.team = team;
             this.contact = contact; this.power = power; this.control = control;
         }
         public String label() {
-            return name + " · " + team + " · " + position + "  컨택 " + contact + " / 파워 " + power;
+            return (legend ? "★ " : "") + name + " '" + year + " · " + team + " · " + position + "  컨택 " + contact + " / 파워 " + power;
         }
     }
     public final List<Player> roster = new ArrayList<>();
+    public int difficulty = 1, opponentHitter = 3, opponentPitcher = 27;
     public int[] lineup = {0,1,2,3,4,5,6,7,8};
     public int pitcher = 27, inning = 1, outs, balls, strikes, home, away, batter;
     public boolean batting, finished;
@@ -27,18 +36,29 @@ public final class GameEngine {
 
     public GameEngine(long seed) {
         random = new Random(seed);
-        String[] names = {"강태양","윤도현","차민준","백시우","서지호","한유찬","문건우","오준서","정이안"};
-        String[] positions = {"C","1B","2B","3B","SS","LF","CF","RF","DH"};
-        String[] teams = {"서울 스톰","부산 웨이브","광주 피닉스"};
-        for (int team = 0; team < 3; team++) {
-            for (int slot = 0; slot < 9; slot++) {
-                int id = team * 9 + slot;
-                roster.add(new Player(id, names[slot] + (team == 0 ? "" : " " + (team + 1)), positions[slot], teams[team], 65 + id % 30, 62 + id * 7 % 35, 40));
-            }
-        }
-        for (int i = 27; i < 33; i++) {
-            roster.add(new Player(i, "에이스 " + (i - 26), "P", teams[i % 3], 40, 40, 65 + i % 30));
-        }
+        KboRoster.populate(roster);
+    }
+
+    public void selectOpponent(int hitter, int pitcherId) {
+        if (player(hitter).position.equals("P")) throw new IllegalArgumentException("상대 타자 오류");
+        if (!player(pitcherId).position.equals("P")) throw new IllegalArgumentException("상대 투수 오류");
+        opponentHitter = hitter; opponentPitcher = pitcherId;
+    }
+    public void setDifficulty(int value) {
+        if (value < 0 || value > 2) throw new IllegalArgumentException("난이도 범위");
+        difficulty = value;
+    }
+    public int pitchDuration() { return new int[]{2300,1700,1200}[difficulty]; }
+    public double timingWindow() { return new double[]{.12,.07,.045}[difficulty]; }
+    public double timingQuality(double timing, double target) {
+        return Math.max(0, 1 - Math.abs(timing - target) * (.28 / timingWindow()));
+    }
+    public void editRatings(int id, int contact, int power, int control) {
+        validateRating(contact); validateRating(power); validateRating(control);
+        Player p = player(id); p.contact = contact; p.power = power; p.control = control;
+    }
+    private void validateRating(int value) {
+        if (value < 1 || value > 99) throw new IllegalArgumentException("능력치는 1~99");
     }
     public Player player(int id) {
         if (id < 0 || id >= roster.size()) throw new IllegalArgumentException("없는 선수입니다");
@@ -132,8 +152,8 @@ public final class GameEngine {
     public void swing(double timing) {
         if (finished || !batting) return;
         Player hitter = player(lineup[batter]);
-        double quality = Math.max(0, 1 - Math.abs(timing - .78) * 4);
-        if (random.nextDouble() > quality * (.45 + hitter.contact / 200.0)) { strike(); return; }
+        double quality = timingQuality(timing, .78);
+        if (random.nextDouble() > quality * (.60 + hitter.contact / 200.0 - player(opponentPitcher).control / 500.0)) { strike(); return; }
         double roll = random.nextDouble();
         if (quality > .85 && roll < hitter.power / 230.0) { hit(4); return; }
         if (roll < .20) { message = "뜬공 아웃"; out(); return; }
@@ -146,21 +166,25 @@ public final class GameEngine {
     public void pitch(int kind, int location, double timing) {
         if (finished || batting) return;
         double control = player(pitcher).control / 100.0;
-        double precision = Math.max(0, 1 - Math.abs(timing - .65) * 3);
+        double precision = timingQuality(timing, .65);
         double roll = random.nextDouble();
         double zone = location == 4 ? .1 : .24;
         if (roll < zone * (1.3 - control * precision)) { ball(); return; }
-        if (roll < .64 + precision * .16 + kind * .025) { strike(); return; }
-        if (roll > .96) { hit(4); return; }
+        if (roll < .64 + precision * .16 + kind * .025 - (player(opponentHitter).contact - 75) / 500.0) { strike(); return; }
+        if (roll > 1 - player(opponentHitter).power / 2400.0) { hit(4); return; }
         if (roll > .83) { hit(1); return; }
         message = "범타 아웃!"; out();
     }
     public void autoPlate() {
         if (finished) return;
-        double skill = batting ? player(lineup[batter]).contact / 400.0 : .2;
+        Player hitter = player(batting ? lineup[batter] : opponentHitter);
+        Player bowler = player(batting ? opponentPitcher : pitcher);
+        double advantage = (batting ? 1 - difficulty : difficulty - 1) * .04;
+        double homeRun = Math.max(.002, .01 + hitter.power / 1800.0 - bowler.control / 5000.0 + advantage / 3);
+        double skill = Math.max(.01, .10 + hitter.contact / 400.0 - bowler.control / 650.0 + advantage);
         double roll = random.nextDouble();
-        if (roll < .055) hit(4);
-        else if (roll < .055 + skill) hit(1);
+        if (roll < homeRun) hit(4);
+        else if (roll < homeRun + skill) hit(1);
         else { message = "자동 진행 · 아웃"; out(); }
     }
 }

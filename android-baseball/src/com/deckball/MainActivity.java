@@ -28,9 +28,13 @@ public final class MainActivity extends Activity {
         super.onCreate(state);
         getWindow().setStatusBarColor(bg); getWindow().setNavigationBarColor(bg);
         restoreCustom();
-        engine.loadDeck(getPreferences(0).getString("deck", engine.encodeDeck()));
+        if (!getPreferences(0).contains("deck2026") && getPreferences(0).contains("deck"))
+            toast("2026 시즌 명단으로 변경되었습니다. 덱을 다시 선택해 주세요. 커스텀 선수는 유지됩니다.");
+        engine.loadDeck(getPreferences(0).getString(GameSettings.DECK_KEY, engine.encodeDeck()));
+        restoreRatings();
         home();
     }
+    int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     LinearLayout column() {
         LinearLayout view = new LinearLayout(this);
         view.setOrientation(LinearLayout.VERTICAL);
@@ -57,28 +61,94 @@ public final class MainActivity extends Activity {
     }
     void addButton(String label, Runnable action) { root.addView(button(label, action)); }
     void home() {
-        screen("DECK / BALL", "나의 선수. 나의 라인업. 나의 야구.");
-        root.addView(text("OFFLINE BASEBALL  /  3 INNINGS", 12));
+        screen("", ""); root.removeAllViews(); root.setOrientation(0);
         FieldView preview = new FieldView(this, engine);
-        root.addView(preview, new LinearLayout.LayoutParams(-1,0,1));
-        root.addView(text("자유롭게 구성하고\n직접 승부하세요.", 27));
-        addButton("▶  나의 덱으로 경기 시작", () -> { engine.start(); match(); });
-        addButton("선수 덱 / 타순 편집", this::deck);
-        addButton("플레이 방법", this::help);
-        root.addView(text("독립 제작 2D 프로토타입 · 기본 선수는 가상 데이터", 11));
+        root.addView(preview, new LinearLayout.LayoutParams(0,-1,1));
+        LinearLayout menu = column();
+        ScrollView scroll = new ScrollView(this); scroll.addView(menu);
+        root.addView(scroll,new LinearLayout.LayoutParams(dp(260),-1));
+        menu.addView(text("DECK / BALL",26));
+        menu.addView(text("2026 SEASON × LEGENDS",13));
+        menu.addView(text("나의 선수, 나의 야구",20));
+        menu.addView(button("▶ 경기 시작", () -> { engine.start(); match(); }));
+        menu.addView(button("선수 덱 / 타순 편집",this::deck));
+        menu.addView(button("능력치 직접 수정",this::editPlayer));
+        menu.addView(button("상대 대표 선수 선택",this::opponentDialog));
+        menu.addView(button("난이도 · " + difficultyName(),this::difficultyDialog));
+        menu.addView(button("선수 기록 / 산정 기준",this::dataInfo));
+        menu.addView(button("플레이 방법",this::help));
+    }
+    void opponentDialog() {
+        new AlertDialog.Builder(this).setTitle("상대 대표 선수")
+            .setItems(new String[]{"상대 타자 선택","상대 투수 선택"},(d,w) -> opponentChoice(w==1))
+            .setNegativeButton("취소",null).show();
+    }
+    void opponentChoice(boolean pitcher) {
+        List<GameEngine.Player> choices = new ArrayList<>(); List<String> labels = new ArrayList<>();
+        for (GameEngine.Player p : engine.roster) {
+            if (p.position.equals("P") != pitcher) continue;
+            choices.add(p); labels.add(p.label());
+        }
+        new AlertDialog.Builder(this).setTitle("상대 "+(pitcher?"투수":"타자"))
+            .setItems(labels.toArray(new String[0]),(d,w) -> {
+                int id=choices.get(w).id;
+                if(pitcher) engine.selectOpponent(engine.opponentHitter,id);
+                else engine.selectOpponent(id,engine.opponentPitcher);
+                saveRatings(); toast("상대 선수 선택 완료"); home();
+            }).setNegativeButton("취소",null).show();
+    }
+    String difficultyName() { return new String[]{"쉬움","보통","어려움"}[engine.difficulty]; }
+    void difficultyDialog() {
+        new AlertDialog.Builder(this).setTitle("난이도 · 공 속도 / 타이밍 허용 범위")
+            .setSingleChoiceItems(new String[]{"쉬움 · 느린 공, 넓은 타이밍","보통 · 기본 속도","어려움 · 빠른 공, 좁은 타이밍"},engine.difficulty,
+                (d,w) -> { engine.setDifficulty(w); saveRatings(); d.dismiss(); home(); })
+            .setNegativeButton("닫기",null).show();
+    }
+    void dataInfo() {
+        new AlertDialog.Builder(this).setTitle("2026 시즌 기록 · 2026.11.04 조회")
+            .setMessage("KBO 공식 정규시즌 기록 기반 대표 선수 18명 + 역대 선수 15명. 전체 선수 명단은 아닙니다.\n\n컨택 = 40 + 타율×140, 파워 = 45 + 홈런×1.15, 투수 제구 = 115 - WHIP×25 (1~99).\n\n역대 타격왕은 타율만 반영하며 파워는 공통 65입니다. 이승엽은 2003년 56홈런으로 파워 99, 컨택은 공통 65입니다. 역대 투수는 65+승수로 환산한 게임용 제구입니다. 실제 제구 측정치가 아닙니다.\n\n구단은 해당 기록 시즌 기준. 수정해도 원래 기록은 유지됩니다.\n출처: koreabaseball.com 기록실 / 역대 기록")
+            .setPositiveButton("확인",null).show();
+    }
+    void editPlayer() {
+        String[] names = new String[engine.roster.size()];
+        for (int i=0;i<names.length;i++) names[i] = engine.player(i).label();
+        new AlertDialog.Builder(this).setTitle("능력치를 수정할 선수")
+            .setItems(names,(d,w) -> ratingDialog(w)).setNegativeButton("취소",null).show();
+    }
+    void ratingDialog(int id) {
+        GameEngine.Player p = engine.player(id); LinearLayout box = column();
+        box.addView(text(p.name + " · " + p.team + " · " + p.year,18));
+        box.addView(text(p.record,14));
+        box.addView(text("컨택 / 파워 / 제구 · 각 1~99",13));
+        EditText contact=input(box,"컨택",true),power=input(box,"파워",true),control=input(box,"제구",true);
+        contact.setText(""+p.contact); power.setText(""+p.power); control.setText(""+p.control);
+        ScrollView form = new ScrollView(this); form.addView(box);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("능력치 직접 수정").setView(form)
+            .setPositiveButton("저장",null).setNegativeButton("취소",null).create();
+        dialog.setOnShowListener(v -> dialog.getButton(-1).setOnClickListener(w -> {
+            try { engine.editRatings(id,rating(contact),rating(power),rating(control)); saveRatings(); dialog.dismiss(); home(); }
+            catch (IllegalArgumentException e) { toast("능력치 1~99를 입력하세요"); }
+        })); dialog.show();
+    }
+    void saveRatings() {
+        getPreferences(0).edit().putString(GameSettings.SETTINGS_KEY,GameSettings.capture(engine)).apply();
+    }
+    void restoreRatings() {
+        String saved = getPreferences(0).getString(GameSettings.SETTINGS_KEY, "");
+        if (!saved.isEmpty() && !GameSettings.restore(engine,saved)) toast("수정 설정을 복원하지 못했습니다");
     }
     void help() {
         new AlertDialog.Builder(this).setTitle("플레이 방법")
-            .setMessage("3이닝 동안 수비와 공격을 번갈아 진행합니다.\n\n타격: '투구 요청'을 누른 뒤 공이 노란 타이밍 구간에 오면 '스윙'을 누르세요. 지켜보기로 볼을 고를 수 있습니다.\n\n투구: 구종과 코스를 고르고 '투구 준비' 후 노란 구간에서 '릴리스'를 누르세요.\n\n감독 모드: 자동 진행을 켜거나 끌 수 있습니다.\n\n덱: 선수를 눌러 교체하고 ↑로 타순을 바꿉니다. 커스텀 선수는 이름과 능력치를 직접 입력하세요. 기본 선수와 능력치는 실제 기록이 아닙니다.\n\n경기 도중 나가면 해당 경기는 종료됩니다.")
+            .setMessage("3이닝 동안 수비와 공격을 번갈아 진행합니다.\n\n타격: '투구 요청'을 누른 뒤 공이 노란 타이밍 구간에 오면 '스윙'을 누르세요. 지켜보기로 볼을 고를 수 있습니다.\n\n투구: 구종과 코스를 고르고 '투구 준비' 후 노란 구간에서 '릴리스'를 누르세요.\n\n감독 모드: 자동 진행을 켜거나 끌 수 있습니다.\n\n덱: 선수를 눌러 교체하고 ↑로 타순을 바꿉니다. 커스텀 선수는 이름과 능력치를 직접 입력하세요. 2026 선수는 KBO 기록에서 능력치를 환산했습니다. 홈의 능력치 직접 수정에서 변경하세요.\n\n경기 도중 나가면 해당 경기는 종료됩니다.")
             .setPositiveButton("확인", null).show();
     }
     void deck() {
-        screen("MY LINEUP", "타자 9명 + 선발투수 1명 · 포지션 자유 편성");
+        screen("MY LINEUP · 2026", "2026 + LEGENDS · 타자 9명 / 투수 1명 · 선수 버튼으로 교체");
         ScrollView scroll = new ScrollView(this); LinearLayout list = column();
         scroll.addView(list); root.addView(scroll, new LinearLayout.LayoutParams(-1,0,1));
         for (int i = 0; i < 9; i++) addSlot(list, i);
         GameEngine.Player p = engine.player(engine.pitcher);
-        list.addView(button("SP  " + p.name + "  제구 " + p.control, () -> choose(-1)));
+        list.addView(button("SP  " + p.name + " · " + p.team + " · " + p.year + "  제구 " + p.control, () -> choose(-1)));
         addButton("+  커스텀 선수 만들기", this::customDialog);
         LinearLayout saves = new LinearLayout(this);
         saves.addView(button("덱 저장", () -> savedDeck(true)), new LinearLayout.LayoutParams(0,-2,1));
@@ -88,7 +158,7 @@ public final class MainActivity extends Activity {
     void addSlot(LinearLayout list, int index) {
         GameEngine.Player player = engine.player(engine.lineup[index]);
         LinearLayout row = new LinearLayout(this);
-        row.addView(button((index + 1) + "  " + player.name + " · " + player.position + "\n컨택 " + player.contact + "  파워 " + player.power,
+        row.addView(button((index + 1) + "  " + player.name + " '" + player.year + " · " + player.position + "\n컨택 " + player.contact + "  파워 " + player.power,
             () -> choose(index)), new LinearLayout.LayoutParams(0, -2, 1));
         if (index > 0) row.addView(button("↑", () -> { engine.swap(index, index - 1); persist(); deck(); }));
         list.addView(row);
@@ -99,7 +169,7 @@ public final class MainActivity extends Activity {
         for (GameEngine.Player player : engine.roster) {
             if ((slot == -1) != player.position.equals("P")) continue;
             choices.add(player);
-            labels.add(slot == -1 ? player.name + " · " + player.team + " · 제구 " + player.control : player.label());
+            labels.add(slot == -1 ? player.label() + " · 제구 " + player.control : player.label());
         }
         new AlertDialog.Builder(this).setTitle(slot == -1 ? "선발투수 선택" : (slot + 1) + "번 타자 선택")
             .setItems(labels.toArray(new String[0]), (dialog, which) -> {
@@ -113,7 +183,7 @@ public final class MainActivity extends Activity {
     void savedDeck(boolean save) {
         new AlertDialog.Builder(this).setTitle(save ? "저장할 슬롯" : "불러올 슬롯")
             .setItems(new String[]{"DECK 01", "DECK 02", "DECK 03"}, (dialog, slot) -> {
-                String key = "slot" + slot;
+                String key = GameSettings.slotKey(slot);
                 if (save) { getPreferences(0).edit().putString(key, engine.encodeDeck()).apply(); toast("덱을 저장했습니다"); }
                 else if (engine.loadDeck(getPreferences(0).getString(key, ""))) { persist(); deck(); }
                 else toast("저장된 덱이 없거나 읽을 수 없습니다");
@@ -156,7 +226,7 @@ public final class MainActivity extends Activity {
         if (rating < 1 || rating > 99) throw new IllegalArgumentException();
         return rating;
     }
-    void persist() { getPreferences(0).edit().putString("deck",engine.encodeDeck()).apply(); }
+    void persist() { getPreferences(0).edit().putString(GameSettings.DECK_KEY,engine.encodeDeck()).apply(); }
     void saveCustom() {
         org.json.JSONArray data = new org.json.JSONArray();
         for (int i = 33; i < engine.roster.size(); i++) {
@@ -176,11 +246,15 @@ public final class MainActivity extends Activity {
         } catch (org.json.JSONException e) { toast("커스텀 선수 데이터를 읽을 수 없습니다"); }
     }
     void match() {
-        screen("DECK / BALL", "EXHIBITION  /  3 INNINGS"); playing = true;
-        score = text("",22); score.setGravity(Gravity.CENTER); root.addView(score);
-        field = new FieldView(this,engine); root.addView(field,new LinearLayout.LayoutParams(-1,0,1));
-        status = text("",17); status.setGravity(Gravity.CENTER); root.addView(status);
-        controls = new LinearLayout(this); controls.setOrientation(1); root.addView(controls);
+        screen("", ""); root.removeAllViews(); root.setOrientation(0); playing = true;
+        field = new FieldView(this,engine);
+        root.addView(field,new LinearLayout.LayoutParams(0,-1,1));
+        ScrollView rail = new ScrollView(this); LinearLayout box = column(); rail.addView(box);
+        root.addView(rail,new LinearLayout.LayoutParams(dp(200),-1));
+        box.addView(text("DECK / BALL  ’26",18));
+        score = text("",15); box.addView(score);
+        status = text("",14); box.addView(status);
+        controls = new LinearLayout(this); controls.setOrientation(1); box.addView(controls);
         refresh(); handler.postDelayed(ticker,30);
     }
     void refresh() {
@@ -218,7 +292,7 @@ public final class MainActivity extends Activity {
             .setItems(new String[]{"좌측 높은 공","우측 높은 공","좌측 낮은 공","우측 낮은 공","중앙"},
                 (dialog, which) -> { location = which; refresh(); }).show();
     }
-    double progress() { return Math.min(1, (System.currentTimeMillis() - pitchStart) / 1700.0); }
+    double progress() { return Math.min(1, (System.currentTimeMillis() - pitchStart) / (double)engine.pitchDuration()); }
     void beginPitch() { inFlight = true; pitchStart = System.currentTimeMillis(); refresh(); }
     void resolve() { inFlight = false; field.progress = -1; refresh(); }
     void batAction() {
@@ -258,7 +332,7 @@ public final class MainActivity extends Activity {
     void toast(String message) { Toast.makeText(this,message,Toast.LENGTH_SHORT).show(); }
     @Override public void onBackPressed() { if (playing) leaveMatch(); else home(); }
     @Override protected void onPause() {
-        super.onPause(); handler.removeCallbacks(ticker); persist();
+        super.onPause(); handler.removeCallbacks(ticker); persist(); saveRatings();
         inFlight = false; if (field != null) field.progress = -1;
     }
     @Override protected void onResume() {
