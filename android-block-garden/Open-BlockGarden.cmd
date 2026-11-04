@@ -20,7 +20,7 @@ for /f "delims=" %%B in ('"%GAME_ADB%" -s emulator-5580 shell getprop sys.boot_c
 if "%GAME_BOOT%"=="1" goto launch
 set /a GAME_TRIES+=1
 if %GAME_TRIES% GEQ 90 goto failed
-timeout /t 2 /nobreak >nul
+powershell.exe -NoProfile -Command "Start-Sleep -Seconds 2"
 goto poll
 :launch
 "%GAME_ADB%" -s emulator-5580 install -r "%~dp0BlockGarden.apk"
@@ -37,3 +37,4 @@ echo Android could not start. Please try again or request help.
 :errorend
 pause
 exit /b 1
+
