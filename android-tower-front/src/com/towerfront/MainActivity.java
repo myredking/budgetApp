@@ -126,7 +126,7 @@ public final class MainActivity extends Activity {
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 36",16,CYAN));
-        panel.addView(label("v3.1 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v3.2 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     void showCampaign() {
         campaignPage=true;
@@ -194,9 +194,10 @@ public final class MainActivity extends Activity {
             .setMessage("① 아군 타워를 터치한 뒤 목표를 터치하거나 드래그해 출병하세요.\n\n"
                 +"② 하단에서 50% / 100% 출병을 전환합니다. 아군 타워로 보내면 증원합니다.\n\n"
                 +"③ 생산 타워는 생산량 1.7배, 기동 타워는 이동 시간이 40% 짧습니다. 중립은 생산하지 않습니다.\n\n"
-                +"④ 선택한 아군 타워는 병력 20 / 40을 사용해 강화할 수 있습니다. 생산량은 레벨마다 50% 증가합니다.\n\n"
-                +"⑤ 적 타워와 이동 병력을 모두 제거하면 승리합니다. 90초 / 180초 이내 승리로 별을 모으세요.\n\n"
-                +"⑥ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.")
+                +"④ 방어 타워는 받는 공격 피해를 25% 줄입니다(소수점 올림). 아군 증원은 그대로 받습니다. 4번째 작전부터 등장합니다.\n\n"
+                +"⑤ 선택한 아군 타워는 병력 20 / 40을 사용해 강화할 수 있습니다. 생산량은 레벨마다 50% 증가합니다.\n\n"
+                +"⑥ 적 타워와 이동 병력을 모두 제거하면 승리합니다. 90초 / 180초 이내 승리로 별을 모으세요.\n\n"
+                +"⑦ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.")
             .setPositiveButton("알겠습니다",null).show();
     }
 }

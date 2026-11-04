@@ -122,7 +122,7 @@ public final class BattleView extends View {
         drawTowerShape(c,t,x,y,col);
         text(c,String.valueOf(t.units),x,y+7,22,MainActivity.BG);
         String team=t.owner==1?"아군":t.owner==2?"적군":"중립";
-        String kind=t.kind==Engine.FACTORY?"생산":t.kind==Engine.RELAY?"기동":"기본";
+        String kind=towerKind(t.kind);
         text(c,team+" "+kind,x,y+44,10,col);
         for(int i=0;i<t.rank;i++) {paint.setColor(col);c.drawCircle(x+(i-(t.rank-1)/2f)*8,y-36,2.5f,paint);}
         c.restore();
@@ -135,8 +135,15 @@ public final class BattleView extends View {
         } else if(t.kind==Engine.RELAY) {
             Path path=new Path();path.moveTo(x,y-31);path.lineTo(x+31,y);
             path.lineTo(x,y+31);path.lineTo(x-31,y);path.close();c.drawPath(path,paint);
+        } else if(t.kind==Engine.FORTRESS) {
+            Path shield=new Path();shield.moveTo(x-25,y-25);shield.lineTo(x+25,y-25);
+            shield.lineTo(x+23,y+8);shield.quadTo(x+16,y+24,x,y+32);
+            shield.quadTo(x-16,y+24,x-23,y+8);shield.close();c.drawPath(shield,paint);
         } else c.drawCircle(x,y,28,paint);
         paint.setColor(Color.argb(35,255,255,255));c.drawCircle(x-6,y-9,13,paint);
+    }
+    private String towerKind(int kind) {
+        return new String[]{"기본","생산","기동","방어"}[kind];
     }
     private void fleet(Canvas c,Engine.Fleet f) {
         Engine.Tower a=engine.towers.get(f.from),b=engine.towers.get(f.to);
@@ -162,7 +169,7 @@ public final class BattleView extends View {
         box(c,18,708,174,50,MainActivity.CARD);text(c,"출병 "+(controls.all?"100%":"50%"),105,739,16,MainActivity.CYAN);
         box(c,208,708,174,50,canUpgrade()?MainActivity.CYAN:MainActivity.CARD);
         text(c,upgradeLabel(),295,739,14,canUpgrade()?MainActivity.BG:GRAY);
-        text(c,"□ 생산 ×1.7     ◇ 기동 속도 증가     ● 기본",200,789,11,GRAY);
+        text(c,"생산 ×1.7 · 기동 속도 증가 · 방어 피해 −25%",200,789,11,GRAY);
         text(c,"중립은 생산하지 않습니다 · 점령 후 레벨 유지",200,810,10,GRAY);
     }
     private boolean canUpgrade() {

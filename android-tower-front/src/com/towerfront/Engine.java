@@ -2,7 +2,7 @@ package com.towerfront;
 import java.util.ArrayList;
 import java.util.Iterator;
 public final class Engine {
-    public static final int NORMAL=0, FACTORY=1, RELAY=2;
+    public static final int NORMAL=0, FACTORY=1, RELAY=2,FORTRESS=3;
     public static final int HIT=0,REINFORCE=1,CAPTURE=2;
     public static final class Impact {
         public final int target,owner,amount,kind;
@@ -116,13 +116,14 @@ public final class Engine {
             if(received>0) recordImpact(f,REINFORCE,received);
             return;
         }
-        t.units-=f.units;
+        int damage=t.kind==FORTRESS?(f.units*3+3)/4:f.units;
+        t.units-=damage;
         if(t.units<0) {
             t.owner=f.owner;t.units=-t.units;t.growth=0;
             if(f.owner==1) captures++;
-            recordImpact(f,CAPTURE,f.units);return;
+            recordImpact(f,CAPTURE,damage);return;
         }
-        recordImpact(f,HIT,f.units);
+        recordImpact(f,HIT,damage);
     }
     private void recordImpact(Fleet f,int kind,int amount) {
         if(impacts.size()>=64) impacts.remove(0);

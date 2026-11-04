@@ -13,9 +13,23 @@ public final class Campaign {
     public static void configure(Engine e) {
         Engine.Tower enemy=e.towers.get(1);
         enemy.units=Math.max(12,enemy.units+(e.difficulty-1)*8);
+        configureDifficulty(e);
+        if(e.level>=4) e.towers.get(5).kind=Engine.FORTRESS;
         if(e.level>=5) advancedLayout(e);
         if(e.level>=7) e.towers.get(6).kind=Engine.FACTORY;
         if(e.level>=10) enemy.rank=2;
+    }
+    private static void configureDifficulty(Engine e) {
+        if(e.difficulty==2) return;
+        e.towers.get(1).units=19+e.level;
+        if(e.level==1) e.towers.get(1).units=16;
+        e.towers.get(0).units=32+(e.level-1)*2;
+        if(e.difficulty==0) e.towers.get(0).units+=12;
+        if(e.level<=1) return;
+        Engine.Tower extra=e.towers.get(6);
+        extra.units=8;
+        if(e.difficulty==0 || e.level<7) extra.owner=0;
+        else {e.towers.get(5).owner=1;e.towers.get(5).units=12;}
     }
     private static void advancedLayout(Engine e) {
         double[][] points={{.18,.84},{.82,.16},{.18,.58},{.82,.42},

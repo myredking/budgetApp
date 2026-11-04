@@ -47,7 +47,7 @@ public final class SaveCodec {
     private static Engine.Tower readTower(DataInputStream in) throws IOException {
         double x=number(in,0,1),y=number(in,0,1),growth=number(in,0,1);
         Engine.Tower t=new Engine.Tower(x,y,integer(in,0,2),integer(in,0,99));
-        t.growth=growth;t.kind=integer(in,0,2);t.rank=integer(in,1,3);
+        t.growth=growth;t.kind=integer(in,0,3);t.rank=integer(in,1,3);
         return t;
     }
     private static Engine.Fleet readFleet(DataInputStream in,int count) throws IOException {
