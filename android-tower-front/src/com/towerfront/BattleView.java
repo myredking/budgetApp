@@ -12,6 +12,8 @@ public final class BattleView extends View {
     private final Typeface bold=Typeface.create("sans-serif",Typeface.BOLD);
     private final BattleEffects effects=new BattleEffects();
     private final EffectRenderer renderer=new EffectRenderer();
+    private final WorldRenderer world;
+    private final int[] depth;
     private float scale=1,left,top,dragX,dragY;
     private boolean running=true,paused,dragging,reported;
     private int pressedButton=-1;
@@ -19,9 +21,10 @@ public final class BattleView extends View {
     private double sinceSave,soundCooldown;
     private String notice="아군을 선택한 뒤 목표를 터치하세요";
     private double noticeTime=5;
-    private static final int WHITE=Color.rgb(237,246,251),GRAY=Color.rgb(139,161,179);
+    private static final int WHITE=SceneStyle.INK,GRAY=0xff657469;
     public BattleView(MainActivity activity,Engine state) {
         super(activity);host=activity;engine=state;controls=new BattleControls(engine);
+        world=new WorldRenderer(activity);depth=SceneStyle.towerOrder(engine);
         setFocusable(true);setContentDescription("타워 프론트 전장. 아군 선택 후 목표 터치 또는 드래그.");
     }
     public void suspend() {running=false;paused=true;controls.cancel();last=0;}
@@ -33,10 +36,7 @@ public final class BattleView extends View {
     public void back() {
         if(paused || engine.result()!=0) host.showMenu();else pause();
     }
-    private int color(int owner) {
-        if(owner==1) return MainActivity.CYAN;
-        return owner==2?Color.rgb(255,119,107):GRAY;
-    }
+    private int color(int owner) {return SceneStyle.team(owner);}
     private void text(Canvas c,String value,float x,float y,float size,int color) {
         paint.setTypeface(bold);paint.setTextSize(size);paint.setTextAlign(Paint.Align.CENTER);
         paint.setColor(color);c.drawText(value,x,y,paint);
@@ -55,8 +55,8 @@ public final class BattleView extends View {
         left=(getWidth()-400*scale)/2;top=(getHeight()-820*scale)/2;
         real.save();real.translate(left,top);real.scale(scale,scale);
         board(real);header(real);
-        for(Engine.Fleet f:engine.fleets) fleet(real,f);
-        for(int i=0;i<engine.towers.size();i++) tower(real,i);
+        for(Engine.Fleet f:engine.fleets) world.fleet(real,engine,f);
+        for(int i:depth) world.tower(real,engine.towers.get(i),controls.selected==i,effects.towerScale(i),engine.elapsed);
         renderer.drawBursts(real,effects);drawDrag(real);footer(real);
         drawOverlay(real);
         real.restore();if(running) postInvalidateDelayed(paused?100:16);
@@ -88,11 +88,7 @@ public final class BattleView extends View {
         }
     }
     private void board(Canvas c) {
-        box(c,14,166,372,492,Color.rgb(17,34,49));
-        for(int x=28;x<380;x+=28) line(c,x,180,x,646,Color.rgb(23,45,59),1);
-        for(int y=180;y<650;y+=28) line(c,24,y,376,y,Color.rgb(23,45,59),1);
-        text(c,"N",369,190,9,GRAY);
-        line(c,368,199,368,216,GRAY,1);line(c,363,204,368,199,GRAY,1);
+        world.terrain(c,new RectF(14,166,386,658));
     }
     private void header(Canvas c) {
         text(c,"TOWER / FRONT",133,40,21,WHITE);
@@ -110,53 +106,6 @@ public final class BattleView extends View {
         int value=(int)seconds;
         return String.format(Locale.KOREA,"%02d:%02d",value/60,value%60);
     }
-    private void tower(Canvas c,int index) {
-        Engine.Tower t=engine.towers.get(index);float x=BattleControls.x(t),y=BattleControls.y(t);
-        c.save();float pop=effects.towerScale(index);c.scale(pop,pop,x,y);
-        int col=color(t.owner);
-        if(controls.selected==index) {
-            paint.setColor(WHITE);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2);
-            c.drawCircle(x,y,36,paint);paint.setStyle(Paint.Style.FILL);
-        }
-        paint.setColor(Color.rgb(6,18,30));c.drawCircle(x,y+6,29,paint);
-        drawTowerShape(c,t,x,y,col);
-        text(c,String.valueOf(t.units),x,y+7,22,MainActivity.BG);
-        String team=t.owner==1?"아군":t.owner==2?"적군":"중립";
-        String kind=towerKind(t.kind);
-        text(c,team+" "+kind,x,y+44,10,col);
-        for(int i=0;i<t.rank;i++) {paint.setColor(col);c.drawCircle(x+(i-(t.rank-1)/2f)*8,y-36,2.5f,paint);}
-        c.restore();
-    }
-    private void drawTowerShape(Canvas c,Engine.Tower t,float x,float y,int col) {
-        paint.setColor(col);
-        if(t.kind==Engine.FACTORY) {
-            c.drawRoundRect(x-27,y-25,x+27,y+27,7,7,paint);
-            c.drawRect(x-21,y-30,x-12,y-22,paint);c.drawRect(x+12,y-30,x+21,y-22,paint);
-        } else if(t.kind==Engine.RELAY) {
-            Path path=new Path();path.moveTo(x,y-31);path.lineTo(x+31,y);
-            path.lineTo(x,y+31);path.lineTo(x-31,y);path.close();c.drawPath(path,paint);
-        } else if(t.kind==Engine.FORTRESS) {
-            Path shield=new Path();shield.moveTo(x-25,y-25);shield.lineTo(x+25,y-25);
-            shield.lineTo(x+23,y+8);shield.quadTo(x+16,y+24,x,y+32);
-            shield.quadTo(x-16,y+24,x-23,y+8);shield.close();c.drawPath(shield,paint);
-        } else c.drawCircle(x,y,28,paint);
-        paint.setColor(Color.argb(35,255,255,255));c.drawCircle(x-6,y-9,13,paint);
-    }
-    private String towerKind(int kind) {
-        return new String[]{"기본","생산","기동","방어"}[kind];
-    }
-    private void fleet(Canvas c,Engine.Fleet f) {
-        Engine.Tower a=engine.towers.get(f.from),b=engine.towers.get(f.to);
-        float ax=BattleControls.x(a),ay=BattleControls.y(a),bx=BattleControls.x(b),by=BattleControls.y(b);
-        line(c,ax,ay,bx,by,Color.argb(45,130,184,203),1.5f);
-        float v=(float)f.progress,fx=ax+(bx-ax)*v,fy=ay+(by-ay)*v;
-        for(int i=1;i<=3;i++) {
-            float tail=Math.max(0,v-i*.025f);paint.setColor(color(f.owner));
-            c.drawCircle(ax+(bx-ax)*tail,ay+(by-ay)*tail,4-i*.6f,paint);
-        }
-        paint.setColor(color(f.owner));c.drawCircle(fx,fy,11,paint);
-        text(c,String.valueOf(f.units),fx,fy+4,10,MainActivity.BG);
-    }
     private void drawDrag(Canvas c) {
         if(!dragging || controls.selected<0) return;
         Engine.Tower t=engine.towers.get(controls.selected);
@@ -168,7 +117,7 @@ public final class BattleView extends View {
         text(c,noticeTime>0?notice:"아군 선택 → 목표 터치 / 드래그",200,685,13,WHITE);
         box(c,18,708,174,50,MainActivity.CARD);text(c,"출병 "+(controls.all?"100%":"50%"),105,739,16,MainActivity.CYAN);
         box(c,208,708,174,50,canUpgrade()?MainActivity.CYAN:MainActivity.CARD);
-        text(c,upgradeLabel(),295,739,14,canUpgrade()?MainActivity.BG:GRAY);
+        text(c,upgradeLabel(),295,739,14,canUpgrade()?Color.WHITE:GRAY);
         text(c,"생산 ×1.7 · 기동 속도 증가 · 방어 피해 −25%",200,789,11,GRAY);
         text(c,"중립은 생산하지 않습니다 · 점령 후 레벨 유지",200,810,10,GRAY);
     }
@@ -183,17 +132,17 @@ public final class BattleView extends View {
         return t.rank>=3?"최대 레벨":"강화 · 병력 "+20*t.rank;
     }
     private void overlay(Canvas c) {
-        paint.setColor(Color.argb(235,7,17,30));c.drawRect(0,0,400,820,paint);
+        paint.setColor(Color.argb(245,245,239,223));c.drawRect(0,0,400,820,paint);
         int result=engine.result();boolean win=result==1;
         String title=paused && result==0?"작전 일시정지":win?"작전 성공":"작전 실패";
         if(win && engine.level==12) title="캠페인 완료!";
         text(c,title,200,236,32,WHITE);
         text(c,Campaign.name(engine.level)+" · "+Campaign.difficultyName(engine.difficulty),200,275,15,GRAY);
-        if(win) text(c,"★★★".substring(0,engine.medals())+"☆☆☆".substring(engine.medals()),200,325,34,Color.rgb(255,211,111));
+        if(win) text(c,"★★★".substring(0,engine.medals())+"☆☆☆".substring(engine.medals()),200,325,34,0xffb17b15);
         else text(c,paused?"전투를 안전하게 저장했습니다":"생산 기지 확보와 증원으로 다시 도전하세요",200,320,13,GRAY);
         text(c,"시간 "+clock(engine.elapsed)+"   점령 "+engine.captures+"   출병 "+engine.dispatched,200,371,13,WHITE);
         box(c,56,410,288,56,MainActivity.CYAN);
-        text(c,primaryLabel(result),200,446,18,MainActivity.BG);
+        text(c,primaryLabel(result),200,446,18,Color.WHITE);
         box(c,56,482,288,52,MainActivity.CARD);text(c,"현재 작전 다시 시작",200,515,15,WHITE);
         box(c,56,550,288,52,MainActivity.CARD);text(c,"시작 화면 · 자동 저장",200,583,15,WHITE);
         text(c,"별은 난이도별 최고 기록으로 저장됩니다",200,654,12,GRAY);

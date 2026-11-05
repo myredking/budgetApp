@@ -9,11 +9,15 @@ public final class BattleControls {
     public static float x(Engine.Tower t) {return 32+(float)t.x*336;}
     public static float y(Engine.Tower t) {return 176+(float)t.y*470;}
     public static int hit(Engine e,float x,float y) {
-        for(int i=0;i<e.towers.size();i++) {
-            Engine.Tower t=e.towers.get(i);
-            if(Math.hypot(x-x(t),y-y(t))<=34) return i;
+        int[] order=SceneStyle.towerOrder(e);
+        for(int i=order.length-1;i>=0;i--) {
+            Engine.Tower t=e.towers.get(order[i]);
+            if(insideBuilding(t,x,y)) return order[i];
         }
         return -1;
+    }
+    private static boolean insideBuilding(Engine.Tower t,float px,float py) {
+        return px>=x(t)-45 && px<=x(t)+45 && py>=y(t)-68 && py<=y(t)+47;
     }
     public void validate() {
         if(selected<0) return;

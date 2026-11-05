@@ -16,8 +16,8 @@ import android.view.WindowInsets;
 import android.widget.*;
 
 public final class MainActivity extends Activity {
-    static final int BG=Color.rgb(9,18,31),CARD=Color.rgb(24,42,59);
-    static final int CYAN=Color.rgb(63,207,238),MUTED=Color.rgb(153,178,196);
+    static final int BG=SceneStyle.PAPER,CARD=0xfffffcf3;
+    static final int CYAN=SceneStyle.BLUE,MUTED=0xff657469;
     private FrameLayout root;
     private SharedPreferences preferences;
     private ToneGenerator tone;
@@ -31,6 +31,7 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         preferences=getPreferences(0);
         profile=Profile.decode(preferences.getString("profile",""));
         mode=preferences.getInt("mode",1);mode=Math.max(0,Math.min(2,mode));
@@ -89,7 +90,7 @@ public final class MainActivity extends Activity {
     void message(String text) {Toast.makeText(this,text,Toast.LENGTH_SHORT).show();}
     private int dp(int value) {return Math.round(value*getResources().getDisplayMetrics().density);}
     private GradientDrawable surface(int color) {
-        GradientDrawable shape=new GradientDrawable();shape.setColor(color);shape.setCornerRadius(dp(16));
+        GradientDrawable shape=new GradientDrawable();shape.setColor(color);shape.setCornerRadius(dp(16));shape.setStroke(dp(1),0x183c563c);
         return shape;
     }
     private TextView label(String text,int size,int color) {
@@ -104,29 +105,30 @@ public final class MainActivity extends Activity {
         LinearLayout layout=new LinearLayout(this);layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(dp(24),dp(20),dp(24),dp(28));
         scroll.addView(layout);root.addView(scroll);
-        TextView heading=label(title,30,Color.WHITE);heading.setTypeface(null,Typeface.BOLD);
+        TextView heading=label(title,30,SceneStyle.INK);heading.setTypeface(null,Typeface.BOLD);
         layout.addView(heading);layout.addView(label(subtitle,13,MUTED));
         return layout;
     }
     private Button button(LinearLayout parent,String title,boolean primary,Runnable action) {
         Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextSize(16);
-        button.setTextColor(primary?BG:Color.WHITE);button.setBackground(surface(primary?CYAN:CARD));
+        button.setTextColor(primary?0xffffffff:SceneStyle.INK);button.setBackground(surface(primary?CYAN:CARD));
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,dp(58));
         params.topMargin=dp(12);parent.addView(button,params);
-        button.setOnClickListener(view->action.run());return button;
+        button.setElevation(dp(2));button.setOnClickListener(view->action.run());return button;
     }
     void showMenu() {
         campaignPage=false;
         saveBattle(false);
         LinearLayout panel=page("TOWER FRONT","타워 프론트 · 오프라인 전략 캠페인");
-        panel.addView(label("점령하고, 성장하고, 전선을 넓히세요",18,Color.WHITE));
+        panel.addView(new MenuHero(this),new LinearLayout.LayoutParams(-1,dp(185)));
+        panel.addView(label("섬을 지휘하고, 전선을 넓히세요",18,SceneStyle.INK));
         panel.addView(label("12개 작전  /  3가지 난이도  /  전투 자동 저장",12,MUTED));
         if(engine!=null) button(panel,engine.result()==0?"작전 "+engine.level+" 이어하기":"지난 전투 결과",true,()->openBattle(engine));
         button(panel,"캠페인 · 작전 선택",engine==null,()->showCampaign());
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 36",16,CYAN));
-        panel.addView(label("v3.2 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v4.0 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     void showCampaign() {
         campaignPage=true;
@@ -140,7 +142,7 @@ public final class MainActivity extends Activity {
         LinearLayout row=new LinearLayout(this);panel.addView(row);
         for(int i=0;i<3;i++) {
             final int choice=i;Button b=new Button(this);
-            b.setText(Campaign.difficultyName(i));b.setTextColor(i==mode?BG:Color.WHITE);
+            b.setText(Campaign.difficultyName(i));b.setTextColor(i==mode?0xffffffff:SceneStyle.INK);
             b.setBackground(surface(i==mode?CYAN:CARD));
             LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(52),1);
             params.setMargins(dp(3),dp(8),dp(3),dp(8));row.addView(b,params);
