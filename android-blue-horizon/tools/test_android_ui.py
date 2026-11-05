@@ -19,7 +19,7 @@ def build() -> Path:
     classes.mkdir(exist_ok=True)
     android = SDK / "platforms/android-35/android.jar"
     run([JAVA / "javac.exe", "-encoding", "UTF-8", "-source", "8", "-target", "8",
-         "-cp", f"{android};{PROJECT / 'build/classes'}", "-d", classes, PROJECT / "androidtests/UiSmoke.java"])
+         "-cp", f"{android};{PROJECT / 'build/classes'}", "-d", classes, *list((PROJECT / "androidtests").glob("*.java"))])
     run([JAVA / "java.exe", "-cp", BT / "lib/d8.jar", "com.android.tools.r8.D8", "--lib", android,
          "--min-api", "26", "--output", BUILD, *classes.rglob("*.class")])
     apk = BUILD / "test.apk"

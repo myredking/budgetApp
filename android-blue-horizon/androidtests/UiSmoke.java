@@ -18,8 +18,10 @@ public final class UiSmoke extends Instrumentation {
             final Throwable[] failure={null};
             runOnMainSync(()->{try { checkImport(activity); } catch(Throwable error) { failure[0]=error; }});
             if(failure[0]!=null) throw new AssertionError(failure[0]);
+            TradeUiChecks.run(activity,this);
+            purchaseScreenshot(activity);
             checkAnimation(activity);
-            result.putString("result","PASS: in-transit import presents sailing; skip idempotent; original progress restored");
+            result.putString("result","PASS: in-transit import, automatic arrival, budget/quantity/max/sale UI; original progress restored");
         } catch(Throwable error) { status=Activity.RESULT_CANCELED;result.putString("error",error.toString()); }
         finish(status,result);
     }
@@ -32,12 +34,27 @@ public final class UiSmoke extends Instrumentation {
         try {
             runOnMainSync(()->{try { field.set(activity,journey);invoke(activity,"showSailing"); } catch(Exception error) { throw new RuntimeException(error); }});
             Thread.sleep(1400);screenshot(activity,"v0.6-sailing.png");
-            Thread.sleep(6000);
+            awaitArrival(journey);
             if(journey.town.moving() || journey.gold!=gold || journey.day!=day) throw new AssertionError("automatic arrival failed");
         } finally {
             runOnMainSync(()->{try { field.set(activity,original);invoke(activity,"render"); } catch(Exception error) { throw new RuntimeException(error); }});
             prefs.edit().putString("save",save).putString("backup",backup).commit();
         }
+    }
+    private void awaitArrival(Engine journey) throws InterruptedException {
+        boolean[] moving={true};
+        for(int attempt=0;attempt<100;attempt++) {
+            runOnMainSync(()->moving[0]=journey.town.moving());
+            if(!moving[0]) return;
+            Thread.sleep(200);
+        }
+    }
+    private void purchaseScreenshot(MainActivity activity) throws Exception {
+        AlertDialog[] sample={null};Throwable[] failure={null};
+        runOnMainSync(()->{try { sample[0]=TradeUiChecks.sample(activity); } catch(Throwable error) { failure[0]=error; }});
+        if(failure[0]!=null) throw new AssertionError(failure[0]);
+        try { Thread.sleep(1000);screenshot(activity,"v0.7-order.png"); }
+        finally { runOnMainSync(()->sample[0].dismiss()); }
     }
     private void screenshot(MainActivity activity,String name) throws IOException {
         Bitmap bitmap=getUiAutomation().takeScreenshot();
