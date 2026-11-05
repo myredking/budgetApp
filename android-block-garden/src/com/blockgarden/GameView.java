@@ -37,7 +37,7 @@ public class GameView extends View {
  private Mission mission=new Mission(1);
  private String message="블록을 골라 보드에 놓아보세요";
  public GameView(Context context,boolean missionMode,Runnable home,GameAudio audio){super(context);prefs=context.getSharedPreferences("game",0);best=prefs.getInt("best",0);this.missionMode=missionMode;this.home=home;this.audio=audio;mission=new Mission(prefs.getInt("stage",1));deal();restore();save();touchSlop=ViewConfiguration.get(context).getScaledTouchSlop();setContentDescription("블록 가든 게임 보드");}
- private void deal(){for(int i=0;i<3;i++){hand[i]=random.nextInt(shapes.length);tones[i]=1+random.nextInt(5);}}
+ private void deal(){for(int i=0;i<3;i++){hand[i]=BlockDealer.draw(random,shapes.length);tones[i]=1+random.nextInt(5);}}
  private void text(Canvas c,String s,float x,float y,float size,int color){paint.setColor(color);paint.setTextSize(size*scale);paint.setTypeface(font);c.drawText(s,x,y,paint);}
  @Override protected void onDraw(Canvas c){
 
@@ -173,11 +173,11 @@ public class GameView extends View {
  private void showResult(){
   if(!over||resultShown||!isAttachedToWindow())return;
   resultShown=true;boolean success=missionWon();
-  resultDialog=new AlertDialog.Builder(getContext()).setTitle(EndSummary.title(missionMode,mission,engine))
-   .setMessage(EndSummary.message(missionMode,mission,engine,best))
-   .setPositiveButton(success?(mission.stage==Mission.COUNT?"처음부터 도전":"다음 스테이지"):"다시 도전",(dialog,which)->{if(success){mission=new Mission(mission.nextStage());}reset();})
-   .setNegativeButton("모드 선택",(dialog,which)->modeMenu()).setNeutralButton("보드 보기",null).create();
-  resultDialog.show();
+  String title=EndSummary.title(missionMode,mission,engine);
+  String description=EndSummary.message(missionMode,mission,engine,best).split("\n\n")[0];
+  String primary=success?(mission.stage==Mission.COUNT?"처음부터 도전":"다음 스테이지로"):"다시 도전하기";
+  resultDialog=ResultPopup.show(getContext(),success,title,description,engine.score,best,engine.lines,engine.moves,primary,
+   ()->{if(success)mission=new Mission(mission.nextStage());reset();},()->modeMenu());
  }
  private void undoMove(){
   if(undoUsed||undo==null){message="이번 실행에서 배치한 블록을 1회 되돌릴 수 있어요";invalidate();return;}
@@ -234,6 +234,7 @@ public class GameView extends View {
   if(missionMode)mission=new Mission(saved.getInt("savedStage",mission.stage));
   if(!SavedState.valid(data,savedHand,savedTones,shapes.length)){if(missionMode)mission.setup(engine);return;}
   for(int r=0;r<8;r++)for(int c=0;c<8;c++)engine.board[r][c]=data.charAt(r*8+c)-'0';
+  BlockDealer.migrate(savedHand,random,shapes.length);
   hand=savedHand;tones=savedTones;engine.score=Math.max(0,saved.getInt("score",0));
   engine.combo=Math.max(0,saved.getInt("combo",0));
   engine.lines=Math.max(0,saved.getInt("lines",0));engine.moves=Math.max(0,saved.getInt("moves",0));

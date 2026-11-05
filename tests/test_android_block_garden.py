@@ -30,3 +30,10 @@ def test_placement_guide(tmp_path: Path) -> None:
     sources = [root / 'src/com/blockgarden/Engine.java', root / 'src/com/blockgarden/PlacementGuide.java', root / 'tests/GuideTest.java']
     subprocess.run([str(java / 'javac.exe'), '-encoding', 'UTF-8', '-d', str(tmp_path), *map(str, sources)], check=True)
     subprocess.run([str(java / 'java.exe'), '-cp', str(tmp_path), 'com.blockgarden.GuideTest'], check=True)
+
+
+def test_block_dealer(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1] / 'android-block-garden'
+    java = Path.home() / '.codex/android-deckball-tools/jdk/bin'
+    subprocess.run([str(java / 'javac.exe'), '-encoding', 'UTF-8', '-d', str(tmp_path), str(root / 'src/com/blockgarden/BlockDealer.java'), str(root / 'tests/DealerTest.java')], check=True)
+    subprocess.run([str(java / 'java.exe'), '-cp', str(tmp_path), 'com.blockgarden.DealerTest'], check=True)
