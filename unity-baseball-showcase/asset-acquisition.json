@@ -27,13 +27,48 @@
       "bytes": 3598
     }
   ],
-  "status": "raw_character_geometry_only_not_a_finished_player",
+  "status": "clothed_rigged_generic_athlete_blender_preview_only",
   "needs": [
-    "skin textures",
-    "baseball uniform",
-    "retargeted baseball animations",
+    "finished baseball uniform and equipment",
+    "baseball animations",
     "stadium asset",
-    "Unity editor validation"
+    "Unity editor import and render validation"
   ],
-  "license_note": "Core graphics assets CC0; software code has separate license. Keep upstream LICENSE.md."
+  "license_note": "Core graphics assets CC0; software code has separate license. Keep upstream LICENSE.md.",
+  "local_asset_packs": [
+    {
+      "name": "MakeHuman system assets CC0",
+      "source": "https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip",
+      "sha256": "b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107",
+      "bytes": 280737770,
+      "location": "C:\\Users\\김재섭\\.codex\\unity-showcase-tools\\makehuman-system-assets",
+      "license": "CC0; source mhmat files carry explicit release notices"
+    }
+  ],
+  "tools": [
+    {
+      "name": "Blender 4.5.4 LTS portable",
+      "source": "https://download.blender.org/release/Blender4.5/blender-4.5.4-windows-x64.zip",
+      "sha256": "0de55df1d99e4e7152605022cb648e795d5d49209c5c5c4889e1a19fb401a054",
+      "verified_against": "https://download.blender.org/release/Blender4.5/blender-4.5.4.sha256"
+    },
+    {
+      "name": "MPFB",
+      "source": "https://github.com/makehumancommunity/mpfb2",
+      "commit": "6ff1eb358f6c1959ced77e79e6dd2406d9a71f49",
+      "note": "Software tooling is not included in game assets"
+    }
+  ],
+  "local_character": {
+    "path": "Assets/Showcase/Art/Source/GenericAthlete.blend",
+    "sha256": "8b5d536aef9366371a0a50fe4ffe183a68697213133aa3fea583b57608cb69ca",
+    "bones": 163,
+    "description": "Generic Asian male base, eyes, adapted casual clothing, sports shoes, original helmet shell. Not a KBO player likeness or finished baseball uniform.",
+    "unity_import_verified": false,
+    "motion_verified": false,
+    "reference_quality_passed": false,
+    "fbx_path": "Assets/Showcase/Art/Source/GenericAthlete.fbx",
+    "fbx_sha256": "fa577e7a318e962838bfad5c2eea19f535106abc8f127cb5ec65783acab470fc",
+    "preview": "Reports/generic-athlete-blender-preview.png"
+  }
 }
