@@ -56,7 +56,7 @@ public final class World {
         int good=0;
         for(int i=1;i<6;i++) if(price(port,i)<price(port,good)) good=i;
         return "현지 저가 상품: "+Engine.GOODS[good]+" ("+price(port,good)+" G)\n"
-            +"가격은 항구별로 고정입니다. 먼 항해에는 보급비가 더 들어요. 출항 창에서 경유 항구와 비용을 확인하세요.\n\n"
+            +"기본 가격은 항구별로 고정이며 담당·투자·상단 경쟁이 실제 가격에 반영됩니다. 먼 항해에는 보급비가 더 들어요. 출항 창에서 경유 항구와 비용을 확인하세요.\n\n"
             +"첫 무역 추천: 리스본 목재 → 세비야. 금화가 부족하면 조선소에서 항구 일거리를 이용하세요.";
     }
 }

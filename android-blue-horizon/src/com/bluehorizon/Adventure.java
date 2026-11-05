@@ -25,7 +25,7 @@ public final class Adventure {
     }
     public static boolean finish(Engine e,String text) {
         AdventureState a=e.adventure;a.pending=-1;a.roll=0;a.battleHP=0;a.battleTurn=0;a.resolved++;
-        e.note(text);e.advanceStory();e.message=text;return true;
+        Rivals.advance(e);e.note(text);e.advanceStory();e.message=text;return true;
     }
     public static void souvenir(Engine e) { e.adventure.souvenirs|=1<<World.region(e.port); }
 }

@@ -18,7 +18,7 @@ public final class CrewAbilitiesTest {
         check(e.sellPrice(0)==World.price(e.port,0)*expected/100,"Ayu improves sale proceeds");
         for(int port=0;port<World.COUNT;port++) {
             e.port=port;e.visited|=1L<<port;e.influence[port]=3;
-            for(int good=0;good<6;good++) check(e.sellPrice(good)<=e.buyPrice(good),"crew effects cannot create same-port arbitrage");
+            for(int good=0;good<6;good++) check(e.sellPrice(good)<e.buyPrice(good),"same-port spread prevents cost-free gold or fame farming");
         }
         e.adventure.pending=0;
         check(!CrewAbilities.assign(e,0,2),"cannot swap crew in a pending event");

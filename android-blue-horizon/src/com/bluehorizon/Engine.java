@@ -16,6 +16,7 @@ public final class Engine {
     public AdventureState adventure=new AdventureState();
     public CrewState crew=new CrewState();
     public RefitState refits=new RefitState();
+    public RivalState rivals=new RivalState();
     public String message = "서린 선장, 세비야에 목재 5개를 전해 주세요.";
 
     public Engine() { note("리스본에서 첫 출항 준비. 일곱 바다의 공동 해도를 만들기 위한 항해가 시작된다."); }
@@ -26,9 +27,13 @@ public final class Engine {
         for (int value : inventory) total += value;
         return total;
     }
-    public int buyPriceAt(int harbor, int good) { return CrewAbilities.buyAt(this,harbor,good); }
+    public int buyPriceAt(int harbor, int good) { return Rivals.buyPrice(this,harbor,CrewAbilities.buyAt(this,harbor,good)); }
     public int buyPrice(int good) { return buyPriceAt(port,good); }
-    public int sellPriceAt(int harbor,int good) { return World.price(harbor,good)*CrewAbilities.salePercent(this,harbor)/100; }
+    public int sellPriceAt(int harbor,int good) {
+        int quote=World.price(harbor,good)*Math.min(94,CrewAbilities.salePercent(this,harbor)+Rivals.saleBonus(this,harbor))/100;
+        int cheapest=World.price(harbor,good)*95/100;
+        return Math.min(quote,Math.max(1,cheapest-1));
+    }
     public int sellPrice(int good) { return sellPriceAt(port,good); }
     public boolean hasVisited(int harbor) { return World.validPort(harbor) && (visited & (1L << harbor))!=0; }
     public int visitedCount() { return Long.bitCount(visited); }
@@ -52,6 +57,7 @@ public final class Engine {
         int earned = sellPrice(good) * amount;
         inventory[good] -= amount; gold += earned; profit += earned;
         fame += Math.max(1, amount / 5);
+        Rivals.onSale(this,amount);
         note(GOODS[good] + " " + amount + "개 판매 · +" + earned + " G");
         deliveryStory(good, amount);
         advanceStory();
@@ -81,6 +87,7 @@ public final class Engine {
         if(!hasVisited(target)) fame++;
         gold -= cost; day += days; port = target; visited |= 1L << target;
         hull = Math.max(1, hull - damage);
+        Rivals.advance(this);
         note(PORTS[port] + " 도착 · " + days + "일 항해 · 보급 −" + cost + " G");
         note("항로를 무사히 통과했다. 선체 −" + damage + ". 경유 항구는 직접 정박해야 방문 기록에 남는다.");
         advanceStory();
@@ -112,12 +119,13 @@ public final class Engine {
         int cost = (influence[port] + 1) * 300;
         if (gold < cost) return fail("투자할 금화가 부족합니다.");
         gold -= cost; influence[port]++; fame += 3;
+        Rivals.onInvest(this);
         note(PORTS[port] + " 교역소에 투자. 판매가 우대와 명성 +3.");
         advanceStory(); return true;
     }
     public boolean work() {
         if(busy()) return fail("항해 사건을 먼저 처리하세요.");
-        gold += 120; day++; note("부두 운송을 도왔다. 하루 경과 · +120 G");
+        gold += 120; day++;Rivals.advance(this); note("부두 운송을 도왔다. 하루 경과 · +120 G");
         advanceStory(); return true;
     }
     public void advanceStory() {

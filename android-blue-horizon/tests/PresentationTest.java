@@ -57,12 +57,12 @@ public final class PresentationTest {
     private static void tradeSuggestions() {
         Engine e=new Engine();TradeHint hint=TradeHint.best(e,0,5);
         check(hint!=null && hint.port!=e.port,"recommend another harbor");
-        int sale=World.price(hint.port,0)*(85+e.influence[hint.port]*2)/100;
+        int sale=e.sellPriceAt(hint.port,0);
         check(hint.net==(sale-e.buyPrice(0))*5-e.travelCost(hint.port,0),"quote includes one-way provisions");
         check(hint.cost==e.buyPrice(0)*5+e.travelCost(hint.port,0),"quoted required gold");
         for(int port=0;port<World.COUNT;port++) {
             if(port==e.port) continue;
-            int price=World.price(port,0)*(85+e.influence[port]*2)/100;
+            int price=e.sellPriceAt(port,0);
             check(hint.net>=(price-e.buyPrice(0))*5-e.travelCost(port,0),"suggest highest net route");
         }
         check(TradeHint.best(e,0,0)==null && TradeHint.best(e,-1,5)==null,"reject invalid hint request");

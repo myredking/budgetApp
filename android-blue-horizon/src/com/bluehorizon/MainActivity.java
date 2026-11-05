@@ -97,6 +97,7 @@ public final class MainActivity extends Activity {
         if(tab==3) crewPage();
         if(tab==4) journal();
         if(tab==5) adventurePage();
+        if(tab==6) rivalPage();
         navigation();
         audio.scene(tab==0?"sea":"harbor");
     }
@@ -204,10 +205,62 @@ public final class MainActivity extends Activity {
         TradeHint hint=TradeHint.best(game,good,quantity);if(hint==null) return;
         if(hint.net<=0) { label(box,quantity+"개 기준, 보급비를 넘는 추천 거래가 없습니다.",12,MUTED);return; }
         label(box,"추천 판매처: "+World.PORTS[hint.port]+" · 예상 차익 +"+hint.net+" G",13,TEAL);
-        label(box,"현재 매입가·"+quantity+"개·일반항로 편도 기준 / 수리·귀환비 별도\n매입+보급 필요 "+hint.cost+" G",11,MUTED);
+        label(box,"현재 시세·담당·개조 반영 / 도착 시 시세 변동 가능\n"+quantity+"개·일반항로 편도 기준 / 수리·귀환비 별도\n매입+보급 필요 "+hint.cost+" G",11,MUTED);
     }
     private void adventureShortcut(LinearLayout parent) {
         fullAction(parent,"의뢰 · 탐험 · 달성 기록",()->{tab=5;render();},false);
+        fullAction(parent,"라이벌 상단 · 동맹과 경주",()->{tab=6;render();},false);
+    }
+    private void rivalPage() {
+        label(content,"RIVAL TRADING GUILDS",11,TEAL);label(content,"경쟁자와 동반자",25,INK);
+        fullAction(content,"항해 지도로 돌아가기",()->{tab=0;render();},false);
+        LinearLayout market=card(content);label(market,"일곱 해역의 상권",18,GOLD);
+        label(market,"7일마다 비동맹 상단의 압력은 높아지고 동맹은 낮아집니다. 긴 항해 한 번의 변화는 최대 8입니다. 판매·항구 투자·경주 승리로 현지 압력을 낮출 수 있습니다.",13,INK);
+        for(int region=0;region<7;region++) {
+            int port=region*8;
+            label(market,World.REGIONS[region]+" · "+Rivals.NAMES[Rivals.owner(port)]+"\n경쟁 압력 "+game.rivals.pressure[region]+" / 80",13,MUTED);
+        }
+        label(market,"비동맹 압력 60 이상: 매입 수수료 3%. 동맹: 판매 비율 +2%p. 압력 0: 추가 +2%p. 모든 판매 비율의 총 상한은 94%입니다.",12,TEAL);
+        raceCard();
+        for(int rival=0;rival<3;rival++) guildCard(rival);
+    }
+    private void guildCard(int rival) {
+        LinearLayout box=card(content);boolean allied=Rivals.allied(game,rival);
+        label(box,Rivals.NAMES[rival]+" · "+Rivals.LEADERS[rival],19,GOLD);
+        label(box,"기반 해역: "+Rivals.REGIONS[rival],12,MUTED);
+        label(box,"관계 "+game.rivals.relations[rival]+" (-50~100) · "+(allied?"교역 동맹":"경쟁 중")+"\n납품 경주 "+game.rivals.wins[rival]+"승",14,TEAL);
+        label(box,"“"+Rivals.dialogue(game,rival)+"”",14,INK);
+        int wait=Math.max(0,7-(game.day-game.rivals.lastNegotiation[rival]));
+        label(box,wait==0?"서신 교류 가능 · 성공 시 하루 경과":"다음 서신 교류까지 "+wait+"일",12,MUTED);
+        fullAction(box,"서신 교류 · 선물 / 실적 / 경쟁",()->negotiateGuild(rival),false);
+        if(allied) fullAction(box,"동맹 종료 · 관계 −20, 하루",()->new AlertDialog.Builder(this)
+            .setTitle("동맹을 종료할까요?").setMessage("이 상단의 교역 혜택이 사라집니다.")
+            .setPositiveButton("종료",(d,w)->changed(Rivals.endAlliance(game,rival))).setNegativeButton("유지",null).show(),false);
+        else fullAction(box,"동맹 제안 · 500 G / 관계 40·명성 15 필요",()->changed(Rivals.formAlliance(game,rival)),true);
+    }
+    private void negotiateGuild(int rival) {
+        String[] options={"교역 선물 · 150 G / 관계 +12","새 납품 실적 공유 · 관계 +10 / 실적 1회당 상단별 한 번","현지 공개 경쟁 · 명성 20 필요 / 압력 −8·관계 −8"};
+        new AlertDialog.Builder(this).setTitle(Rivals.LEADERS[rival]+"에게 보낼 서신")
+            .setItems(options,(d,choice)->changed(Rivals.negotiate(game,rival,choice)))
+            .setNegativeButton("닫기",null).show();
+    }
+    private void raceCard() {
+        LinearLayout box=card(content);label(box,"상단 납품 경주",18,GOLD);RivalState s=game.rivals;
+        if(s.raceTarget<0) {
+            Contract offer=TradeRace.offer(game);
+            label(box,Rivals.NAMES[Rivals.owner(game.port)]+"와 경쟁\n"+World.PORTS[game.port]+" → "+World.PORTS[offer.target],16,INK);
+            label(box,Engine.GOODS[offer.good]+" "+offer.amount+"개 · "+offer.deadline+"일째까지 납품\n승리 보상 "+offer.reward+" G · 명성 +3 · 관계 +8",13,TEAL);
+            label(box,"참가비 100 G. 화물은 직접 준비하며 납품 시 소모됩니다. 준비와 보급비를 확인하세요. 참가 후 7일 간격으로 열립니다. 기한은 개조 전 항해 일수 기준이라 빠른 배가 유리합니다.",12,MUTED);
+            fullAction(box,"경주 참가 · 100 G",()->changed(TradeRace.start(game)),true);return;
+        }
+        label(box,Rivals.NAMES[s.raceRival]+"와 경쟁\n"+World.PORTS[s.raceFrom]+" → "+World.PORTS[s.raceTarget],16,INK);
+        label(box,Engine.GOODS[s.raceGood]+" "+s.raceAmount+"개 · 보유 "+game.inventory[s.raceGood]+"개\n보상 "+s.raceReward+" G · 명성 +3",14,TEAL);
+        label(box,game.day>s.raceDeadline?"상대가 먼저 납품했습니다. 결과를 확인하세요.":"기한 "+s.raceDeadline+"일째 (당일 납품 인정) · 남은 기간 "+(s.raceDeadline-game.day)+"일",13,GOLD);
+        fullAction(box,"납품 / 경주 결과 확인",()->changed(TradeRace.complete(game)),true);
+        fullAction(box,"경주 목적지 항로 보기",()->voyage(s.raceTarget),false);
+        fullAction(box,"경주 포기 · 참가비 반환 없음",()->new AlertDialog.Builder(this).setTitle("경주를 포기할까요?")
+            .setMessage("화물은 유지되며 경쟁 압력 +5, 관계 −3이 적용됩니다.")
+            .setPositiveButton("포기",(d,w)->changed(TradeRace.abandon(game))).setNegativeButton("계속",null).show(),false);
     }
     private void showEvent() {
         if(isFinishing() || isDestroyed()) return;
@@ -339,7 +392,8 @@ public final class MainActivity extends Activity {
     }
     private void market() {
         label(content,"PORT MARKET",11,TEAL); label(content,Engine.PORTS[game.port]+" 교역소",26,INK);
-        label(content,"가격은 1개 기준 · 같은 항구에서는 판매가가 더 낮아요.",12,MUTED);
+        label(content,"1개 기준 · 담당·항구 투자·상단 상태 반영",12,MUTED);
+        label(content,Rivals.NAMES[Rivals.owner(game.port)]+" · 경쟁 압력 "+game.rivals.pressure[World.region(game.port)]+" / 80\n현지 매입 수수료 "+Rivals.buyFee(game,game.port)+"% · 상단 판매 우대 +"+Rivals.saleBonus(game,game.port)+"%p",12,TEAL);
         LinearLayout quantities=row(); content.addView(quantities);
         for(int amount:new int[]{1,5,10}) action(quantities,amount+"개씩",()->{quantity=amount;render();},quantity==amount);
         for(int good=0;good<6;good++) goodsCard(good);
@@ -399,11 +453,14 @@ public final class MainActivity extends Activity {
         label(backup,"거래와 항해 후 기기에 자동 저장됩니다. 앱 삭제 전에는 파일로 백업하세요. 불러오면 현재 진행을 교체합니다.",13,INK);
         fullAction(backup,"저장 파일 내보내기",()->exportSave(),true);
         fullAction(backup,"저장 파일 불러오기",()->importSave(),false);
-        fullAction(backup,"플레이 방법",()->dialog("선장 안내서",help()),false);
+        fullAction(backup,"플레이 방법",()->dialog("선장 안내서",advancedHelp()+help()),false);
         fullAction(backup,"새 항해 시작",()->newGame(),false);
     }
     private String help() {
         return "1. 리스본에서 목재 5개를 매입하세요.\n2. 항해 지도에서 세비야를 선택해 출항하세요.\n3. 도착 후 목재 5개를 한 번에 판매하면 첫 장이 열립니다.\n\n세계 지도와 위쪽 해역 버튼을 이용해 7해역·56개 항구를 탐험하세요. 해역 버튼은 좌우로 밀 수 있습니다.\n\n먼 항해는 해상 경유 항구를 거치며 보급비가 증가합니다. 방문 기록은 목적지에 직접 정박해야 남습니다.\n\n첫 출항 이후 항해 사건이 발생합니다. 선택 전 비용과 위험을 확인하세요. 해상전은 포격·회피 사격·도주로 진행합니다.\n\n항해 화면이나 일지에서 ‘의뢰 · 탐험 · 달성 기록’을 열어 납품 의뢰, 해역 기념품, 달성 보상을 확인하세요. 화물 유실·기증 시 목록의 첫 보유 상품부터 소모됩니다.\n\n동료는 이야기 진행에 맞춰 합류합니다. 일지에서 BGM과 효과음을 따로 끌 수 있습니다.\n\n금화가 부족하면 조선소에서 하루 일해 보급·수리비를 마련할 수 있습니다.\n\n원작과 별개의 창작 이야기입니다. 지도는 Natural Earth 공개 데이터를 사용하며 좌표·항로는 게임용 근사치입니다.";
+    }
+    private String advancedHelp() {
+        return "새로운 성장과 경쟁\n\n동료 메뉴에서 전문 담당 두 명을 배치하세요. 적용 중인 능력과 개인 기록 목표가 표시됩니다.\n\n조선소에서 돛·대포·선체·창고를 개조하세요. 개조 슬롯은 배 등급에 따라 3/5/7개이며, 새 배에도 부품이 유지됩니다.\n\n항해 화면의 ‘라이벌 상단’에서 관계를 쌓거나 현지 상권을 두고 경쟁할 수 있습니다. 관계 40·명성 15·500 G로 교역 동맹을 맺습니다.\n\n납품 경주는 참가비와 화물·보급비가 필요합니다. 빠른 배와 사건에서의 선택으로 기한을 지켜 보세요.\n\n기본 안내\n\n";
     }
     private void navigation() {
         status=text(saved?"● 기기에 자동 저장됨 · 오프라인":"저장 실패 · 백업 필요",11,saved?TEAL:GOLD);
