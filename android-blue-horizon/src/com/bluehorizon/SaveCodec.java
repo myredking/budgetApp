@@ -9,12 +9,13 @@ import java.util.Base64;
 import java.util.zip.CRC32;
 
 public final class SaveCodec {
-    public static final String PREFIX="BLUE4:";
+    public static final int VERSION=5;
+    public static final String PREFIX="BLUE"+VERSION+":";
     public static String encode(Engine e) {
         try {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             DataOutputStream out = new DataOutputStream(bytes);
-            out.writeInt(4);
+            out.writeInt(VERSION);
             int[] values = {e.gold,e.port,e.day,e.hull,e.level,e.fame,e.chapter,e.profit};
             for (int value : values) out.writeInt(value);
             out.writeLong(e.visited);
@@ -24,6 +25,7 @@ public final class SaveCodec {
             for (String line : e.log) out.writeUTF(line);
             e.adventure.write(out);
             e.crew.write(out);
+            e.refits.write(out);
             out.flush();
             byte[] data = bytes.toByteArray(); CRC32 crc = new CRC32(); crc.update(data);
             return PREFIX + crc.getValue() + ":" + Base64.getEncoder().encodeToString(data);
@@ -54,6 +56,7 @@ public final class SaveCodec {
         if(header.equals("BLUE2")) return 2;
         if(header.equals("BLUE3")) return 3;
         if(header.equals("BLUE4")) return 4;
+        if(header.equals("BLUE5")) return 5;
         return 0;
     }
     private static Engine readState(DataInputStream in,int version) throws IOException {
@@ -76,13 +79,14 @@ public final class SaveCodec {
     private static void readExtras(DataInputStream in,int version,Engine e) throws IOException {
         if(version>=3) e.adventure=AdventureState.read(in);
         if(version>=4) e.crew=CrewState.read(in);
+        if(version>=5) e.refits=RefitState.read(in);
     }
     private static boolean valid(Engine e) {
         if (!World.validPort(e.port) || !range(e.level,1,3) || !range(e.chapter,0,Story.REVEALS.length)) return false;
         if (!range(e.gold,0,100000000) || !range(e.day,1,10000000)) return false;
         return validProgress(e) && validCargo(e) && validInfluence(e) && validExtras(e);
     }
-    private static boolean validExtras(Engine e) { return e.adventure.valid() && e.crew.valid(e.chapter); }
+    private static boolean validExtras(Engine e) { return e.adventure.valid() && e.crew.valid(e.chapter) && e.refits.valid(e.level); }
     private static boolean validProgress(Engine e) {
         if (!range(e.fame,0,100000000) || !range(e.profit,0,100000000)) return false;
         if (!range(e.hull,1,e.maxHull()) || e.visited<=0 || (e.visited>>>World.COUNT)!=0) return false;

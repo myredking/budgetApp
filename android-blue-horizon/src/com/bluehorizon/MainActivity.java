@@ -331,7 +331,7 @@ public final class MainActivity extends Activity {
     private void voyage(int target) {
         if(target==game.port) { Toast.makeText(this,"현재 머무는 항구입니다.",Toast.LENGTH_SHORT).show(); return; }
         Route route=WorldRoutes.between(game.port,target);
-        String info=route.description()+"\n\n약 "+Math.round(route.miles)+"해리 · "+route.days()+"일 항해\n\n일반 항로: "+game.travelCost(target,0)+" G · 선체 −"+game.travelDamage(target,0)+"\n안전 항로: "+game.travelCost(target,1)+" G · 선체 −"+game.travelDamage(target,1)+"\n\n선체 25 이상이면 출항할 수 있습니다. 경유 항구는 정박하지 않으며, 방문 기록은 목적지에만 남습니다.";
+        String info=route.description()+"\n\n약 "+Math.round(route.miles)+"해리 · "+game.travelDays(target)+"일 항해 (개조 반영)\n\n일반 항로: "+game.travelCost(target,0)+" G · 선체 −"+game.travelDamage(target,0)+"\n안전 항로: "+game.travelCost(target,1)+" G · 선체 −"+game.travelDamage(target,1)+"\n\n선체 25 이상이면 출항할 수 있습니다. 경유 항구는 정박하지 않으며, 방문 기록은 목적지에만 남습니다.";
         new AlertDialog.Builder(this).setTitle("출항 준비").setMessage(info)
             .setPositiveButton("일반 항로",(d,w)->changed(Adventure.sail(game,target,0),"depart"))
             .setNeutralButton("안전 항로",(d,w)->changed(Adventure.sail(game,target,1),"depart"))
@@ -363,6 +363,7 @@ public final class MainActivity extends Activity {
         fullAction(ship,"선체 수리 · "+game.repairCost()+" G",()->changed(game.repair()),false);
         String upgrade=game.level==3?"최고 등급 선박":Engine.SHIPS[game.level]+" 구입 · "+game.upgradeCost()+" G";
         fullAction(ship,upgrade,()->changed(game.upgrade(),"upgrade"),true);
+        refitCards();
         LinearLayout ally=card(content); label(ally,Engine.PORTS[game.port]+" 교역 동맹",18,GOLD);
         label(ally,"동맹 "+game.influence[game.port]+" / 3 · 단계마다 판매가 +2%, 명성 +3",13,INK);
         String invest=game.influence[game.port]==3?"동맹 완성":"교역소 투자 · "+((game.influence[game.port]+1)*300)+" G";
@@ -370,6 +371,20 @@ public final class MainActivity extends Activity {
         LinearLayout work=card(content); label(work,"항구 일거리",18,TEAL);
         label(work,"부두에서 하루 일하면 120 G를 받습니다. 보급비와 수리비가 부족할 때 이용하세요.",14,INK);
         fullAction(work,"하루 일하기 · +120 G",()->changed(game.work()),true);
+    }
+    private void refitCards() {
+        LinearLayout summary=card(content);label(summary,"선박 개조 · 슬롯 "+game.refits.used()+" / "+Refits.slots(game),18,GOLD);
+        label(summary,"부품은 각각 3단계까지 장착합니다. 단계마다 슬롯 1개를 사용하며, 큰 배로 바꿔도 유지됩니다. 해제하면 해당 단계 비용의 절반을 돌려받습니다.",13,INK);
+        for(int part=0;part<4;part++) refitCard(part);
+    }
+    private void refitCard(int part) {
+        LinearLayout box=card(content);int tier=game.refits.levels[part];
+        label(box,Refits.NAMES[part]+" · "+tier+" / 3단계",17,GOLD);label(box,Refits.EFFECTS[part],13,INK);
+        Button install=button(tier==3?"최고 단계":"한 단계 장착 · "+Refits.cost(game,part)+" G",true);
+        install.setEnabled(tier<3 && game.refits.used()<Refits.slots(game));
+        install.setOnClickListener(v->changed(Refits.install(game,part),"upgrade"));box.addView(install,buttonParams());
+        Button remove=button("한 단계 해제 · "+Refits.refund(game,part)+" G 환급",false);remove.setEnabled(tier>0);
+        remove.setOnClickListener(v->changed(Refits.remove(game,part)));box.addView(remove,buttonParams());
     }
     private void journal() {
         label(content,"CAPTAIN'S JOURNAL",11,TEAL); label(content,"서린의 항해일지",26,INK);

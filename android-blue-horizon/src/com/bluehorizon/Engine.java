@@ -15,11 +15,12 @@ public final class Engine {
     public final List<String> log = new ArrayList<String>();
     public AdventureState adventure=new AdventureState();
     public CrewState crew=new CrewState();
+    public RefitState refits=new RefitState();
     public String message = "서린 선장, 세비야에 목재 5개를 전해 주세요.";
 
     public Engine() { note("리스본에서 첫 출항 준비. 일곱 바다의 공동 해도를 만들기 위한 항해가 시작된다."); }
-    public int capacity() { return new int[]{0, 25, 45, 70}[level]; }
-    public int maxHull() { return 80 + level * 20; }
+    public int capacity() { return new int[]{0, 25, 45, 70}[level]+refits.levels[3]*8; }
+    public int maxHull() { return 80 + level * 20+refits.levels[2]*15; }
     public int cargo() {
         int total = 0;
         for (int value : inventory) total += value;
@@ -32,7 +33,7 @@ public final class Engine {
     public boolean hasVisited(int harbor) { return World.validPort(harbor) && (visited & (1L << harbor))!=0; }
     public int visitedCount() { return Long.bitCount(visited); }
     private boolean goodAmount(int good, int amount) {
-        return good >= 0 && good < GOODS.length && amount > 0 && amount <= 70;
+        return good >= 0 && good < GOODS.length && amount > 0 && amount <= capacity();
     }
     public boolean buy(int good, int amount) {
         if(busy()) return fail("항해 사건을 먼저 처리하세요.");
@@ -61,13 +62,13 @@ public final class Engine {
         if (Story.deliveryReady(this,good)) completeChapter();
     }
     public int travelDays(int target) {
-        return WorldRoutes.between(port,target).days();
+        return Refits.days(this,WorldRoutes.between(port,target).days());
     }
     public int travelCost(int target, int mode) { return CrewAbilities.supply(this,travelDays(target) * (mode == 1 ? 24 : 16)); }
     public int travelDamage(int target,int mode) {
         int days=travelDays(target);
         int raw=mode==1?Math.max(2,(int)Math.ceil(days/15.0)):Math.min(40,5+(day+target)%10+days/10);
-        return CrewAbilities.damage(this,raw);
+        return Refits.damage(this,CrewAbilities.damage(this,raw));
     }
     public boolean sail(int target, int mode) {
         if(busy()) return fail("항해 사건을 먼저 처리하세요.");
