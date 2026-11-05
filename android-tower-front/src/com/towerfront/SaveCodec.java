@@ -8,13 +8,14 @@ public final class SaveCodec {
         try {
             ByteArrayOutputStream bytes=new ByteArrayOutputStream();
             DataOutputStream out=new DataOutputStream(bytes);
-            out.writeInt(0x54465733);out.writeInt(e.level);out.writeInt(e.difficulty);
+            out.writeInt(0x54465734);out.writeInt(e.level);out.writeInt(e.difficulty);
             out.writeDouble(e.elapsed);out.writeDouble(e.aiTime);
             out.writeInt(e.captures);out.writeInt(e.dispatched);
             out.writeInt(e.towers.size());
             for(Engine.Tower t:e.towers) writeTower(out,t);
             out.writeInt(e.fleets.size());
             for(Engine.Fleet f:e.fleets) writeFleet(out,f);
+            writeSettings(out,e);
             out.flush();return Base64.getEncoder().encodeToString(bytes.toByteArray());
         } catch(IOException ex) {throw new IllegalStateException(ex);}
     }
@@ -30,29 +31,56 @@ public final class SaveCodec {
         if(text==null || text.length()>200000) return null;
         try {
             DataInputStream in=new DataInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(text)));
-            if(in.readInt()!=0x54465733) return null;
-            int stage=integer(in,1,12),mode=integer(in,0,2);
-            Engine e=new Engine(stage,mode);
-            e.elapsed=number(in,0,1e9);e.aiTime=number(in,0,4);
-            e.captures=integer(in,0,1000000);e.dispatched=integer(in,0,1000000);
-            int count=integer(in,6,8);
-            if(count!=e.towers.size()) return null;
-            e.towers.clear();
-            for(int i=0;i<count;i++) e.towers.add(readTower(in));
-            int fleets=integer(in,0,2000);
-            for(int i=0;i<fleets;i++) e.fleets.add(readFleet(in,count));
-            return in.available()==0?e:null;
+            int magic=in.readInt();
+            if(magic!=0x54465733 && magic!=0x54465734) return null;
+            return restore(in,magic==0x54465733);
         } catch(IOException | IllegalArgumentException ex) {return null;}
+    }
+    private static Engine restore(DataInputStream in,boolean legacy) throws IOException {
+        int stage=integer(in,1,legacy?12:100),mode=integer(in,0,2);
+        Engine e=new Engine(stage,mode);
+        e.elapsed=number(in,0,1e9);e.aiTime=number(in,0,4);
+        e.captures=integer(in,0,1000000);e.dispatched=integer(in,0,1000000);
+        int count=integer(in,6,20);e.towers.clear();
+        for(int i=0;i<count;i++) e.towers.add(readTower(in));
+        int fleets=integer(in,0,2000);
+        for(int i=0;i<fleets;i++) e.fleets.add(readFleet(in,count));
+        if(!legacy) readSettings(in,e);
+        if(in.available()!=0 || !validSettings(e,count)) return null;
+        return e;
+    }
+    private static void writeSettings(DataOutputStream out,Engine e) throws IOException {
+        out.writeInt(1);out.writeBoolean(e.skirmish);out.writeInt(e.mapId);
+        out.writeInt(e.enemyCount);out.writeLong(e.seed);
+    }
+    private static void readSettings(DataInputStream in,Engine e) throws IOException {
+        integer(in,1,1);int flag=in.readUnsignedByte();
+        if(flag>1) throw new IOException("Invalid mode flag");
+        e.skirmish=flag==1;e.mapId=integer(in,0,4);
+        e.enemyCount=integer(in,1,10);e.seed=in.readLong();
+    }
+    private static boolean validSettings(Engine e,int count) {
+        int expected=e.skirmish?Skirmish.towerCount(e.mapId,e.enemyCount):Campaign.towerCount(e.level);
+        if(count!=expected) return false;
+        if(e.skirmish && e.level!=1) return false;
+        if(!e.skirmish && e.level>12 && e.enemyCount!=Campaign.enemies(e.level)) return false;
+        return validOwners(e);
+    }
+    private static boolean validOwners(Engine e) {
+        int maxOwner=e.skirmish || e.level>12?e.enemyCount+1:2;
+        for(Engine.Tower t:e.towers) if(t.owner>maxOwner) return false;
+        for(Engine.Fleet f:e.fleets) if(f.owner>maxOwner || f.from==f.to) return false;
+        return true;
     }
     private static Engine.Tower readTower(DataInputStream in) throws IOException {
         double x=number(in,0,1),y=number(in,0,1),growth=number(in,0,1);
-        Engine.Tower t=new Engine.Tower(x,y,integer(in,0,2),integer(in,0,99));
+        Engine.Tower t=new Engine.Tower(x,y,integer(in,0,11),integer(in,0,99));
         t.growth=growth;t.kind=integer(in,0,3);t.rank=integer(in,1,3);
         return t;
     }
     private static Engine.Fleet readFleet(DataInputStream in,int count) throws IOException {
         int from=integer(in,0,count-1),to=integer(in,0,count-1);
-        int owner=integer(in,1,2),units=integer(in,1,99);
+        int owner=integer(in,1,11),units=integer(in,1,99);
         double progress=number(in,0,1),duration=number(in,.1,10);
         Engine.Fleet f=new Engine.Fleet(from,to,owner,units,duration);
         f.progress=progress;return f;

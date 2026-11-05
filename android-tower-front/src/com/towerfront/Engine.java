@@ -29,6 +29,9 @@ public final class Engine {
     public double elapsed;
     public int captures,dispatched;
     public final int level,difficulty;
+    public boolean skirmish;
+    public int mapId,enemyCount=1;
+    public long seed;
     public Engine(int stage) {
         this(stage,1);
     }
@@ -36,6 +39,7 @@ public final class Engine {
         level=Math.max(1,Math.min(Campaign.COUNT,stage));
         difficulty=Math.max(0,Math.min(2,mode));
         stage=level;
+        if(stage>12) {Campaign.advanced(this);return;}
         towers.add(new Tower(.22,.82,1,32));
         towers.add(new Tower(.78,.18,2,24+stage*2));
         towers.add(new Tower(.25,.56,0,8));
@@ -135,16 +139,16 @@ public final class Engine {
     private void think() {
         for(int i=0;i<towers.size();i++) {
             Tower a=towers.get(i);
-            if(a.owner!=2 || a.units<12) continue;
+            if(a.owner<2 || a.units<12) continue;
             int target=targetFor(a);
-            if(target>=0) dispatch(i,target,2);
+            if(target>=0) dispatch(i,target,a.owner);
         }
     }
     private int targetFor(Tower a) {
         int best=-1;double score=Double.MAX_VALUE;
         for(int i=0;i<towers.size();i++) {
             Tower b=towers.get(i);
-            if(b.owner==2) continue;
+            if(b.owner==a.owner) continue;
             double s=b.units+Math.hypot(a.x-b.x,a.y-b.y)*18;
             if(s<score) {score=s;best=i;}
         }
@@ -152,13 +156,20 @@ public final class Engine {
     }
     public int result() {
         boolean blue=false,red=false;
-        for(Tower t:towers) {blue|=t.owner==1;red|=t.owner==2;}
-        for(Fleet f:fleets) {blue|=f.owner==1;red|=f.owner==2;}
+        for(Tower t:towers) {blue|=t.owner==1;red|=t.owner>1;}
+        for(Fleet f:fleets) {blue|=f.owner==1;red|=f.owner>1;}
         if(!blue) return 2;
         return red?0:1;
     }
+    public int remainingEnemies() {
+        boolean[] alive=new boolean[12];
+        for(Tower t:towers) alive[t.owner]=true;
+        for(Fleet f:fleets) alive[f.owner]=true;
+        int count=0;for(int i=2;i<alive.length;i++) if(alive[i]) count++;
+        return count;
+    }
     public int medals() {
-        if(result()!=1) return 0;
+        if(skirmish || result()!=1) return 0;
         if(elapsed<=90) return 3;
         return elapsed<=180?2:1;
     }

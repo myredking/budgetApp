@@ -17,8 +17,8 @@ public final class BuildingPainter {
         polygon(c,shade(color,.88f),x,y+d/2-h,x+w/2,y-h,x+w/2,y,x,y+d/2);
         polygon(c,color,x,y-d/2-h,x+w/2,y-h,x,y+d/2-h,x-w/2,y-h);
     }
-    public void draw(Canvas c,Engine.Tower t,float x,float y,boolean selected,float pop,double time) {
-        c.save();c.translate(x,y);c.scale(pop,pop);
+    public void draw(Canvas c,Engine.Tower t,float x,float y,boolean selected,float pop,float detail,double time) {
+        c.save();c.translate(x,y);c.scale(pop*detail,pop*detail);
         p.setColor(0x33254124);c.drawOval(-27,4,39,23,p);
         block(c,0,7,65,34,6,0xffe6d7b7);
         if(selected) selection(c,time);
@@ -29,7 +29,8 @@ public final class BuildingPainter {
             case Engine.FORTRESS: fortress(c,color);break;
             default: headquarters(c,color);break;
         }
-        flag(c,color,time);badge(c,t,color);c.restore();
+        flag(c,color,time);c.restore();
+        c.save();c.translate(x,y);c.scale(Math.max(.8f,detail),Math.max(.8f,detail));badge(c,t,color,detail);c.restore();
     }
     private void selection(Canvas c,double time) {
         p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(3);p.setColor(0xffffedac);
@@ -89,13 +90,15 @@ public final class BuildingPainter {
         polygon(c,color,23,-49,37,-46+wave,34,-36+wave,23,-39);
         p.setColor(0xffffd77c);c.drawCircle(23,-49,2,p);
     }
-    private void badge(Canvas c,Engine.Tower t,int color) {
+    private void badge(Canvas c,Engine.Tower t,int color,float detail) {
         p.setColor(0x33344330);c.drawRoundRect(-21,18,23,41,10,10,p);
         p.setColor(0xff24394b);c.drawRoundRect(-23,16,21,39,9,9,p);
         p.setColor(color);c.drawCircle(-16,27,3,p);
         p.setColor(Color.WHITE);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
         p.setTextSize(17);p.setTextAlign(Paint.Align.CENTER);c.drawText(String.valueOf(t.units),3,33,p);
-        p.setTextSize(9);p.setColor(SceneStyle.INK);c.drawText(SceneStyle.title(t.kind),0,51,p);
+        p.setTextSize(detail<.8f?11:9);p.setColor(SceneStyle.INK);
+        String tag=t.owner==1?"나":t.owner==0?"중립":"AI "+(t.owner-1);
+        c.drawText(detail>=.8f?SceneStyle.title(t.kind):tag,0,51,p);
         p.setColor(0xffe5b849);
         for(int i=0;i<t.rank;i++) c.drawCircle(-7+i*6,8,2,p);
     }

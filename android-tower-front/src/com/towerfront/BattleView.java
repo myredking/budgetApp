@@ -56,7 +56,7 @@ public final class BattleView extends View {
         real.save();real.translate(left,top);real.scale(scale,scale);
         board(real);header(real);
         for(Engine.Fleet f:engine.fleets) world.fleet(real,engine,f);
-        for(int i:depth) world.tower(real,engine.towers.get(i),controls.selected==i,effects.towerScale(i),engine.elapsed);
+        for(int i:depth) world.tower(real,engine.towers.get(i),controls.selected==i,effects.towerScale(i),SceneStyle.buildingScale(engine),engine.elapsed);
         renderer.drawBursts(real,effects);drawDrag(real);footer(real);
         drawOverlay(real);
         real.restore();if(running) postInvalidateDelayed(paused?100:16);
@@ -92,15 +92,16 @@ public final class BattleView extends View {
     }
     private void header(Canvas c) {
         text(c,"TOWER / FRONT",133,40,21,WHITE);
-        text(c,String.format(Locale.KOREA,"%02d  %s",engine.level,Campaign.name(engine.level)),143,70,14,GRAY);
+        text(c,engine.skirmish?"자유전 · "+Skirmish.name(engine.mapId):String.format(Locale.KOREA,"%02d  %s",engine.level,Campaign.name(engine.level)),143,70,14,GRAY);
         box(c,294,23,88,48,MainActivity.CARD);text(c,"일시정지",338,53,13,WHITE);
-        int[] strength=new int[3];
+        int[] strength=new int[12];
         for(Engine.Tower t:engine.towers) strength[t.owner]+=t.units;
         for(Engine.Fleet f:engine.fleets) strength[f.owner]+=f.units;
         text(c,"아군 "+strength[1],65,111,14,color(1));
         text(c,clock(engine.elapsed),200,111,18,WHITE);
-        text(c,"적군 "+strength[2],335,111,14,color(2));
-        text(c,Campaign.difficultyName(engine.difficulty)+" · 작전 "+engine.level+" / 12",200,146,11,GRAY);
+        int total=0;for(int i=2;i<strength.length;i++) total+=strength[i];
+        text(c,"적군 "+total,335,111,14,color(2));
+        text(c,Campaign.difficultyName(engine.difficulty)+(engine.skirmish?" · AI "+engine.enemyCount+"진영 · 생존 "+engine.remainingEnemies():" · 미션 "+engine.level+" / 100"),200,146,11,GRAY);
     }
     private String clock(double seconds) {
         int value=(int)seconds;
@@ -118,8 +119,16 @@ public final class BattleView extends View {
         box(c,18,708,174,50,MainActivity.CARD);text(c,"출병 "+(controls.all?"100%":"50%"),105,739,16,MainActivity.CYAN);
         box(c,208,708,174,50,canUpgrade()?MainActivity.CYAN:MainActivity.CARD);
         text(c,upgradeLabel(),295,739,14,canUpgrade()?Color.WHITE:GRAY);
-        text(c,"생산 ×1.7 · 기동 속도 증가 · 방어 피해 −25%",200,789,11,GRAY);
+        if(engine.enemyCount>1) factionLegend(c);
+        else text(c,"생산 ×1.7 · 기동 속도 증가 · 방어 피해 −25%",200,789,11,GRAY);
         text(c,"중립은 생산하지 않습니다 · 점령 후 레벨 유지",200,810,10,GRAY);
+    }
+    private void factionLegend(Canvas c) {
+        for(int team=1;team<=engine.enemyCount+1;team++) {
+            float x=24+(team-1)*32;
+            paint.setColor(SceneStyle.team(team));c.drawCircle(x,785,4,paint);
+            text(c,team==1?"나":String.valueOf(team-1),x+10,789,10,WHITE);
+        }
     }
     private boolean canUpgrade() {
         if(controls.selected<0) return false;
@@ -134,23 +143,32 @@ public final class BattleView extends View {
     private void overlay(Canvas c) {
         paint.setColor(Color.argb(245,245,239,223));c.drawRect(0,0,400,820,paint);
         int result=engine.result();boolean win=result==1;
-        String title=paused && result==0?"작전 일시정지":win?"작전 성공":"작전 실패";
-        if(win && engine.level==12) title="캠페인 완료!";
-        text(c,title,200,236,32,WHITE);
-        text(c,Campaign.name(engine.level)+" · "+Campaign.difficultyName(engine.difficulty),200,275,15,GRAY);
-        if(win) text(c,"★★★".substring(0,engine.medals())+"☆☆☆".substring(engine.medals()),200,325,34,0xffb17b15);
-        else text(c,paused?"전투를 안전하게 저장했습니다":"생산 기지 확보와 증원으로 다시 도전하세요",200,320,13,GRAY);
+        text(c,resultTitle(result),200,236,32,WHITE);
+        text(c,(engine.skirmish?Skirmish.name(engine.mapId):Campaign.name(engine.level))+" · "+Campaign.difficultyName(engine.difficulty),200,275,15,GRAY);
+        if(win && !engine.skirmish) text(c,"★★★".substring(0,engine.medals())+"☆☆☆".substring(engine.medals()),200,325,34,0xffb17b15);
+        else text(c,overlayMessage(win),200,320,13,GRAY);
         text(c,"시간 "+clock(engine.elapsed)+"   점령 "+engine.captures+"   출병 "+engine.dispatched,200,371,13,WHITE);
         box(c,56,410,288,56,MainActivity.CYAN);
         text(c,primaryLabel(result),200,446,18,Color.WHITE);
         box(c,56,482,288,52,MainActivity.CARD);text(c,"현재 작전 다시 시작",200,515,15,WHITE);
         box(c,56,550,288,52,MainActivity.CARD);text(c,"시작 화면 · 자동 저장",200,583,15,WHITE);
-        text(c,"별은 난이도별 최고 기록으로 저장됩니다",200,654,12,GRAY);
+        text(c,engine.skirmish?"자유전은 미션 기록에 영향을 주지 않습니다":"별은 난이도별 최고 기록으로 저장됩니다",200,654,12,GRAY);
+    }
+    private String resultTitle(int result) {
+        if(result==0) return "전투 일시정지";
+        if(result==2) return "전투 실패";
+        if(engine.skirmish) return "자유전 승리!";
+        return engine.level==Campaign.COUNT?"미션 100 완료!":"미션 성공";
+    }
+    private String overlayMessage(boolean win) {
+        if(win && engine.skirmish) return "최후까지 살아남은 진영입니다!";
+        return paused?"전투를 안전하게 저장했습니다":"생산 기지 확보와 증원으로 다시 도전하세요";
     }
     private String primaryLabel(int result) {
         if(result==0) return "계속하기";
         if(result==2) return "다시 도전";
-        return engine.level==12?"작전 지도":"다음 작전";
+        if(engine.skirmish) return "자유전 설정";
+        return engine.level==Campaign.COUNT?"미션 지도":"다음 미션";
     }
     private boolean inside(float x,float y,float a,float b,float w,float h) {
         return x>=a && x<=a+w && y>=b && y<=b+h;
@@ -212,7 +230,7 @@ public final class BattleView extends View {
         if(result==0) {
             paused=false;last=0;setContentDescription("타워 프론트 전장 · 작전 "+engine.level);return;
         }
-        if(result==1) host.next();else host.start(engine.level);
+        if(result==1) host.next();else host.restartBattle();
     }
     private void upgrade() {
         boolean ok=engine.upgrade(controls.selected);

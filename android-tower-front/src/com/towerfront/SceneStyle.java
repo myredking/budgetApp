@@ -4,7 +4,13 @@ public final class SceneStyle {
     public static final int INK=0xff24394b,PAPER=0xfff5efdf,BLUE=0xff2678bf,RED=0xffcd553d;
     private SceneStyle() { }
     public static int team(int owner) {
-        return owner==1?BLUE:owner==2?RED:0xff817969;
+        int[] colors={0xff817969,BLUE,RED,0xff8355ad,0xff278359,0xffcb685c,
+            0xff218a91,0xff9a672c,0xffa28b0d,0xffb6438a,0xff5966b6,0xff56633a};
+        return colors[Math.max(0,Math.min(11,owner))];
+    }
+    public static float buildingScale(Engine e) {
+        if(e.towers.size()>12) return .62f;
+        return e.towers.size()>8?.8f:1f;
     }
     public static int squadSize(int units) {return Math.max(0,Math.min(12,units));}
     public static String title(int kind) {

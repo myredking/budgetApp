@@ -1,0 +1,10 @@
+<resources>
+  <style name="TowerTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+    <item name="android:windowBackground">#F5EFDF</item>
+    <item name="android:colorAccent">#2678BF</item>
+    <item name="android:statusBarColor">#F5EFDF</item>
+    <item name="android:navigationBarColor">#F5EFDF</item>
+    <item name="android:windowLightStatusBar">true</item>
+    <item name="android:fontFamily">sans</item>
+  </style>
+</resources>

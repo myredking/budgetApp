@@ -12,12 +12,12 @@ public final class BattleControls {
         int[] order=SceneStyle.towerOrder(e);
         for(int i=order.length-1;i>=0;i--) {
             Engine.Tower t=e.towers.get(order[i]);
-            if(insideBuilding(t,x,y)) return order[i];
+            if(insideBuilding(t,x,y,SceneStyle.buildingScale(e))) return order[i];
         }
         return -1;
     }
-    private static boolean insideBuilding(Engine.Tower t,float px,float py) {
-        return px>=x(t)-45 && px<=x(t)+45 && py>=y(t)-68 && py<=y(t)+47;
+    private static boolean insideBuilding(Engine.Tower t,float px,float py,float scale) {
+        return px>=x(t)-45*scale && px<=x(t)+45*scale && py>=y(t)-68*scale && py<=y(t)+47*Math.max(.8f,scale);
     }
     public void validate() {
         if(selected<0) return;

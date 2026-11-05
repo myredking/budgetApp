@@ -1,11 +1,30 @@
 package com.towerfront;
 
 public final class Campaign {
-    public static final int COUNT=12;
+    public static final int COUNT=100;
     private static final String[] NAMES={"첫 교두보","갈림길","기동 작전","생산 기지",
         "양면 전선","보급 차단","중앙 돌파","삼각 포위","산개 전투","역습","최후 방어선","새벽의 승리"};
     private Campaign() { }
-    public static String name(int stage) {return NAMES[Math.max(0,Math.min(COUNT-1,stage-1))];}
+    public static String name(int stage) {
+        int index=Math.max(1,Math.min(COUNT,stage));
+        if(index<=12) return NAMES[index-1];
+        String[] regions={"초원","해안","고원","협곡","산림","군도","성채","분지","국경","최후의 전선"};
+        return regions[(index-1)/10]+" 작전 "+index;
+    }
+    public static int enemies(int stage) {return Math.min(10,2+(stage-13)/9);}
+    public static int towerCount(int stage) {
+        if(stage<=12) return stage==1?6:stage<4?7:8;
+        return Skirmish.towerCount((stage-13)%Skirmish.MAPS,enemies(stage));
+    }
+    public static void advanced(Engine e) {
+        Skirmish.populate(e,(e.level-13)%Skirmish.MAPS,enemies(e.level),e.level*104729L);
+        for(Engine.Tower t:e.towers) {
+            if(t.owner==0) continue;
+            t.units=t.owner==1?Math.min(90,42+e.level/2):Math.min(75,18+e.level/3+e.difficulty*6);
+            t.rank=t.owner==1?Math.min(3,1+e.level/35):Math.min(3,1+e.level/50);
+        }
+        if(e.level>=40) {Engine.Tower support=e.towers.get(e.enemyCount+1);support.owner=1;support.units=20;support.kind=Engine.FORTRESS;}
+    }
     public static String difficultyName(int mode) {
         return new String[]{"쉬움","보통","어려움"}[Math.max(0,Math.min(2,mode))];
     }

@@ -31,7 +31,7 @@ def main() -> None:
     serial = parser.parse_args().serial
     adb(serial, 'shell', 'am', 'force-stop', 'com.towerfront')
     adb(serial, 'shell', 'am', 'start', '-n', 'com.towerfront/.MainActivity')
-    tap(serial, '캠페인 · 작전 선택')
+    tap(serial, '미션 모드 · 100스테이지')
     adb(serial, 'shell', 'input', 'keyevent', '4')
     assert any(n.get('text') == 'TOWER FRONT' for n in nodes(serial)), 'Back exited campaign instead of returning home'
     print('PASS campaign Back returns to start screen')

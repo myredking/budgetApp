@@ -24,8 +24,8 @@ public final class FinalEngineTest {
         }
         Engine easy=new Engine(6,0),hard=new Engine(6,2);
         check(easy.towers.get(1).units<hard.towers.get(1).units,"difficulty troops");
-        check(new Engine(99,1).level==12,"legacy stage clamped");
-        check(Campaign.next(12)==12,"finite campaign");
+        check(new Engine(999,1).level==100,"mission stage clamped");
+        check(Campaign.next(100)==100,"finite campaign");
     }
     private static void saveChecks() {
         Engine e=new Engine(5,2);

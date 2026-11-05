@@ -14,7 +14,7 @@ public final class EffectRenderer {
     }
     private int color(BattleEffects.Burst b) {
         if(b.impact.kind==Engine.HIT) return palette[1];
-        return b.impact.owner==1?palette[0]:palette[2];
+        return SceneStyle.team(b.impact.owner);
     }
     private void burst(Canvas c,BattleEffects.Burst b) {
         float age=(float)b.age;int alpha=(int)(255*Math.max(0,1-age/1.1f));

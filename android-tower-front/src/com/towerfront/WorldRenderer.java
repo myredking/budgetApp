@@ -20,16 +20,16 @@ public final class WorldRenderer {
         else {p.setColor(0xffb2cc85);c.drawRect(bounds,p);}
         c.restore();
     }
-    public void tower(Canvas c,Engine.Tower t,boolean selected,float pop,double time) {
-        buildings.draw(c,t,BattleControls.x(t),BattleControls.y(t),selected,pop,time);
+    public void tower(Canvas c,Engine.Tower t,boolean selected,float pop,float detail,double time) {
+        buildings.draw(c,t,BattleControls.x(t),BattleControls.y(t),selected,pop,detail,time);
     }
     public void hero(Canvas c) {
         terrain(c,new RectF(8,8,392,209));
         Engine.Tower left=new Engine.Tower(0,0,1,32),right=new Engine.Tower(0,0,2,24);
         Engine.Tower center=new Engine.Tower(0,0,1,18);center.kind=Engine.FACTORY;right.kind=Engine.FORTRESS;
-        buildings.draw(c,left,93,122,false,1.05f,0);
-        buildings.draw(c,center,200,87,false,1.1f,0);
-        buildings.draw(c,right,307,128,false,1.05f,0);
+        buildings.draw(c,left,93,122,false,1.05f,1,0);
+        buildings.draw(c,center,200,87,false,1.1f,1,0);
+        buildings.draw(c,right,307,128,false,1.05f,1,0);
     }
     public void fleet(Canvas c,Engine e,Engine.Fleet f) {
         Engine.Tower a=e.towers.get(f.from),b=e.towers.get(f.to);
