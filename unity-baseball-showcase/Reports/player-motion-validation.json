@@ -1,40 +1,45 @@
-[
-  {
-    "id": "kim_doyoung",
-    "bones": 163,
-    "frames": 97,
-    "max_wrist_target_error_m": 0.019736508464778976,
-    "event_hands_L_R": [
-      [
-        0.2618480920791626,
-        -0.3816433548927307,
-        1.172911286354065
+{
+  "revision": "28bb175",
+  "status": "historical_pre_equipment_update",
+  "note": "Current attachment validation is player-equipment-validation.json",
+  "players": [
+    {
+      "id": "kim_doyoung",
+      "bones": 163,
+      "frames": 97,
+      "max_wrist_target_error_m": 0.019736508464778976,
+      "event_hands_L_R": [
+        [
+          0.2618480920791626,
+          -0.3816433548927307,
+          1.172911286354065
+        ],
+        [
+          0.30880650877952576,
+          -0.4003092646598816,
+          1.1666269302368164
+        ]
       ],
-      [
-        0.30880650877952576,
-        -0.4003092646598816,
-        1.1666269302368164
-      ]
-    ],
-    "passes_attachment_tolerance": true
-  },
-  {
-    "id": "ryu_hyunjin",
-    "bones": 163,
-    "frames": 97,
-    "max_wrist_target_error_m": 0.00012242974314922368,
-    "event_hands_L_R": [
-      [
-        0.21018752455711365,
-        -0.7718711495399475,
-        1.6624952554702759
+      "passes_attachment_tolerance": true
+    },
+    {
+      "id": "ryu_hyunjin",
+      "bones": 163,
+      "frames": 97,
+      "max_wrist_target_error_m": 0.00012242974314922368,
+      "event_hands_L_R": [
+        [
+          0.21018752455711365,
+          -0.7718711495399475,
+          1.6624952554702759
+        ],
+        [
+          -0.22421382367610931,
+          -0.5105955004692078,
+          1.3062381744384766
+        ]
       ],
-      [
-        -0.22421382367610931,
-        -0.5105955004692078,
-        1.3062381744384766
-      ]
-    ],
-    "passes_attachment_tolerance": true
-  }
-]
+      "passes_attachment_tolerance": true
+    }
+  ]
+}

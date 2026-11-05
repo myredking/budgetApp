@@ -1,5 +1,6 @@
 from pathlib import Path
 import importlib.util
+import math
 
 import pytest
 
@@ -53,3 +54,28 @@ def test_mismatched_coordinate_sizes_do_not_silently_truncate() -> None:
     with pytest.raises(ValueError):
         module.sample_track([{"time": 0, "hand": [0, 0, 0]},
                              {"time": 1, "hand": [1, 1]}], "hand", 0.5)
+
+
+def test_two_hands_remain_on_rotating_bat_handle() -> None:
+    module = motion_module()
+    for direction in ([0, 0, 1], [1, 0, 0], [.3, -.6, .2]):
+        grip = module.grip_layout([.2, -.3, 1.2], direction)
+        assert math.dist(grip["left_hand"], grip["right_hand"]) == pytest.approx(.07)
+        length = math.sqrt(sum(v * v for v in direction))
+        axis = [v / length for v in direction]
+        for side, distance in (("left_hand", .045), ("right_hand", .115)):
+            expected = [v + a * distance for v, a in zip(grip["bat_origin"], axis)]
+            assert grip[side] == pytest.approx(expected)
+
+
+def test_zero_bat_direction_is_rejected() -> None:
+    with pytest.raises(ValueError):
+        motion_module().grip_layout([0, 0, 1], [0, 0, 0])
+
+
+def test_ball_flight_starts_at_release_and_uses_elapsed_time() -> None:
+    module = motion_module()
+    assert module.ball_flight([0, 0, 1.5], [0, -32, 0], 0) == [0, 0, 1.5]
+    assert module.ball_flight([0, 0, 1.5], [0, -32, 0], .1) == pytest.approx([0, -3.2, 1.45095])
+    with pytest.raises(ValueError):
+        module.ball_flight([0, 0, 1.5], [0, -32, 0], -.1)

@@ -1,7 +1,7 @@
 {
   "Summary": {
-    "Total": 1,
-    "Passed": 1,
+    "Total": 2,
+    "Passed": 2,
     "Failed": 0,
     "Skipped": 0,
     "Inconclusive": 0
@@ -10,15 +10,22 @@
     {
       "FullName": "PlayerStudyTests.ImportedPlayersHaveSkinningAndMovingAnimation",
       "Status": "Passed",
-      "Duration": 3.7509851,
+      "Duration": 3.4956437,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "PlayerStudyTests.PitchBallLeavesLeftHandAtReleaseWithoutChangingSize",
+      "Status": "Passed",
+      "Duration": 3.5278101,
       "Message": null,
       "StackTrace": null
     }
   ],
-  "Duration": 10.33,
+  "Duration": 11.1,
   "StatusPath": null,
   "Mode": "EditMode",
-  "FilterApplied": "testname: PlayerStudyTests.ImportedPlayersHaveSkinningAndMovingAnimation",
+  "FilterApplied": "assembly: DeckBall.Showcase.Tests",
   "success": true,
   "result": null
 }

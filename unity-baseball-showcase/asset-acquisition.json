@@ -75,26 +75,35 @@
     {
       "id": "kim_doyoung",
       "fbx_path": "Assets/Showcase/Art/Players/kim_doyoung.fbx",
-      "sha256": "b5e4a3b24b99d22798289fe12e3e5731d0c68dd7813720f36c7b1300cfc18169",
+      "sha256": "5777764ecfae36dbfda80cd1e69f5f2b188b0d45284618b4cffe45e79e31b912",
       "blend_path": "SourceArt/Players/kim_doyoung.blend",
       "motion_type": "hand_authored_reference_inspired_blockout",
       "likeness_approved": false,
       "motion_similarity_approved": false,
       "unity_skinning_and_motion_verified": true,
       "runtime_playback_verified": true,
-      "blend_sha256": "303fe47106164e967822038e890a7c15623b951f68a255c7b7f2f447dc7057e1"
+      "blend_sha256": "747495a1b47319a5c886eddacb07f4ddb26bebfe1e9f622d2964b1f7bd34faa7"
     },
     {
       "id": "ryu_hyunjin",
       "fbx_path": "Assets/Showcase/Art/Players/ryu_hyunjin.fbx",
-      "sha256": "94f9b802fc46eec980aae09652316078ce99c976129c0152b2b257a53afea1c4",
+      "sha256": "a796b10b3944223ca74fd9306e89e81e55fd0bf38dc755231c309efd163af618",
       "blend_path": "SourceArt/Players/ryu_hyunjin.blend",
       "motion_type": "hand_authored_reference_inspired_blockout",
       "likeness_approved": false,
       "motion_similarity_approved": false,
       "unity_skinning_and_motion_verified": true,
       "runtime_playback_verified": true,
-      "blend_sha256": "f324ddcfec1ddd326b8fd4a458369a91aabd3c9f2fa671d4e882cefe614ce918"
+      "blend_sha256": "5c9390026951c6632ff3a3c49d862aa52b9906ac1c2658307b738c5326c5883e"
     }
-  ]
+  ],
+  "equipment_update": {
+    "checked_on": "2026-11-06",
+    "source": "original procedurally authored mesh and hand-authored attachment animation",
+    "grip_validation": "Reports/player-equipment-validation.json",
+    "flight_speed_mps": 32,
+    "flight_speed_source": "prototype setting, not measured Ryu Hyun-jin velocity",
+    "ball_diameter_m": 0.073,
+    "glove": "open pocket, binding, laces, finger pads; still a visual draft"
+  }
 }

@@ -8,10 +8,11 @@ from pathlib import Path
 import sys
 
 import bpy
-from mathutils import Quaternion, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from player_motion import load_profiles, sample_track
+from player_motion import ball_flight, grip_layout, load_profiles, sample_track
+from player_equipment import make_ball, make_glove
 
 
 def material(name: str, color: list[float], roughness: float = 0.65) -> bpy.types.Material:
@@ -89,21 +90,41 @@ def style(profile: dict, rig: bpy.types.Object) -> None:
     for bone in rig.pose.bones:
         if bone.name.startswith("finger"):
             bone.rotation_mode = "XYZ"
-            bone.rotation_euler.x = .65
+            bone.rotation_euler.x = 1.05 if profile["role"] == "batter" else .65
 
 
 def pitching_equipment(rig: bpy.types.Object) -> None:
-    wrist = rig.pose.bones["wrist.R"]
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, location=wrist.tail)
-    glove = bpy.context.object
-    glove.name = "GloveBlockout"
-    glove.scale = (.075, .052, .105)
-    glove.data.materials.append(material("Glove Leather", [.16, .065, .025, 1], .8))
-    bpy.context.view_layer.update()
-    world = glove.matrix_world.copy()
-    glove.parent, glove.parent_type, glove.parent_bone = rig, "BONE", "wrist.R"
-    bpy.context.view_layer.update()
-    glove.matrix_world = world
+    make_glove(rig, material("Glove Leather", [.19, .075, .025, 1], .8),
+               material("Glove Laces", [.025, .012, .006, 1], .85))
+
+
+def batter_grip(profile: dict, time: float) -> tuple[dict, Vector]:
+    left = Vector(sample_track(profile["poses"], "left_hand", time))
+    right = Vector(sample_track(profile["poses"], "right_hand", time))
+    direction = sample_track(profile["poses"], "bat_direction", time)
+    grip = grip_layout(list((left + right) / 2), direction)
+    axis = Vector(grip["axis"])
+    forward = Vector((0, -1, 0))
+    forward -= axis * forward.dot(axis)
+    if forward.length < .01:
+        forward = axis.cross(Vector((1, 0, 0)))
+    return grip, forward.normalized()
+
+
+def key_batter_hands(profile: dict, controls: dict, frame: int, rig: bpy.types.Object) -> None:
+    grip, forward = batter_grip(profile, (frame - 1) / 30)
+    for side, letter, sign in (("left_hand", "L", 1), ("right_hand", "R", -1)):
+        obj = controls[side]
+        obj.location = Vector(grip[side]) - forward * .055
+        axis = Vector(grip["axis"]) * sign
+        obj.rotation_mode = "QUATERNION"
+        obj.rotation_quaternion = Matrix((forward.cross(axis), forward, axis)).transposed().to_quaternion()
+        obj.keyframe_insert("location", frame=frame)
+        obj.keyframe_insert("rotation_quaternion", frame=frame)
+        if frame == 1:
+            constraint = rig.pose.bones["wrist." + letter].constraints.new("COPY_ROTATION")
+            constraint.target = obj
+            constraint.owner_space = constraint.target_space = "WORLD"
 
 
 def face_and_number(profile: dict, rig: bpy.types.Object) -> None:
@@ -141,6 +162,8 @@ def animate(profile: dict, rig: bpy.types.Object, controls: dict) -> None:
         for name, obj in controls.items():
             obj.location = sample_track(profile["poses"], name, time)
             obj.keyframe_insert("location", frame=frame)
+        if profile["role"] == "batter":
+            key_batter_hands(profile, controls, frame, rig)
         shift = Vector(sample_track(profile["poses"], "root", time))
         root.location = root.bone.matrix_local.to_3x3().inverted() @ shift
         root.keyframe_insert("location", frame=frame)
@@ -155,13 +178,30 @@ def animate_bat(profile: dict, bat: bpy.types.Object) -> None:
     bat.rotation_mode = "QUATERNION"
     for frame in range(1, 98):
         time = (frame - 1) / 30
-        left = Vector(sample_track(profile["poses"], "left_hand", time))
-        right = Vector(sample_track(profile["poses"], "right_hand", time))
-        direction = Vector(sample_track(profile["poses"], "bat_direction", time)).normalized()
-        bat.location = (left + right) / 2 - direction * .07
+        grip, _ = batter_grip(profile, time)
+        direction = Vector(grip["axis"])
+        bat.location = grip["bat_origin"]
         bat.rotation_quaternion = direction.to_track_quat("Z", "Y")
         bat.keyframe_insert("location", frame=frame)
         bat.keyframe_insert("rotation_quaternion", frame=frame)
+
+
+def animate_pitch_ball(profile: dict, rig: bpy.types.Object) -> None:
+    scale = profile["height_cm"] / 160
+    ball = make_ball(.0365 / scale, material("Ball Leather", [.9, .87, .79, 1], .75),
+                     material("Red Stitching", [.38, .008, .012, 1], .8))
+    ball.scale.x = 1 / profile["width_scale"]
+    scene = bpy.context.scene
+    scene.frame_set(round(profile["event_time"] * 30) + 1)
+    release = rig.pose.bones["wrist.L"].matrix @ Vector((0, .065, 0))
+    for frame in range(1, 98):
+        scene.frame_set(frame)
+        elapsed = (frame - 1) / 30 - profile["event_time"]
+        if elapsed <= 0:
+            ball.location = rig.pose.bones["wrist.L"].matrix @ Vector((0, .065, 0))
+        else:
+            ball.location = Vector(ball_flight(list(release * scale), [0, -32, 0], elapsed)) / scale
+        ball.keyframe_insert("location", frame=frame)
 
 
 def bake_and_export(profile: dict, rig: bpy.types.Object, output: Path) -> None:
@@ -172,6 +212,8 @@ def bake_and_export(profile: dict, rig: bpy.types.Object, output: Path) -> None:
                      visual_keying=True, clear_constraints=True, use_current_action=True,
                      bake_types={"POSE"})
     rig.animation_data.action.name = profile["id"] + "_motion_study"
+    if profile["role"] == "pitcher":
+        animate_pitch_ball(profile, rig)
     for name in ("left_hand", "right_hand", "left_foot", "right_foot"):
         bpy.data.objects.remove(bpy.data.objects[name], do_unlink=True)
     scale = profile["height_cm"] / 160

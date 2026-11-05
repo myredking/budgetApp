@@ -57,4 +57,28 @@ public sealed class PlayerStudyTests
             Assert.That(Vector3.Distance(before, bone.position), Is.GreaterThan(.1f));
         }
     }
+
+    [Test]
+    public void PitchBallLeavesLeftHandAtReleaseWithoutChangingSize()
+    {
+        var type = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(a => a.GetType("DeckBall.Showcase.Editor.PlayerStudySetup"))
+            .First(t => t != null);
+        type.GetMethod("Build").Invoke(null, null);
+        var player = GameObject.Find("ryu_hyunjin");
+        var ball = player.GetComponentsInChildren<Transform>().FirstOrDefault(t => t.name == "PitchBall");
+        Assert.That(ball, Is.Not.Null, "Pitcher must have an animated baseball.");
+        var hand = player.GetComponentsInChildren<Transform>().First(t => t.name == "wrist.L");
+        var clip = player.GetComponent<Animation>().clip;
+        clip.SampleAnimation(player, 1.9f);
+        Assert.That(Vector3.Distance(ball.position, hand.position), Is.LessThan(.11f));
+        clip.SampleAnimation(player, 2f);
+        var release = ball.position;
+        clip.SampleAnimation(player, 2.1f);
+        Assert.That(Vector3.Distance(release, ball.position), Is.InRange(2.8f, 3.6f));
+        var size = ball.GetComponent<Renderer>().bounds.size;
+        Assert.That(size.x, Is.InRange(.069f, .078f));
+        Assert.That(size.y, Is.InRange(.069f, .078f));
+        Assert.That(size.z, Is.InRange(.069f, .078f));
+    }
 }

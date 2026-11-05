@@ -41,3 +41,33 @@ def sample_track(poses: list[dict], track: str, time: float) -> list[float]:
 def load_profiles(path: Path) -> list[dict]:
     data = json.loads(path.read_text(encoding="utf-8"))
     return data["players"]
+
+
+def finite_vector(value: list[float]) -> None:
+    if len(value) != 3 or not all(math.isfinite(v) for v in value):
+        raise ValueError("A finite three-coordinate vector is required")
+
+
+def grip_layout(center: list[float], direction: list[float]) -> dict[str, list[float]]:
+    finite_vector(center)
+    finite_vector(direction)
+    length = math.sqrt(sum(v * v for v in direction))
+    if length < 1e-8:
+        raise ValueError("Bat direction cannot be zero")
+    axis = [v / length for v in direction]
+    return {
+        "left_hand": [v - .035 * a for v, a in zip(center, axis)],
+        "right_hand": [v + .035 * a for v, a in zip(center, axis)],
+        "bat_origin": [v - .08 * a for v, a in zip(center, axis)],
+        "axis": axis,
+    }
+
+
+def ball_flight(origin: list[float], velocity: list[float], elapsed: float) -> list[float]:
+    finite_vector(origin)
+    finite_vector(velocity)
+    if not math.isfinite(elapsed) or elapsed < 0:
+        raise ValueError("Elapsed flight time must be finite and nonnegative")
+    position = [v + speed * elapsed for v, speed in zip(origin, velocity)]
+    position[2] -= 4.905 * elapsed * elapsed
+    return position

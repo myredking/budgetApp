@@ -13,9 +13,9 @@
       "timedOut": false,
       "member": "UnityEngine.Time.frameCount",
       "op": "changed",
-      "value": 10696,
-      "initialValue": 10674,
-      "elapsedMs": 126,
+      "value": 118,
+      "initialValue": 113,
+      "elapsedMs": 209,
       "framesObserved": 2
     },
     "target": {
