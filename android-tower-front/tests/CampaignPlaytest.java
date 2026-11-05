@@ -11,7 +11,7 @@ public final class CampaignPlaytest {
                 if(mode==0 || (mode==1 && stage<=6)) requireWin(e);
                 if(e.result()==0) throw new AssertionError("Battle stalled");
             }
-            System.out.println("Fixed half-dispatch policy mode="+mode+" wins="+wins+"/12");
+            System.out.println("Half-dispatch with reinforcement policy mode="+mode+" wins="+wins+"/12");
         }
     }
     private static Engine play(int stage,int mode) {
@@ -25,6 +25,7 @@ public final class CampaignPlaytest {
     private static void command(Engine e) {
         for(int i=0;i<e.towers.size();i++) {
             if(e.towers.get(i).owner!=1) continue;
+            if(e.towers.get(i).units<45) e.useSkill(BattleRules.REINFORCE,i);
             int target=choose(e,i);
             if(target>=0) e.send(i,target);
         }

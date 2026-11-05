@@ -12,6 +12,7 @@ public final class BattleView extends View {
     private final Typeface bold=Typeface.create("sans-serif",Typeface.BOLD);
     private final BattleEffects effects=new BattleEffects();
     private final EffectRenderer renderer=new EffectRenderer();
+    private final TacticsPainter tactics=new TacticsPainter();
     private final WorldRenderer world;
     private final int[] depth;
     private float scale=1,left,top,dragX,dragY;
@@ -54,10 +55,10 @@ public final class BattleView extends View {
         scale=Math.min(getWidth()/400f,getHeight()/820f);
         left=(getWidth()-400*scale)/2;top=(getHeight()-820*scale)/2;
         real.save();real.translate(left,top);real.scale(scale,scale);
-        board(real);header(real);
+        board(real);header(real);tactics.ground(real,engine);
         for(Engine.Fleet f:engine.fleets) world.fleet(real,engine,f);
         for(int i:depth) world.tower(real,engine.towers.get(i),controls.selected==i,effects.towerScale(i),SceneStyle.buildingScale(engine),engine.elapsed);
-        renderer.drawBursts(real,effects);drawDrag(real);footer(real);
+        tactics.buffs(real,engine);renderer.drawBursts(real,effects);drawDrag(real);footer(real);
         drawOverlay(real);
         real.restore();if(running) postInvalidateDelayed(paused?100:16);
     }
@@ -101,7 +102,9 @@ public final class BattleView extends View {
         text(c,clock(engine.elapsed),200,111,18,WHITE);
         int total=0;for(int i=2;i<strength.length;i++) total+=strength[i];
         text(c,"적군 "+total,335,111,14,color(2));
-        text(c,Campaign.difficultyName(engine.difficulty)+(engine.skirmish?" · AI "+engine.enemyCount+"진영 · 생존 "+engine.remainingEnemies():" · 미션 "+engine.level+" / 100"),200,146,11,GRAY);
+        text(c,engine.rules.objectiveText(),200,131,10,WHITE);
+        text(c,Campaign.difficultyName(engine.difficulty)+(engine.skirmish?" · AI "+engine.enemyCount+"진영 · 생존 "+engine.remainingEnemies():" · 미션 "+engine.level+" / 100"),200,147,10,GRAY);
+        if(engine.enemyCount>1) factionLegend(c);
     }
     private String clock(double seconds) {
         int value=(int)seconds;
@@ -115,19 +118,17 @@ public final class BattleView extends View {
         c.drawCircle(dragX,dragY,12,paint);paint.setStyle(Paint.Style.FILL);
     }
     private void footer(Canvas c) {
-        text(c,noticeTime>0?notice:"아군 선택 → 목표 터치 / 드래그",200,685,13,WHITE);
+        text(c,noticeTime>0?notice:"아군 선택 → 출병 / 증원·보호막·가속",200,677,12,WHITE);
         box(c,18,708,174,50,MainActivity.CARD);text(c,"출병 "+(controls.all?"100%":"50%"),105,739,16,MainActivity.CYAN);
         box(c,208,708,174,50,canUpgrade()?MainActivity.CYAN:MainActivity.CARD);
         text(c,upgradeLabel(),295,739,14,canUpgrade()?Color.WHITE:GRAY);
-        if(engine.enemyCount>1) factionLegend(c);
-        else text(c,"생산 ×1.7 · 기동 속도 증가 · 방어 피해 −25%",200,789,11,GRAY);
-        text(c,"중립은 생산하지 않습니다 · 점령 후 레벨 유지",200,810,10,GRAY);
+        tactics.controls(c,engine,controls.selected);
     }
     private void factionLegend(Canvas c) {
         for(int team=1;team<=engine.enemyCount+1;team++) {
             float x=24+(team-1)*32;
-            paint.setColor(SceneStyle.team(team));c.drawCircle(x,785,4,paint);
-            text(c,team==1?"나":String.valueOf(team-1),x+10,789,10,WHITE);
+            paint.setColor(SceneStyle.team(team));c.drawCircle(x,158,3,paint);
+            text(c,team==1?"나":String.valueOf(team-1),x+9,162,9,WHITE);
         }
     }
     private boolean canUpgrade() {
@@ -148,6 +149,7 @@ public final class BattleView extends View {
         if(win && !engine.skirmish) text(c,"★★★".substring(0,engine.medals())+"☆☆☆".substring(engine.medals()),200,325,34,0xffb17b15);
         else text(c,overlayMessage(win),200,320,13,GRAY);
         text(c,"시간 "+clock(engine.elapsed)+"   점령 "+engine.captures+"   출병 "+engine.dispatched,200,371,13,WHITE);
+        text(c,engine.rules.objectiveText(),200,395,10,GRAY);
         box(c,56,410,288,56,MainActivity.CYAN);
         text(c,primaryLabel(result),200,446,18,Color.WHITE);
         box(c,56,482,288,52,MainActivity.CARD);text(c,"현재 작전 다시 시작",200,515,15,WHITE);
@@ -178,6 +180,7 @@ public final class BattleView extends View {
         if(inside(x,y,294,23,88,48)) return 0;
         if(inside(x,y,18,708,174,50)) return 1;
         if(inside(x,y,208,708,174,50)) return 2;
+        for(int skill=0;skill<3;skill++) if(inside(x,y,18+skill*124,769,116,39)) return 6+skill;
         return -1;
     }
     private int overlayButtonAt(float x,float y) {
@@ -217,13 +220,28 @@ public final class BattleView extends View {
     private void activate(int action) {
         switch(action) {
             case 0: pause();break;
-            case 1: controls.all=!controls.all;notice(controls.all?"모든 병력 출병 · 빈 타워에 주의하세요":"병력 절반 출병");break;
+            case 1: toggleDispatch();break;
             case 2: upgrade();break;
             case 3: primaryAction();break;
             case 4: host.retry();break;
             case 5: host.showMenu();break;
+            case 6: case 7: case 8: useSkill(action-6);break;
             default: break;
         }
+    }
+    private void toggleDispatch() {
+        controls.all=!controls.all;notice(controls.all?"모든 병력 출병 · 빈 타워에 주의하세요":"병력 절반 출병");
+    }
+    private void useSkill(int type) {
+        boolean used=engine.useSkill(type,controls.selected);
+        notice(used?BattleRules.skillName(type)+" 사용!":skillFailure(type));signal(used);
+        if(used) host.saveBattle(false);
+    }
+    private String skillFailure(int type) {
+        if(controls.selected<0) return "아군 건물을 먼저 선택하세요";
+        if(engine.rules.cooldowns[type]>0) return "재사용까지 "+(int)Math.ceil(engine.rules.cooldowns[type])+"초";
+        if(engine.rules.energy<BattleRules.cost(type)) return "전술 에너지가 부족합니다";
+        return "병력이 가득 찼거나 효과가 적용 중입니다";
     }
     private void primaryAction() {
         int result=engine.result();

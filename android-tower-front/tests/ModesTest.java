@@ -41,7 +41,7 @@ public final class ModesTest {
             check(!e.skirmish && e.result()==0,"mission starts active");
             check(SaveCodec.decode(SaveCodec.encode(e))!=null,"all missions save and restore");
             for(Engine.Tower t:e.towers) check(t.units>=0 && t.units<=99,"bounded mission units");
-            if(mode==1) layouts.add(SaveCodec.encode(e));
+            if(mode==1) layouts.add(configuration(e));
         }
         check(layouts.size()==100,"distinct mission configurations");
         Profile p=new Profile();
@@ -57,7 +57,7 @@ public final class ModesTest {
         check(p.stars(13,1)==0,"new missions start uncompleted");
         Engine legacy=new Engine(1);
         byte[] newer=java.util.Base64.getDecoder().decode(SaveCodec.encode(legacy));
-        byte[] oldSave=java.util.Arrays.copyOf(newer,newer.length-21);
+        byte[] oldSave=java.util.Arrays.copyOf(newer,settingsOffset(newer));
         java.nio.ByteBuffer.wrap(oldSave).putInt(0,0x54465733);
         check(SaveCodec.decode(java.util.Base64.getEncoder().encodeToString(oldSave))!=null,"v3 battle save migration");
     }
@@ -78,12 +78,23 @@ public final class ModesTest {
     }
     private static void invalidSettingsChecks() {
         byte[] data=java.util.Base64.getDecoder().decode(SaveCodec.encode(Skirmish.create(0,10,1,5)));
-        byte[] bad=data.clone();java.nio.ByteBuffer.wrap(bad).putInt(bad.length-12,11);
+        byte[] bad=data.clone();java.nio.ByteBuffer.wrap(bad).putInt(settingsOffset(bad)+9,11);
         check(rejected(bad),"eleven enemy factions rejected");
-        bad=data.clone();java.nio.ByteBuffer.wrap(bad).putInt(bad.length-16,9);
+        bad=data.clone();java.nio.ByteBuffer.wrap(bad).putInt(settingsOffset(bad)+5,9);
         check(rejected(bad),"invalid map rejected");
-        bad=data.clone();bad[bad.length-17]=2;
+        bad=data.clone();bad[settingsOffset(bad)+4]=2;
         check(rejected(bad),"invalid mode flag rejected");
+    }
+    private static String configuration(Engine e) {
+        StringBuilder result=new StringBuilder();
+        for(Engine.Tower t:e.towers) result.append(t.x).append(',').append(t.y).append(':')
+            .append(t.owner).append('/').append(t.units).append('/').append(t.kind).append('/').append(t.rank).append(';');
+        return result.toString();
+    }
+    private static int settingsOffset(byte[] data) {
+        java.nio.ByteBuffer b=java.nio.ByteBuffer.wrap(data);
+        int fleetsAt=40+40*b.getInt(36);
+        return fleetsAt+4+32*b.getInt(fleetsAt);
     }
     private static boolean rejected(byte[] data) {
         return SaveCodec.decode(java.util.Base64.getEncoder().encodeToString(data))==null;

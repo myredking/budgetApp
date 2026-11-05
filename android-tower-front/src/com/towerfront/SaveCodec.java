@@ -8,14 +8,14 @@ public final class SaveCodec {
         try {
             ByteArrayOutputStream bytes=new ByteArrayOutputStream();
             DataOutputStream out=new DataOutputStream(bytes);
-            out.writeInt(0x54465734);out.writeInt(e.level);out.writeInt(e.difficulty);
+            out.writeInt(0x54465735);out.writeInt(e.level);out.writeInt(e.difficulty);
             out.writeDouble(e.elapsed);out.writeDouble(e.aiTime);
             out.writeInt(e.captures);out.writeInt(e.dispatched);
             out.writeInt(e.towers.size());
             for(Engine.Tower t:e.towers) writeTower(out,t);
             out.writeInt(e.fleets.size());
             for(Engine.Fleet f:e.fleets) writeFleet(out,f);
-            writeSettings(out,e);
+            writeSettings(out,e);e.rules.write(out);
             out.flush();return Base64.getEncoder().encodeToString(bytes.toByteArray());
         } catch(IOException ex) {throw new IllegalStateException(ex);}
     }
@@ -32,12 +32,12 @@ public final class SaveCodec {
         try {
             DataInputStream in=new DataInputStream(new ByteArrayInputStream(Base64.getDecoder().decode(text)));
             int magic=in.readInt();
-            if(magic!=0x54465733 && magic!=0x54465734) return null;
-            return restore(in,magic==0x54465733);
+            if(magic!=0x54465733 && magic!=0x54465734 && magic!=0x54465735) return null;
+            return restore(in,magic);
         } catch(IOException | IllegalArgumentException ex) {return null;}
     }
-    private static Engine restore(DataInputStream in,boolean legacy) throws IOException {
-        int stage=integer(in,1,legacy?12:100),mode=integer(in,0,2);
+    private static Engine restore(DataInputStream in,int magic) throws IOException {
+        int stage=integer(in,1,magic==0x54465733?12:100),mode=integer(in,0,2);
         Engine e=new Engine(stage,mode);
         e.elapsed=number(in,0,1e9);e.aiTime=number(in,0,4);
         e.captures=integer(in,0,1000000);e.dispatched=integer(in,0,1000000);
@@ -45,7 +45,9 @@ public final class SaveCodec {
         for(int i=0;i<count;i++) e.towers.add(readTower(in));
         int fleets=integer(in,0,2000);
         for(int i=0;i<fleets;i++) e.fleets.add(readFleet(in,count));
-        if(!legacy) readSettings(in,e);
+        if(magic!=0x54465733) readSettings(in,e);
+        e.rules=new BattleRules(e);
+        if(magic==0x54465735) e.rules.read(in);
         if(in.available()!=0 || !validSettings(e,count)) return null;
         return e;
     }

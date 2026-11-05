@@ -133,14 +133,14 @@ public final class MainActivity extends Activity {
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v5.0 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v6.0 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();
     }
     void showCampaign() {
         campaignPage=true;saveBattle(false);
-        LinearLayout panel=page("미션 지도", "100스테이지 · 90초 이내 ★★★ · 180초 이내 ★★");
+        LinearLayout panel=page("미션 지도", "100스테이지 · 목표별 전술 미션 · 보급 생산 +35%");
         addDifficulties(panel);addChapters(panel);
         int first=missionChapter*10+1;
         for(int stage=first;stage<first+10;stage++) addOperation(panel,stage);
@@ -166,7 +166,7 @@ public final class MainActivity extends Activity {
         Spinner map=choice(panel,"전장 선택 ▼",maps,customMap);
         Spinner count=choice(panel,"적 진영 수 ▼",enemies,customEnemies-1);
         Spinner difficulty=choice(panel,"난이도 ▼",new String[]{"쉬움","보통","어려움"},customDifficulty);
-        panel.addView(label("선택한 맵 안에서 거점 종류와 시작 배치가 매번 달라집니다",12,MUTED));
+        panel.addView(label("중앙 보급: 생산 +35% · 세 가지 전술 스킬을 활용하세요",12,MUTED));
         button(panel,"전투 시작",true,()->{
             customMap=map.getSelectedItemPosition();customEnemies=count.getSelectedItemPosition()+1;
             customDifficulty=difficulty.getSelectedItemPosition();confirmFree();
@@ -215,15 +215,17 @@ public final class MainActivity extends Activity {
     private void addOperation(LinearLayout panel,int stage) {
         boolean open=profile.available(stage,mode);int score=profile.stars(stage,mode);
         String stars="★★★".substring(0,score)+"☆☆☆".substring(score);
-        String title=String.format("%02d  %s   %s",stage,Campaign.name(stage),open?stars:"잠김");
-        Button b=button(panel,title,false,()->chooseStage(stage));b.setEnabled(open);b.setAlpha(open?1:.38f);
+        String title=String.format("%02d  %s\n%s · %s",stage,Campaign.name(stage),BattleRules.missionLabel(stage),open?stars:"잠김");
+        Button b=button(panel,title,false,()->chooseStage(stage));b.setTextSize(14);
+        android.view.ViewGroup.LayoutParams params=b.getLayoutParams();params.height=dp(72);b.setLayoutParams(params);
+        b.setEnabled(open);b.setAlpha(open?1:.38f);
     }
     private void chooseStage(int stage) {
-        if(engine!=null && engine.result()==0) {
-            new AlertDialog.Builder(this).setTitle("새 작전을 시작할까요?")
-                .setMessage("저장된 전투를 새 작전으로 바꿉니다. 별 기록은 유지됩니다.")
-                .setNegativeButton("취소",null).setPositiveButton("시작",(dialog,which)->start(stage)).show();
-        } else start(stage);
+        String message=BattleRules.briefing(stage)+"\n\n보급 거점은 생산 +35%이며 스킬 에너지도 빨리 회복합니다.";
+        if(engine!=null && engine.result()==0) message+="\n\n저장된 전투는 새 미션으로 바뀝니다. 별 기록은 유지됩니다.";
+        new AlertDialog.Builder(this).setTitle("미션 "+stage+" · "+BattleRules.missionLabel(stage))
+            .setMessage(message).setNegativeButton("취소",null)
+            .setPositiveButton("시작",(dialog,which)->start(stage)).show();
     }
     void start(int stage) {
         engine=new Engine(stage,mode);saveBattle(true);openBattle(engine);
@@ -268,7 +270,9 @@ public final class MainActivity extends Activity {
                 +"⑤ 선택한 아군 타워는 병력 20 / 40을 사용해 강화할 수 있습니다. 생산량은 레벨마다 50% 증가합니다.\n\n"
                 +"⑥ 적 타워와 이동 병력을 모두 제거하면 승리합니다. 90초 / 180초 이내 승리로 별을 모으세요.\n\n"
                 +"⑦ 미션은 100단계입니다. 자유전에서는 맵과 AI 1~10진영을 고르며, AI끼리도 전투합니다. 자유전은 미션 기록에 영향을 주지 않습니다.\n\n"
-                +"⑧ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.")
+                +"⑧ 아군 선택 후 하단 스킬을 사용하세요. 증원은 35에너지로20명, 보호막은30에너지로6초 피해절반, 가속은25에너지로6초 이동1.75배입니다.\n\n"
+                +"⑨ 보급 거점을 가진 진영은 전체 생산+35%입니다. 플레이어는 에너지 회복도3→5/초가 됩니다. 미션은 전멸·30초사수·시간생존·3거점12초유지로 나뉩니다. 생존 별점은 종료 시 3거점 이상3개, 2거점2개, 1거점1개입니다.\n\n"
+                +"⑩ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.")
             .setPositiveButton("알겠습니다",null).show();
     }
 }

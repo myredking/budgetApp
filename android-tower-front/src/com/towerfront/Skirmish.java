@@ -14,7 +14,7 @@ public final class Skirmish {
     }
     public static Engine create(int map,int enemies,int difficulty,long seed) {
         Engine e=new Engine(1,difficulty);e.skirmish=true;
-        populate(e,map,enemies,seed);return e;
+        populate(e,map,enemies,seed);e.rules=BattleRules.start(e);return e;
     }
     public static void populate(Engine e,int map,int enemies,long seed) {
         e.mapId=Math.max(0,Math.min(MAPS-1,map));e.enemyCount=Math.max(1,Math.min(10,enemies));e.seed=seed;

@@ -32,6 +32,7 @@ public final class Engine {
     public boolean skirmish;
     public int mapId,enemyCount=1;
     public long seed;
+    public BattleRules rules;
     public Engine(int stage) {
         this(stage,1);
     }
@@ -39,7 +40,7 @@ public final class Engine {
         level=Math.max(1,Math.min(Campaign.COUNT,stage));
         difficulty=Math.max(0,Math.min(2,mode));
         stage=level;
-        if(stage>12) {Campaign.advanced(this);return;}
+        if(stage>12) {Campaign.advanced(this);rules=BattleRules.start(this);return;}
         towers.add(new Tower(.22,.82,1,32));
         towers.add(new Tower(.78,.18,2,24+stage*2));
         towers.add(new Tower(.25,.56,0,8));
@@ -49,7 +50,7 @@ public final class Engine {
         if(stage>1) towers.add(new Tower(.48,.36,2,10+stage));
         if(stage>3) towers.add(new Tower(.48,.66,0,16));
         configureMap(stage);
-        Campaign.configure(this);
+        Campaign.configure(this);rules=BattleRules.start(this);
     }
     private void configureMap(int stage) {
         int layout=(stage-1)%3;
@@ -95,21 +96,28 @@ public final class Engine {
     public void update(double dt) {
         if(!Double.isFinite(dt) || dt<=0) return;
         if(result()!=0) return;
-        elapsed+=dt;
+        double remaining=Math.min(5,dt);
+        while(remaining>1e-9 && result()==0) {
+            double step=Math.min(.05,remaining);step(step);remaining-=step;
+        }
+    }
+    private void step(double dt) {
+        elapsed+=dt;rules.beginStep(dt);
         for(Tower t:towers) produce(t,dt);
         Iterator<Fleet> it=fleets.iterator();
         while(it.hasNext()) {
-            Fleet f=it.next();f.progress+=dt/f.duration;
+            Fleet f=it.next();f.progress+=dt/f.duration*rules.fleetSpeed(f);
             if(f.progress>=1) {arrive(f);it.remove();}
         }
         aiTime+=dt;
-        if(aiTime>=3.6-difficulty*.8) {aiTime=0;think();}
+        if(aiTime+1e-9>=3.6-difficulty*.8) {aiTime=0;think();}
+        rules.finishStep(dt);
     }
     private void produce(Tower t,double dt) {
         if(t.owner==0) return;
         double bonus=(t.kind==FACTORY?1.7:1)*(1+(t.rank-1)*.5);
         double enemyRate=(1.3+Math.min(level,10)*.08)*(.75+difficulty*.25);
-        t.growth+=dt*(t.owner==1?1.8:enemyRate)*bonus;
+        t.growth+=dt*(t.owner==1?1.8:enemyRate)*bonus*rules.productionBonus(t.owner);
         int gain=(int)t.growth;t.growth-=gain;
         t.units=Math.min(99,t.units+gain);
     }
@@ -120,10 +128,10 @@ public final class Engine {
             if(received>0) recordImpact(f,REINFORCE,received);
             return;
         }
-        int damage=t.kind==FORTRESS?(f.units*3+3)/4:f.units;
+        int damage=rules.damage(f,t);
         t.units-=damage;
         if(t.units<0) {
-            t.owner=f.owner;t.units=-t.units;t.growth=0;
+            t.owner=f.owner;t.units=-t.units;t.growth=0;rules.captured(f.to);
             if(f.owner==1) captures++;
             recordImpact(f,CAPTURE,damage);return;
         }
@@ -149,7 +157,7 @@ public final class Engine {
         for(int i=0;i<towers.size();i++) {
             Tower b=towers.get(i);
             if(b.owner==a.owner) continue;
-            double s=b.units+Math.hypot(a.x-b.x,a.y-b.y)*18;
+            double s=b.units+Math.hypot(a.x-b.x,a.y-b.y)*18-(i==rules.supplyIndex?6:0);
             if(s<score) {score=s;best=i;}
         }
         return best;
@@ -159,7 +167,17 @@ public final class Engine {
         for(Tower t:towers) {blue|=t.owner==1;red|=t.owner>1;}
         for(Fleet f:fleets) {blue|=f.owner==1;red|=f.owner>1;}
         if(!blue) return 2;
-        return red?0:1;
+        return !red || rules.won()?1:0;
+    }
+    public boolean useSkill(int type,int target) {
+        if(!validIndex(target)) return false;
+        int before=towers.get(target).units;
+        if(!rules.cast(type,target)) return false;
+        if(type==BattleRules.REINFORCE) {
+            Fleet effect=new Fleet(target,target,1,1,1);
+            recordImpact(effect,REINFORCE,towers.get(target).units-before);
+        }
+        return true;
     }
     public int remainingEnemies() {
         boolean[] alive=new boolean[12];
@@ -170,6 +188,7 @@ public final class Engine {
     }
     public int medals() {
         if(skirmish || result()!=1) return 0;
+        if(rules.objective==BattleRules.SURVIVE) return Math.max(1,Math.min(3,rules.ownedCount()));
         if(elapsed<=90) return 3;
         return elapsed<=180?2:1;
     }
