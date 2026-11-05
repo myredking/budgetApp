@@ -54,8 +54,8 @@ public final class EffectRenderer {
         c.drawText(text,b.x+1,b.y-39-age*24+1,paint);
         paint.setColor(color(b));paint.setAlpha(alpha);c.drawText(text,b.x,b.y-39-age*24,paint);
     }
-    public void drawConfetti(Canvas c,BattleEffects effects) {
-        c.save();c.clipRect(14,110,386,395);
+    public void drawConfetti(Canvas c,BattleEffects effects,float bottom) {
+        c.save();c.clipRect(14,0,386,bottom);
         for(BattleEffects.Confetti p:effects.confetti) {
             paint.setColor(palette[p.palette]);paint.setAlpha((int)(255*Math.min(1,(3.2-p.age)*2)));
             c.save();c.rotate(p.angle,p.x,p.y);c.drawRect(p.x-3,p.y-6,p.x+3,p.y+6,paint);c.restore();

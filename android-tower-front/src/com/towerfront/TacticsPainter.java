@@ -42,19 +42,27 @@ public final class TacticsPainter {
             c.drawLine(x-31*scale,at-5*scale,x-26*scale,at,p);
         }
     }
-    public void controls(Canvas c,Engine e,int selected) {
-        box(c,18,688,364,15,0xffe0decb);
-        box(c,18,688,(float)(364*e.rules.energy/100),15,0xffb5d8e8);
-        text(c,"전술 에너지 "+(int)e.rules.energy+" / 100",200,699,10,SceneStyle.INK);
-        for(int type=0;type<3;type++) skillButton(c,e,selected,type);
+    public void controls(Canvas c,Engine e,int selected,ScreenLayout screen) {
+        box(c,18,screen.energyTop,364,screen.energyHeight,0xffe0decb);
+        box(c,18,screen.energyTop,(float)(364*e.rules.energy/100),screen.energyHeight,0xffb5d8e8);
+        controlText(c,"전술 에너지 "+(int)e.rules.energy+" / 100",200,
+            screen.energyTop+screen.energyHeight/2+screen.font(10)/3,10,SceneStyle.INK,screen,350);
+        for(int type=0;type<3;type++) skillButton(c,e,selected,type,screen);
     }
-    private void skillButton(Canvas c,Engine e,int selected,int type) {
+    private void controlText(Canvas c,String value,float x,float y,float size,int color,ScreenLayout screen,float limit) {
+        p.setColor(color);p.setTextSize(screen.font(size));p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);
+        if(p.measureText(value)>limit) {
+            int end=p.breakText(value,true,Math.max(0,limit-p.measureText("…")),null);value=value.substring(0,end)+"…";
+        }
+        c.drawText(value,x,y,p);
+    }
+    private void skillButton(Canvas c,Engine e,int selected,int type,ScreenLayout screen) {
         float x=18+type*124;boolean ready=e.rules.ready(type,selected);
-        box(c,x,769,116,39,ready?SceneStyle.BLUE:0xfffffcf3);
-        int color=ready?Color.WHITE:0xff657469;
-        text(c,BattleRules.skillName(type),x+58,783,11,color);
+        box(c,x,screen.skillTop,116,screen.buttonHeight,ready?SceneStyle.BLUE:0xfffffcf3);
+        int color=ready?Color.WHITE:0xff657469;float center=screen.skillTop+screen.buttonHeight/2;
+        controlText(c,BattleRules.skillName(type),x+58,center-2,11,color,screen,104);
         int cooldown=(int)Math.ceil(e.rules.cooldowns[type]);
         String state=cooldown>0?cooldown+"초 후":"에너지 "+BattleRules.cost(type);
-        text(c,state,x+58,800,10,color);
+        controlText(c,state,x+58,center+screen.font(10)+2,10,color,screen,104);
     }
 }

@@ -123,11 +123,11 @@ public final class BattleRules {
     public boolean won() {return objective!=CONQUEST && progress>=goalSeconds;}
     public String objectiveText() {
         String timer=(int)progress+" / "+(int)goalSeconds+"초";
-        if(objective==HOLD) return "목표: 보급 거점 연속 사수 · "+timer;
-        if(objective==SURVIVE) return "목표: 끝까지 생존 · "+timer;
-        if(objective==CONTROL) return "목표: 거점 3개 유지 (현재 "+ownedCount()+") · "+timer;
+        if(objective==HOLD) return "보급 사수 · "+timer;
+        if(objective==SURVIVE) return "생존 · "+timer;
+        if(objective==CONTROL) return "거점 "+ownedCount()+"/3개 유지 · "+timer;
         String team=supplyOwner()==0?"중립":supplyOwner()==1?"아군":"AI "+(supplyOwner()-1);
-        return "목표: 적 전멸 · 보급: "+(supplyIndex<0?"없음":team);
+        return "적 전멸 · 보급: "+(supplyIndex<0?"없음":team);
     }
     void write(DataOutputStream out) throws IOException {
         out.writeInt(objective);out.writeInt(supplyIndex);out.writeDouble(goalSeconds);

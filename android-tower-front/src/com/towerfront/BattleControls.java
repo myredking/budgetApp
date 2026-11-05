@@ -19,9 +19,23 @@ public final class BattleControls {
     private static boolean insideBuilding(Engine.Tower t,float px,float py,float scale) {
         return px>=x(t)-45*scale && px<=x(t)+45*scale && py>=y(t)-68*scale && py<=y(t)+47*Math.max(.8f,scale);
     }
+    public static int hitTouch(Engine e,float px,float py,float radius) {
+        int direct=hit(e,px,py);
+        if(direct>=0) return direct;
+        int nearest=-1;double distance=radius*radius;
+        for(int i=0;i<e.towers.size();i++) {
+            Engine.Tower t=e.towers.get(i);
+            double dx=px-x(t),dy=py-y(t),candidate=dx*dx+dy*dy;
+            if(candidate<distance) {distance=candidate;nearest=i;}
+        }
+        return nearest;
+    }
     public void validate() {
         if(selected<0) return;
         if(engine.towers.get(selected).owner!=1) selected=-1;
+    }
+    public static int releaseTarget(int start,int end,double movement,float slop) {
+        return movement<=slop?start:end;
     }
     public void press(int index) {
         validate();pressed=index>=0;

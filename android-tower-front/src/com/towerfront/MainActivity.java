@@ -116,7 +116,8 @@ public final class MainActivity extends Activity {
     private Button button(LinearLayout parent,String title,boolean primary,Runnable action) {
         Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextSize(16);
         button.setTextColor(primary?0xffffffff:SceneStyle.INK);button.setBackground(surface(primary?CYAN:CARD));
-        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,dp(58));
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        button.setMinHeight(dp(58));button.setPadding(dp(12),dp(14),dp(12),dp(14));
         params.topMargin=dp(12);parent.addView(button,params);
         button.setElevation(dp(2));button.setOnClickListener(view->action.run());return button;
     }
@@ -124,7 +125,7 @@ public final class MainActivity extends Activity {
         campaignPage=false;
         saveBattle(false);
         LinearLayout panel=page("TOWER FRONT","타워 프론트 · 오프라인 전략 캠페인");
-        panel.addView(new MenuHero(this),new LinearLayout.LayoutParams(-1,dp(185)));
+        panel.addView(new MenuHero(this),new LinearLayout.LayoutParams(-1,dp(Math.min(185,Math.max(110,getResources().getConfiguration().screenHeightDp/5)))));
         panel.addView(label("섬을 지휘하고, 전선을 넓히세요",18,SceneStyle.INK));
         panel.addView(label("미션 100단계  /  자유전 AI 최대 10진영",12,MUTED));
         if(engine!=null) button(panel,engine.result()==0?(engine.skirmish?"자유전 이어하기":"미션 "+engine.level+" 이어하기"):"지난 전투 결과",true,()->openBattle(engine));
@@ -133,7 +134,7 @@ public final class MainActivity extends Activity {
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v6.0 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v6.1 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();
@@ -153,7 +154,8 @@ public final class MainActivity extends Activity {
     }
     private void chapterButton(LinearLayout row,String title,int direction) {
         Button b=new Button(this);b.setText(title);b.setTextColor(SceneStyle.INK);b.setBackground(surface(CARD));
-        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(46),1);params.setMargins(dp(3),dp(2),dp(3),dp(6));row.addView(b,params);
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1);params.setMargins(dp(3),dp(2),dp(3),dp(6));row.addView(b,params);
+        b.setMinHeight(dp(48));b.setTextSize(14);b.setPadding(dp(8),dp(12),dp(8),dp(12));
         b.setEnabled(missionChapter+direction>=0 && missionChapter+direction<10);
         b.setOnClickListener(view->{missionChapter+=direction;showCampaign();});
     }
@@ -179,12 +181,13 @@ public final class MainActivity extends Activity {
         ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,items) {
             @Override public View getView(int position,View old,android.view.ViewGroup parent) {
                 TextView item=(TextView)super.getView(position,old,parent);
-                item.setTextColor(SceneStyle.INK);item.setTextSize(17);return item;
+                item.setTextColor(SceneStyle.INK);item.setTextSize(17);item.setSingleLine(false);item.setMaxLines(2);
+                item.setMinHeight(dp(56));item.setPadding(dp(8),dp(10),dp(8),dp(10));return item;
             }
         };
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);spinner.setSelection(selected);spinner.setBackground(surface(CARD));
-        spinner.setPadding(dp(16),0,dp(16),0);panel.addView(spinner,new LinearLayout.LayoutParams(-1,dp(56)));
+        spinner.setPadding(dp(16),0,dp(16),0);spinner.setMinimumHeight(dp(56));panel.addView(spinner,new LinearLayout.LayoutParams(-1,android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
         return spinner;
     }
     private void confirmFree() {
@@ -207,7 +210,8 @@ public final class MainActivity extends Activity {
             final int choice=i;Button b=new Button(this);
             b.setText(Campaign.difficultyName(i));b.setTextColor(i==mode?0xffffffff:SceneStyle.INK);
             b.setBackground(surface(i==mode?CYAN:CARD));
-            LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(52),1);
+            LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1);
+            b.setMinHeight(dp(52));b.setTextSize(14);b.setPadding(dp(4),dp(10),dp(4),dp(10));
             params.setMargins(dp(3),dp(8),dp(3),dp(8));row.addView(b,params);
             b.setOnClickListener(view->{mode=choice;missionChapter=(profile.unlocked(mode)-1)/10;preferences.edit().putInt("mode",mode).apply();showCampaign();});
         }
@@ -217,7 +221,7 @@ public final class MainActivity extends Activity {
         String stars="★★★".substring(0,score)+"☆☆☆".substring(score);
         String title=String.format("%02d  %s\n%s · %s",stage,Campaign.name(stage),BattleRules.missionLabel(stage),open?stars:"잠김");
         Button b=button(panel,title,false,()->chooseStage(stage));b.setTextSize(14);
-        android.view.ViewGroup.LayoutParams params=b.getLayoutParams();params.height=dp(72);b.setLayoutParams(params);
+        b.setMinHeight(dp(72));
         b.setEnabled(open);b.setAlpha(open?1:.38f);
     }
     private void chooseStage(int stage) {
@@ -272,7 +276,8 @@ public final class MainActivity extends Activity {
                 +"⑦ 미션은 100단계입니다. 자유전에서는 맵과 AI 1~10진영을 고르며, AI끼리도 전투합니다. 자유전은 미션 기록에 영향을 주지 않습니다.\n\n"
                 +"⑧ 아군 선택 후 하단 스킬을 사용하세요. 증원은 35에너지로20명, 보호막은30에너지로6초 피해절반, 가속은25에너지로6초 이동1.75배입니다.\n\n"
                 +"⑨ 보급 거점을 가진 진영은 전체 생산+35%입니다. 플레이어는 에너지 회복도3→5/초가 됩니다. 미션은 전멸·30초사수·시간생존·3거점12초유지로 나뉩니다. 생존 별점은 종료 시 3거점 이상3개, 2거점2개, 1거점1개입니다.\n\n"
-                +"⑩ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.")
+                +"⑩ 작은 화면에서는 전장 오른쪽 +로 확대하고 빈 땅을 드래그해 이동하세요. 전체 버튼으로 전체 지도로 돌아옵니다. 빈 땅을 가볍게 누르면 선택이 해제됩니다.\n\n"
+                +"⑪ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.")
             .setPositiveButton("알겠습니다",null).show();
     }
 }
