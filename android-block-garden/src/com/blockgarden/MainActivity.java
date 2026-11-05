@@ -11,7 +11,7 @@ public class MainActivity extends Activity {
  private GameView game;
  private GameAudio audio;
  @Override public void onCreate(Bundle state){
-  super.onCreate(state);getWindow().setStatusBarColor(0xff101c30);getWindow().setNavigationBarColor(0xff101c30);audio=new GameAudio(this);showMenu();
+  super.onCreate(state);getWindow().setStatusBarColor(0xff101c30);getWindow().setNavigationBarColor(0xff101c30);getWindow().getDecorView().setOnApplyWindowInsetsListener((view,insets)->{view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets.consumeSystemWindowInsets();});audio=new GameAudio(this);showMenu();
  }
  private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
  private TextView label(String text,int size,int color){

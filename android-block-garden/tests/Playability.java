@@ -34,7 +34,7 @@ public class Playability {
   Mission m=new Mission(stage);Engine e=new Engine();m.setup(e);Random random=new Random(seed);int[] hand={-1,-1,-1};
   while(e.moves<200){
    if(m.complete(e))return e.moves;if(m.failed(e))return -1;
-   if(hand[0]+hand[1]+hand[2]==-3)for(int i=0;i<3;i++)hand[i]=BlockDealer.draw(random,SHAPES.length);
+   if(hand[0]+hand[1]+hand[2]==-3)hand=BlockDealer.deal(random,e,SHAPES);
    int[] p=choose(e,hand,random);if(p==null)return -1;
    trace.append(stage+","+seed+","+hand[0]+","+hand[1]+","+hand[2]+","+p[0]+","+p[1]+","+p[2]+"\n");
    if(!e.place(SHAPES[hand[p[0]]],p[1],p[2],1))throw new AssertionError("illegal move");hand[p[0]]=-1;

@@ -35,5 +35,14 @@ def test_placement_guide(tmp_path: Path) -> None:
 def test_block_dealer(tmp_path: Path) -> None:
     root = Path(__file__).resolve().parents[1] / 'android-block-garden'
     java = Path.home() / '.codex/android-deckball-tools/jdk/bin'
-    subprocess.run([str(java / 'javac.exe'), '-encoding', 'UTF-8', '-d', str(tmp_path), str(root / 'src/com/blockgarden/BlockDealer.java'), str(root / 'tests/DealerTest.java')], check=True)
+    subprocess.run([str(java / 'javac.exe'), '-encoding', 'UTF-8', '-d', str(tmp_path), str(root / 'src/com/blockgarden/Engine.java'), str(root / 'src/com/blockgarden/BlockDealer.java'), str(root / 'tests/DealerTest.java')], check=True)
     subprocess.run([str(java / 'java.exe'), '-cp', str(tmp_path), 'com.blockgarden.DealerTest'], check=True)
+
+
+def test_screen_and_deals(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1] / 'android-block-garden'
+    java = Path.home() / '.codex/android-deckball-tools/jdk/bin'
+    names = ['Engine', 'BlockDealer', 'GameLayout']
+    sources = [root / ('src/com/blockgarden/' + name + '.java') for name in names]
+    subprocess.run([str(java / 'javac.exe'), '-encoding', 'UTF-8', '-d', str(tmp_path), *map(str, sources), str(root / 'tests/FeelTest.java')], check=True)
+    subprocess.run([str(java / 'java.exe'), '-cp', str(tmp_path), 'com.blockgarden.FeelTest'], check=True)
