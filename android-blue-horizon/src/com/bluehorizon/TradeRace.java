@@ -19,7 +19,7 @@ public final class TradeRace {
         e.note(Rivals.NAMES[s.raceRival]+"와의 납품 경주에 참가했다. −100 G.");return true;
     }
     public static boolean complete(Engine e) {
-        if(e.adventure.pending>=0) return Adventure.fail(e,"항해 사건을 먼저 처리하세요.");
+        if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 먼저 마치세요.");
         RivalState s=e.rivals;if(s.raceTarget<0) return Adventure.fail(e,"참가 중인 경주가 없습니다.");
         if(e.day>s.raceDeadline) return lose(e,"상대 상단이 먼저 납품했다.");
         if(e.port!=s.raceTarget) return Adventure.fail(e,"경주 목적지에 직접 정박하세요.");
@@ -30,7 +30,7 @@ public final class TradeRace {
         s.clearRace();e.advanceStory();return true;
     }
     public static boolean abandon(Engine e) {
-        if(e.adventure.pending>=0) return Adventure.fail(e,"항해 사건을 먼저 처리하세요.");
+        if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 먼저 마치세요.");
         if(e.rivals.raceTarget<0) return Adventure.fail(e,"참가 중인 경주가 없습니다.");
         return lose(e,"경주를 포기했다.");
     }

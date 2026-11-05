@@ -26,7 +26,7 @@ public final class Refits {
         e.note(NAMES[part]+" 한 단계 해제 · 환급 +"+money+" G.");return true;
     }
     private static boolean mayChange(Engine e,int part) {
-        if(e.adventure.pending>=0) return Adventure.fail(e,"항해 사건을 마친 뒤 개조하세요.");
+        if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 마친 뒤 개조하세요.");
         if(part<0 || part>=4) return Adventure.fail(e,"부품을 확인하세요.");
         return true;
     }

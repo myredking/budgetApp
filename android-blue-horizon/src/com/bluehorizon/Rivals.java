@@ -84,7 +84,7 @@ public final class Rivals {
         e.note(NAMES[rival]+"와의 동맹을 종료했다. 관계 −20, 하루 경과.");return true;
     }
     public static boolean mayAct(Engine e,int rival) {
-        if(e.adventure.pending>=0) return Adventure.fail(e,"항해 사건을 먼저 처리하세요.");
+        if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 먼저 마치세요.");
         if(rival<0 || rival>=3) return Adventure.fail(e,"상단을 확인하세요.");
         return true;
     }

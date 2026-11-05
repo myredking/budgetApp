@@ -38,6 +38,16 @@ def test_music_tracks_are_distinct() -> None:
     assert hashes[0] != hashes[1]
 
 
+def test_rpg_art_is_packaged() -> None:
+    names = ["town-scenes-v1.png", "facility-scenes-v1.png", "sailing-ships-v1.png"]
+    with zipfile.ZipFile(PROJECT / "BlueHorizon.apk") as package:
+        for name in names:
+            assert package.getinfo(f"assets/{name}").file_size > 10000
+    with Image.open(PROJECT / "assets/sailing-ships-v1.png") as image:
+        assert image.mode == "RGBA"
+        assert image.getchannel("A").getextrema()[0] == 0
+
+
 def test_portrait_atlas_has_six_equal_square_regions() -> None:
     with Image.open(PROJECT / "assets/crew-portraits-v1.png") as image:
         assert image.width // 3 == image.height // 2

@@ -19,7 +19,7 @@ public final class Achievements {
     }
     public static boolean claimed(Engine e,int index) { return (e.adventure.claims & (1<<index))!=0; }
     public static boolean claim(Engine e,int index) {
-        if(e.adventure.pending>=0) return Adventure.fail(e,"항해 사건을 먼저 처리하세요.");
+        if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 먼저 마치세요.");
         if(index<0 || index>=8) return Adventure.fail(e,"달성 기록을 확인하세요.");
         if(!ready(e,index) || claimed(e,index)) return Adventure.fail(e,"아직 달성하지 않았거나 이미 받은 보상입니다.");
         e.adventure.claims|=1<<index;e.gold+=REWARDS[index];e.fame++;

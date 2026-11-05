@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.bluehorizon.tests">
+  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="28"/>
+  <application android:label="Blue Horizon UI checks"/>
+  <instrumentation android:name="com.bluehorizon.UiSmoke" android:targetPackage="com.bluehorizon"/>
+</manifest>

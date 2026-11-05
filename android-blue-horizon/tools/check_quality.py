@@ -11,6 +11,7 @@ def java_issues() -> tuple[list[str], int, int]:
     issues: list[str] = []
     count, maximum = 0, 0
     paths = list((PROJECT / "src").rglob("*.java")) + list((PROJECT / "tests").glob("*.java"))
+    paths += list((PROJECT / "androidtests").glob("*.java"))
     for path in paths:
         analysis = lizard.analyze_file(str(path))
         for function in analysis.function_list:

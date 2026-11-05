@@ -28,7 +28,8 @@ public final class MainActivity extends Activity {
     private Engine game;
     private AudioController audio;
     private AlertDialog eventDialog;
-    private int tab=0, quantity=5, mapRegion=-1;
+    private int tab=7, quantity=5, mapRegion=-1, selectedGood=0;
+    private SailingView sailing;
     private SharedPreferences prefs;
     private LinearLayout root, content;
     private TextView status;
@@ -47,17 +48,18 @@ public final class MainActivity extends Activity {
         boolean fresh=game==null;
         if(fresh) game=new Engine();
         audio=new AudioController(this,prefs);
-        if(state!=null) { tab=state.getInt("tab",0); quantity=state.getInt("quantity",5);mapRegion=state.getInt("region",-1); }
+        if(state!=null) { tab=state.getInt("tab",7); quantity=state.getInt("quantity",5);mapRegion=state.getInt("region",-1); }
         save(); render();
+        if(game.town.moving()) { showSailing();return; }
         if(fresh) dialog("푸른 수평선", Story.introduction());
         if(recovered) dialog("저장 복원", "최근 저장을 읽을 수 없어 이전 자동 저장을 복원했습니다.");
         if(game.message.startsWith("세계 확장 버전")) dialog("세계 항해 버전으로 이전",game.message);
         if(game.adventure.pending>=0) root.post(()->showEvent());
     }
-    @Override protected void onResume() { super.onResume();if(audio!=null) audio.resume(); }
-    @Override protected void onPause() { if(audio!=null) audio.pause();super.onPause();if(game!=null) save(); }
+    @Override protected void onResume() { super.onResume();if(audio!=null) audio.resume();if(sailing!=null) sailing.resume(); }
+    @Override protected void onPause() { if(sailing!=null) sailing.pause();if(audio!=null) audio.pause();super.onPause();if(game!=null) save(); }
     @Override protected void onDestroy() {
-        if(eventDialog!=null) eventDialog.dismiss();if(audio!=null) audio.release();super.onDestroy();
+        if(sailing!=null) sailing.stop();if(eventDialog!=null) eventDialog.dismiss();if(audio!=null) audio.release();super.onDestroy();
     }
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out); out.putInt("tab",tab); out.putInt("quantity",quantity);
@@ -91,15 +93,87 @@ public final class MainActivity extends Activity {
         ScrollView scroll=new ScrollView(this); scroll.setFillViewport(true);
         root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         content=column(); content.setPadding(0,dp(6),0,dp(12)); scroll.addView(content);
-        if(tab==0) harbor();
-        if(tab==1) market();
-        if(tab==2) shipyard();
-        if(tab==3) crewPage();
-        if(tab==4) journal();
-        if(tab==5) adventurePage();
-        if(tab==6) rivalPage();
+        renderContent();
         navigation();
         audio.scene(tab==0?"sea":"harbor");
+    }
+    private void renderContent() {
+        switch(tab) {
+            case 0: harbor();break;
+            case 1: market();break;
+            case 2: shipyard();break;
+            case 3: crewPage();break;
+            case 4: journal();break;
+            case 5: adventurePage();break;
+            case 6: rivalPage();break;
+            case 8: tavern();break;
+            default: town();break;
+        }
+    }
+    private void scene(String asset,int cell) {
+        content.addView(new SceneView(this,asset,cell),new LinearLayout.LayoutParams(-1,dp(265)));
+    }
+    private void town() {
+        label(content,World.PORTS[game.port]+" · 항구 마을",26,GOLD);
+        label(content,TownRpg.FLAVORS[TownRpg.style(game.port)],13,MUTED);
+        TownView view=new TownView(this,TownRpg.style(game.port),location->enterBuilding(location));
+        content.addView(view,new LinearLayout.LayoutParams(-1,dp(330)));
+        label(content,"건물 이름을 누르면 들어갑니다",12,MUTED);
+        for(int i=0;i<4;i++) {
+            final int location=i;fullAction(content,TownLayout.NAMES[i],()->enterBuilding(location),false);
+        }
+        LinearLayout quest=card(content);label(quest,"진행 중인 이야기 · "+Story.TITLES[game.chapter],17,GOLD);
+        label(quest,Story.GOALS[game.chapter],14,INK);
+        label(quest,"선장 등급 "+TownRpg.rank(game)+" · 활동 경험 "+TownRpg.experience(game)+" · 일행 사기 "+game.town.morale+" / 100",13,TEAL);
+        label(quest,"등급은 활동 기록입니다. 사기 85 이상: 포격 +2 / 25 미만: 포격 −1·보급비 +5%",12,MUTED);
+        fullAction(quest,"출항 지도로",()->{tab=0;render();},true);
+    }
+    private void enterBuilding(int location) {
+        audio.play("click");
+        if(location==3) { townSquare();return; }
+        int[] pages={1,2,8};tab=pages[location];render();
+    }
+    private void townSquare() {
+        new AlertDialog.Builder(this).setTitle(World.PORTS[game.port]+" · 항구 관리인")
+            .setMessage("먼 바다에서 왔군요, 선장님. 의뢰를 수행하고 상단과 인연을 쌓아 보세요.\n\n현재 목표: "+Story.GOALS[game.chapter])
+            .setPositiveButton("의뢰 게시판",(d,w)->{tab=5;render();})
+            .setNeutralButton("상단 만나기",(d,w)->{tab=6;render();}).setNegativeButton("돌아가기",null).show();
+    }
+    private void tavern() {
+        label(content,World.PORTS[game.port]+" · 바람의 주점",25,GOLD);
+        scene("facility-scenes-v1.png",7);
+        npc("주점 주인","어서 와요, 선장님. 따뜻한 식사와 먼 항구의 소문이 기다리고 있어요.");
+        label(content,"일행 사기 "+game.town.morale+" / 100",16,TEAL);
+        fullAction(content,"식사와 휴식 · 60 G / 하루 / 사기 +25",()->changed(TownRpg.rest(game)),true);
+        fullAction(content,"현지 소문 듣기 · 첫 방문 명성 +1",()->{
+            boolean success=TownRpg.hearRumor(game);changed(success);
+            if(success) dialog("주점에서 들은 이야기",game.message);
+        },false);
+        adventureShortcut(content);
+        fullAction(content,"마을로 나가기",()->{tab=7;render();},false);
+    }
+    private void npc(String name,String words) {
+        LinearLayout box=card(content);box.setBackgroundColor(0xffeee0bf);
+        label(box,name,18,0xff5a3823);label(box,"“"+words+"”",14,0xff302d28);
+    }
+    private void depart(int target,int route) {
+        if(!TravelFlow.begin(game,target,route)) { changed(false);return; }
+        save();audio.play("depart");showSailing();
+    }
+    private void showSailing() {
+        root=column();root.setBackgroundColor(NAVY);applyInsets(root);setContentView(root);
+        label(root,World.PORTS[game.town.from]+" → "+World.PORTS[game.port],24,GOLD);
+        label(root,"항해 중 · "+Engine.SHIPS[game.level-1]+" · 파도를 넘어 새로운 항구로",14,INK);
+        sailing=new SailingView(this,game.level,game.town.from,game.port,()->finishSailing());
+        root.addView(sailing,new LinearLayout.LayoutParams(-1,0,1));
+        fullAction(root,"항해 연출 건너뛰기 · 입항",()->finishSailing(),false);audio.scene("sea");
+    }
+    private void finishSailing() {
+        if(!game.town.moving()) return;
+        if(sailing!=null) sailing.stop();sailing=null;
+        int previous=TravelFlow.arrive(game);tab=7;save();render();audio.play("discovery");
+        if(game.chapter>previous) storyReveal(previous);
+        else if(game.adventure.pending>=0) showEvent();
     }
     private void applyInsets(LinearLayout layout) {
         layout.setOnApplyWindowInsetsListener((view,insets)->{
@@ -264,7 +338,7 @@ public final class MainActivity extends Activity {
     }
     private void showEvent() {
         if(isFinishing() || isDestroyed()) return;
-        if(game.adventure.pending<0) return;
+        if(game.adventure.pending<0 || game.town.moving()) return;
         if(eventDialog!=null && eventDialog.isShowing()) return;
         LinearLayout box=column();box.setPadding(dp(18),dp(12),dp(18),dp(12));box.setBackgroundColor(NAVY);
         int person=Crew.guidePerson(game.chapter);
@@ -386,17 +460,25 @@ public final class MainActivity extends Activity {
         Route route=WorldRoutes.between(game.port,target);
         String info=route.description()+"\n\n약 "+Math.round(route.miles)+"해리 · "+game.travelDays(target)+"일 항해 (개조 반영)\n\n일반 항로: "+game.travelCost(target,0)+" G · 선체 −"+game.travelDamage(target,0)+"\n안전 항로: "+game.travelCost(target,1)+" G · 선체 −"+game.travelDamage(target,1)+"\n\n선체 25 이상이면 출항할 수 있습니다. 경유 항구는 정박하지 않으며, 방문 기록은 목적지에만 남습니다.";
         new AlertDialog.Builder(this).setTitle("출항 준비").setMessage(info)
-            .setPositiveButton("일반 항로",(d,w)->changed(Adventure.sail(game,target,0),"depart"))
-            .setNeutralButton("안전 항로",(d,w)->changed(Adventure.sail(game,target,1),"depart"))
+            .setPositiveButton("일반 항로",(d,w)->depart(target,0))
+            .setNeutralButton("안전 항로",(d,w)->depart(target,1))
             .setNegativeButton("취소",null).show();
     }
     private void market() {
+        scene("facility-scenes-v1.png",TownRpg.style(game.port));
+        npc("교역소 상인","좋은 물건을 찾으시나요? 진열품을 골라 오늘의 가격을 확인하세요.");
         label(content,"PORT MARKET",11,TEAL); label(content,Engine.PORTS[game.port]+" 교역소",26,INK);
         label(content,"1개 기준 · 담당·항구 투자·상단 상태 반영",12,MUTED);
         label(content,Rivals.NAMES[Rivals.owner(game.port)]+" · 경쟁 압력 "+game.rivals.pressure[World.region(game.port)]+" / 80\n현지 매입 수수료 "+Rivals.buyFee(game,game.port)+"% · 상단 판매 우대 +"+Rivals.saleBonus(game,game.port)+"%p",12,TEAL);
         LinearLayout quantities=row(); content.addView(quantities);
         for(int amount:new int[]{1,5,10}) action(quantities,amount+"개씩",()->{quantity=amount;render();},quantity==amount);
-        for(int good=0;good<6;good++) goodsCard(good);
+        for(int row=0;row<2;row++) {
+            LinearLayout shelf=row();content.addView(shelf);
+            for(int col=0;col<3;col++) {
+                final int good=row*3+col;action(shelf,Engine.GOODS[good],()->{selectedGood=good;render();},selectedGood==good);
+            }
+        }
+        goodsCard(selectedGood);
         LinearLayout tip=card(content); label(tip,"초보 선장의 무역 수첩",16,GOLD);
         label(tip,World.marketTip(game.port),14,INK);
     }
@@ -410,6 +492,8 @@ public final class MainActivity extends Activity {
         action(buttons,quantity+"개 판매",()->changed(game.sell(good,quantity)),false);
     }
     private void shipyard() {
+        scene("town-scenes-v1.png",7);
+        npc("조선소 장인","돛과 선체를 살펴보겠소. 먼바다에 나가기 전엔 수리부터 챙기시오.");
         label(content,"FLEET & HARBOR",11,TEAL); label(content,"선박과 항구",26,INK);
         LinearLayout ship=card(content); label(ship,Engine.SHIPS[game.level-1],21,GOLD);
         label(ship,"선체 "+game.hull+" / "+game.maxHull()+"   ·   적재량 "+game.capacity()+"개",15,INK);
@@ -466,14 +550,14 @@ public final class MainActivity extends Activity {
         status=text(saved?"● 기기에 자동 저장됨 · 오프라인":"저장 실패 · 백업 필요",11,saved?TEAL:GOLD);
         status.setPadding(0,dp(5),0,dp(3)); root.addView(status);
         LinearLayout nav=row(); root.addView(nav);
-        String[] names={"항해","교역소","선박","동료","일지"};
-        for(int i=0;i<5;i++) { final int index=i; action(nav,names[i],()->{tab=index;render();},tab==i); }
+        String[] names={"마을","항해","교역","동료","일지"};int[] pages={7,0,1,3,4};
+        for(int i=0;i<5;i++) { final int index=pages[i]; action(nav,names[i],()->{tab=index;render();},tab==index); }
     }
     private void newGame() {
         new AlertDialog.Builder(this).setTitle("새 항해를 시작할까요?")
             .setMessage("현재 진행이 초기화됩니다. 필요하면 먼저 저장 파일을 내보내세요.")
             .setPositiveButton("새로 시작",(d,w)->{
-                game=new Engine(); tab=0;mapRegion=-1; prefs.edit().remove("backup").remove("save").remove("ending").commit();
+                game=new Engine(); tab=7;mapRegion=-1; prefs.edit().remove("backup").remove("save").remove("ending").commit();
                 save();render();dialog("새로운 항해",Story.introduction());
             }).setNegativeButton("취소",null).show();
     }
@@ -517,7 +601,8 @@ public final class MainActivity extends Activity {
         }
         Engine restored=Engine.decode(new String(bytes.toByteArray(),StandardCharsets.UTF_8));
         if(restored==null) { dialog("불러오기 실패","올바른 푸른 수평선 저장 파일이 아닙니다. 현재 진행은 유지됩니다.");return; }
-        game=restored;tab=0;mapRegion=-1;save();render();
+          game=restored;tab=7;mapRegion=-1;save();render();
+          if(game.town.moving()) { showSailing();return; }
         String summary=game.day+"일째 항해를 복원했습니다.";
         if(game.message.startsWith("세계 확장 버전")) summary+="\n\n"+game.message;
         dialog("불러오기 완료",summary);

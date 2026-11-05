@@ -2,10 +2,11 @@ package com.bluehorizon;
 
 public final class SeaBattle {
     public static boolean choose(Engine e,int choice) {
+        if(e.town.moving()) return Adventure.fail(e,"입항한 뒤 사건을 처리하세요.");
         if(choice==2) return retreat(e);
         AdventureState a=e.adventure;a.battleTurn++;
         int attack=choice==0?10+e.level*4+a.draw(5):6+e.level*3+a.draw(4);
-        attack+=Refits.attack(e,choice);
+        attack=Math.max(1,attack+Refits.attack(e,choice)+TownRpg.attackBonus(e));
         a.battleHP=Math.max(0,a.battleHP-attack);
         if(a.battleHP==0) return victory(e);
         int damage=4+World.region(e.port)+a.draw(4);if(choice==1) damage=Math.max(1,damage-4);

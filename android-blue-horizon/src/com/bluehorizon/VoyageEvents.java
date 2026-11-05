@@ -14,7 +14,7 @@ public final class VoyageEvents {
             default:return island(e,choice);
         }
     }
-    private static boolean validChoice(Engine e,int choice) { return choice>=0 && choice<=2 && e.adventure.pending>=0; }
+    private static boolean validChoice(Engine e,int choice) { return choice>=0 && choice<=2 && e.adventure.pending>=0 && !e.town.moving(); }
     private static boolean storm(Engine e,int choice) {
         if(choice==0) { Adventure.damage(e,4);e.day++;return Adventure.finish(e,"돛을 줄여 폭풍을 견뎠다. 선체 −4, 하루 경과."); }
         if(choice==1) {

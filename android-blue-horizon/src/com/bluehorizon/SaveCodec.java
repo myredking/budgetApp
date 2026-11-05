@@ -9,7 +9,7 @@ import java.util.Base64;
 import java.util.zip.CRC32;
 
 public final class SaveCodec {
-    public static final int VERSION=6;
+    public static final int VERSION=7;
     public static final String PREFIX="BLUE"+VERSION+":";
     public static String encode(Engine e) {
         try {
@@ -27,6 +27,7 @@ public final class SaveCodec {
             e.crew.write(out);
             e.refits.write(out);
             e.rivals.write(out);
+            e.town.write(out);
             out.flush();
             byte[] data = bytes.toByteArray(); CRC32 crc = new CRC32(); crc.update(data);
             return PREFIX + crc.getValue() + ":" + Base64.getEncoder().encodeToString(data);
@@ -59,6 +60,7 @@ public final class SaveCodec {
         if(header.equals("BLUE4")) return 4;
         if(header.equals("BLUE5")) return 5;
         if(header.equals("BLUE6")) return 6;
+        if(header.equals("BLUE7")) return 7;
         return 0;
     }
     private static Engine readState(DataInputStream in,int version) throws IOException {
@@ -83,13 +85,14 @@ public final class SaveCodec {
         if(version>=4) e.crew=CrewState.read(in);
         if(version>=5) e.refits=RefitState.read(in);
         if(version>=6) e.rivals=RivalState.read(in);else Rivals.initialise(e);
+        if(version>=7) e.town=TownState.read(in);
     }
     private static boolean valid(Engine e) {
         if (!World.validPort(e.port) || !range(e.level,1,3) || !range(e.chapter,0,Story.REVEALS.length)) return false;
         if (!range(e.gold,0,100000000) || !range(e.day,1,10000000)) return false;
         return validProgress(e) && validCargo(e) && validInfluence(e) && validExtras(e);
     }
-    private static boolean validExtras(Engine e) { return e.adventure.valid() && e.crew.valid(e.chapter) && e.refits.valid(e.level) && e.rivals.valid(e); }
+    private static boolean validExtras(Engine e) { return e.adventure.valid() && e.crew.valid(e.chapter) && e.refits.valid(e.level) && e.rivals.valid(e) && e.town.valid(e); }
     private static boolean validProgress(Engine e) {
         if (!range(e.fame,0,100000000) || !range(e.profit,0,100000000)) return false;
         if (!range(e.hull,1,e.maxHull()) || e.visited<=0 || (e.visited>>>World.COUNT)!=0) return false;

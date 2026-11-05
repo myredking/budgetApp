@@ -16,7 +16,7 @@ public final class CrewAbilities {
         return Crew.available(person,e.chapter) && (e.crew.first==person || e.crew.second==person);
     }
     public static boolean assign(Engine e,int slot,int person) {
-        if(e.adventure.pending>=0) return Adventure.fail(e,"사건을 마친 뒤 담당을 변경하세요.");
+        if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 마친 뒤 담당을 변경하세요.");
         if(!validSelection(slot,person)) return Adventure.fail(e,"담당과 동료를 확인하세요.");
         if(person>=1 && !Crew.available(person,e.chapter)) return Adventure.fail(e,"아직 합류하지 않은 동료입니다.");
         int other=slot==0?e.crew.second:e.crew.first;
@@ -44,7 +44,7 @@ public final class CrewAbilities {
     }
     public static boolean storyClaimed(Engine e,int person) { return (e.crew.stories & (1<<person))!=0; }
     public static boolean claimStory(Engine e,int person) {
-        if(e.adventure.pending>=0) return Adventure.fail(e,"항해 사건을 먼저 처리하세요.");
+        if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 먼저 마치세요.");
         if(person<0 || person>=6) return Adventure.fail(e,"동료를 확인하세요.");
         if(!storyReady(e,person) || storyClaimed(e,person)) return Adventure.fail(e,"조건을 달성하지 않았거나 이미 연 기록입니다.");
         e.crew.stories|=1<<person;e.gold+=250+person*100;e.fame+=2;
