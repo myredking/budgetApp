@@ -6,3 +6,5 @@ UserSettings/
 Builds/
 Assets/Showcase/Art/*
 !Assets/Showcase/Art/README.md
+
+/SourceArt/

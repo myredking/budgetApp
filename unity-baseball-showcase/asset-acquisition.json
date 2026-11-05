@@ -27,7 +27,7 @@
       "bytes": 3598
     }
   ],
-  "status": "clothed_rigged_generic_athlete_blender_preview_only",
+  "status": "two_player_motion_studies_imported_and_playing_in_unity_not_approved_likeness",
   "needs": [
     "finished baseball uniform and equipment",
     "baseball animations",
@@ -60,7 +60,7 @@
     }
   ],
   "local_character": {
-    "path": "Assets/Showcase/Art/Source/GenericAthlete.blend",
+    "path": "SourceArt/Source-GenericAthlete.blend",
     "sha256": "8b5d536aef9366371a0a50fe4ffe183a68697213133aa3fea583b57608cb69ca",
     "bones": 163,
     "description": "Generic Asian male base, eyes, adapted casual clothing, sports shoes, original helmet shell. Not a KBO player likeness or finished baseball uniform.",
@@ -70,5 +70,31 @@
     "fbx_path": "Assets/Showcase/Art/Source/GenericAthlete.fbx",
     "fbx_sha256": "fa577e7a318e962838bfad5c2eea19f535106abc8f127cb5ec65783acab470fc",
     "preview": "Reports/generic-athlete-blender-preview.png"
-  }
+  },
+  "player_studies": [
+    {
+      "id": "kim_doyoung",
+      "fbx_path": "Assets/Showcase/Art/Players/kim_doyoung.fbx",
+      "sha256": "b5e4a3b24b99d22798289fe12e3e5731d0c68dd7813720f36c7b1300cfc18169",
+      "blend_path": "SourceArt/Players/kim_doyoung.blend",
+      "motion_type": "hand_authored_reference_inspired_blockout",
+      "likeness_approved": false,
+      "motion_similarity_approved": false,
+      "unity_skinning_and_motion_verified": true,
+      "runtime_playback_verified": true,
+      "blend_sha256": "303fe47106164e967822038e890a7c15623b951f68a255c7b7f2f447dc7057e1"
+    },
+    {
+      "id": "ryu_hyunjin",
+      "fbx_path": "Assets/Showcase/Art/Players/ryu_hyunjin.fbx",
+      "sha256": "94f9b802fc46eec980aae09652316078ce99c976129c0152b2b257a53afea1c4",
+      "blend_path": "SourceArt/Players/ryu_hyunjin.blend",
+      "motion_type": "hand_authored_reference_inspired_blockout",
+      "likeness_approved": false,
+      "motion_similarity_approved": false,
+      "unity_skinning_and_motion_verified": true,
+      "runtime_playback_verified": true,
+      "blend_sha256": "f324ddcfec1ddd326b8fd4a458369a91aabd3c9f2fa671d4e882cefe614ce918"
+    }
+  ]
 }

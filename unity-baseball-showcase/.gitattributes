@@ -1,0 +1,3 @@
+# Unity writes empty YAML values with a trailing separator space.
+*.asset whitespace=-blank-at-eol
+*.meta whitespace=-blank-at-eol

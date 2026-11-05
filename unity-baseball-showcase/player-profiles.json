@@ -1,0 +1,704 @@
+{
+  "season": 2026,
+  "checked_on": "2026-11-05",
+  "status": "hand_authored_motion_blockout_not_player_mocap_or_approved_likeness",
+  "coordinate_system": "Blender Z up, forward -Y. Anchors use the 1.6m source rig; height is calibrated on export.",
+  "players": [
+    {
+      "id": "kim_doyoung",
+      "name": "김도영",
+      "role": "batter",
+      "number": 5,
+      "club": "KIA",
+      "height_cm": 183,
+      "weight_kg": 85,
+      "bat_hand": "R",
+      "throw_hand": "R",
+      "width_scale": 1,
+      "event_time": 1.7,
+      "preview_time": 0.75,
+      "color": [
+        0.45,
+        0.012,
+        0.026,
+        1
+      ],
+      "source": "https://www.koreabaseball.com/Record/Player/HitterDetail/Basic.aspx?playerId=52605",
+      "visual_reference": "https://sports.news.nate.com/view/20230826n07283",
+      "motion_note": "Right handed stance, load, plant, contact and high follow-through. Timing and angles are artist-authored estimates, not measured Kim Do-young biomechanics.",
+      "poses": [
+        {
+          "time": 0,
+          "left_hand": [
+            -0.17,
+            -0.25,
+            1.3
+          ],
+          "right_hand": [
+            -0.2,
+            -0.27,
+            1.36
+          ],
+          "left_foot": [
+            0.24,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.24,
+            0,
+            0.065
+          ],
+          "root": [
+            0,
+            0,
+            -0.065
+          ],
+          "torso": [
+            0,
+            0,
+            -8
+          ],
+          "bat_direction": [
+            -0.3,
+            0.08,
+            0.86
+          ]
+        },
+        {
+          "time": 0.75,
+          "left_hand": [
+            -0.19,
+            -0.23,
+            1.33
+          ],
+          "right_hand": [
+            -0.22,
+            -0.25,
+            1.39
+          ],
+          "left_foot": [
+            0.2,
+            0.015,
+            0.12
+          ],
+          "right_foot": [
+            -0.24,
+            0,
+            0.065
+          ],
+          "root": [
+            0,
+            0,
+            -0.05
+          ],
+          "torso": [
+            0,
+            0,
+            -16
+          ],
+          "bat_direction": [
+            -0.35,
+            0.1,
+            0.86
+          ]
+        },
+        {
+          "time": 1.3,
+          "left_hand": [
+            -0.14,
+            -0.24,
+            1.34
+          ],
+          "right_hand": [
+            -0.17,
+            -0.26,
+            1.4
+          ],
+          "left_foot": [
+            0.32,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.24,
+            0,
+            0.065
+          ],
+          "root": [
+            0,
+            0,
+            -0.07
+          ],
+          "torso": [
+            0,
+            0,
+            -12
+          ],
+          "bat_direction": [
+            -0.4,
+            0.05,
+            0.86
+          ]
+        },
+        {
+          "time": 1.55,
+          "left_hand": [
+            0.05,
+            -0.34,
+            1.12
+          ],
+          "right_hand": [
+            0.02,
+            -0.35,
+            1.18
+          ],
+          "left_foot": [
+            0.32,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.24,
+            0,
+            0.065
+          ],
+          "root": [
+            0.035,
+            0,
+            -0.08
+          ],
+          "torso": [
+            0,
+            0,
+            15
+          ],
+          "bat_direction": [
+            0.22,
+            -0.65,
+            0.48
+          ]
+        },
+        {
+          "time": 1.7,
+          "left_hand": [
+            0.23,
+            -0.35,
+            1.02
+          ],
+          "right_hand": [
+            0.27,
+            -0.35,
+            1.02
+          ],
+          "left_foot": [
+            0.32,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.24,
+            0,
+            0.09
+          ],
+          "root": [
+            0.055,
+            0,
+            -0.08
+          ],
+          "torso": [
+            0,
+            0,
+            40
+          ],
+          "bat_direction": [
+            0.94,
+            -0.3,
+            0.05
+          ]
+        },
+        {
+          "time": 1.9,
+          "left_hand": [
+            0.27,
+            -0.18,
+            1.35
+          ],
+          "right_hand": [
+            0.3,
+            -0.17,
+            1.41
+          ],
+          "left_foot": [
+            0.32,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.24,
+            0,
+            0.11
+          ],
+          "root": [
+            0.06,
+            0,
+            -0.05
+          ],
+          "torso": [
+            0,
+            0,
+            72
+          ],
+          "bat_direction": [
+            0.05,
+            0.9,
+            0.36
+          ]
+        },
+        {
+          "time": 2.4,
+          "left_hand": [
+            0.05,
+            -0.02,
+            1.4
+          ],
+          "right_hand": [
+            0.08,
+            0,
+            1.46
+          ],
+          "left_foot": [
+            0.32,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.24,
+            0,
+            0.1
+          ],
+          "root": [
+            0.06,
+            0,
+            -0.04
+          ],
+          "torso": [
+            0,
+            0,
+            80
+          ],
+          "bat_direction": [
+            -0.65,
+            0.5,
+            0.5
+          ]
+        },
+        {
+          "time": 3.2,
+          "left_hand": [
+            -0.17,
+            -0.25,
+            1.3
+          ],
+          "right_hand": [
+            -0.2,
+            -0.27,
+            1.36
+          ],
+          "left_foot": [
+            0.24,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.24,
+            0,
+            0.065
+          ],
+          "root": [
+            0,
+            0,
+            -0.065
+          ],
+          "torso": [
+            0,
+            0,
+            -8
+          ],
+          "bat_direction": [
+            -0.3,
+            0.08,
+            0.86
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ryu_hyunjin",
+      "name": "류현진",
+      "role": "pitcher",
+      "number": 99,
+      "club": "Hanwha",
+      "height_cm": 190,
+      "weight_kg": 113,
+      "bat_hand": "R",
+      "throw_hand": "L",
+      "width_scale": 1.18,
+      "event_time": 2,
+      "preview_time": 1.1,
+      "color": [
+        0.82,
+        0.8,
+        0.74,
+        1
+      ],
+      "source": "https://www.koreabaseball.com/Record/Player/PitcherDetail/Basic.aspx?playerId=76715",
+      "visual_reference": "https://www.chosun.com/site/data/html_dir/2013/08/14/2013081400093.html",
+      "motion_note": "Left throwing arm, right knee lift, right foot stride and left arm follow-through. Older reference, not verified as his exact 2026 delivery. Timing and angles are artist-authored estimates.",
+      "poses": [
+        {
+          "time": 0,
+          "left_hand": [
+            0.035,
+            -0.23,
+            1.25
+          ],
+          "right_hand": [
+            -0.035,
+            -0.23,
+            1.25
+          ],
+          "left_foot": [
+            0.16,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.16,
+            0,
+            0.065
+          ],
+          "root": [
+            0,
+            0,
+            0
+          ],
+          "torso": [
+            0,
+            0,
+            10
+          ],
+          "bat_direction": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "time": 0.65,
+          "left_hand": [
+            0.035,
+            -0.18,
+            1.32
+          ],
+          "right_hand": [
+            -0.035,
+            -0.18,
+            1.32
+          ],
+          "left_foot": [
+            0.16,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.12,
+            -0.19,
+            0.64
+          ],
+          "root": [
+            0,
+            0,
+            0
+          ],
+          "torso": [
+            0,
+            0,
+            15
+          ],
+          "bat_direction": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "time": 1.1,
+          "left_hand": [
+            0.1,
+            -0.12,
+            1.3
+          ],
+          "right_hand": [
+            -0.05,
+            -0.2,
+            1.35
+          ],
+          "left_foot": [
+            0.16,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.1,
+            -0.22,
+            0.68
+          ],
+          "root": [
+            0,
+            0,
+            0
+          ],
+          "torso": [
+            0,
+            0,
+            22
+          ],
+          "bat_direction": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "time": 1.55,
+          "left_hand": [
+            0.46,
+            0.03,
+            1.15
+          ],
+          "right_hand": [
+            -0.28,
+            -0.4,
+            1.3
+          ],
+          "left_foot": [
+            0.16,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.18,
+            -0.65,
+            0.08
+          ],
+          "root": [
+            0,
+            -0.14,
+            -0.07
+          ],
+          "torso": [
+            0,
+            0,
+            5
+          ],
+          "bat_direction": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "time": 1.82,
+          "left_hand": [
+            0.31,
+            -0.16,
+            1.5
+          ],
+          "right_hand": [
+            -0.18,
+            -0.44,
+            1.15
+          ],
+          "left_foot": [
+            0.16,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.18,
+            -0.78,
+            0.065
+          ],
+          "root": [
+            0,
+            -0.24,
+            -0.12
+          ],
+          "torso": [
+            -8,
+            0,
+            -18
+          ],
+          "bat_direction": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "time": 2,
+          "left_hand": [
+            0.15,
+            -0.65,
+            1.4
+          ],
+          "right_hand": [
+            -0.16,
+            -0.43,
+            1.1
+          ],
+          "left_foot": [
+            0.16,
+            0,
+            0.09
+          ],
+          "right_foot": [
+            -0.18,
+            -0.78,
+            0.065
+          ],
+          "root": [
+            0,
+            -0.3,
+            -0.16
+          ],
+          "torso": [
+            -15,
+            0,
+            -32
+          ],
+          "bat_direction": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "time": 2.25,
+          "left_hand": [
+            -0.13,
+            -0.73,
+            0.94
+          ],
+          "right_hand": [
+            -0.2,
+            -0.4,
+            1
+          ],
+          "left_foot": [
+            0.12,
+            0.18,
+            0.4
+          ],
+          "right_foot": [
+            -0.18,
+            -0.78,
+            0.065
+          ],
+          "root": [
+            0,
+            -0.4,
+            -0.25
+          ],
+          "torso": [
+            -22,
+            0,
+            -40
+          ],
+          "bat_direction": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "time": 2.65,
+          "left_hand": [
+            -0.2,
+            -0.6,
+            0.85
+          ],
+          "right_hand": [
+            -0.22,
+            -0.45,
+            0.98
+          ],
+          "left_foot": [
+            0.12,
+            0.12,
+            0.3
+          ],
+          "right_foot": [
+            -0.18,
+            -0.78,
+            0.065
+          ],
+          "root": [
+            0,
+            -0.4,
+            -0.22
+          ],
+          "torso": [
+            -18,
+            0,
+            -35
+          ],
+          "bat_direction": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "time": 3.2,
+          "left_hand": [
+            0.035,
+            -0.23,
+            1.25
+          ],
+          "right_hand": [
+            -0.035,
+            -0.23,
+            1.25
+          ],
+          "left_foot": [
+            0.16,
+            0,
+            0.065
+          ],
+          "right_foot": [
+            -0.16,
+            0,
+            0.065
+          ],
+          "root": [
+            0,
+            0,
+            0
+          ],
+          "torso": [
+            0,
+            0,
+            10
+          ],
+          "bat_direction": [
+            0,
+            0,
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}
