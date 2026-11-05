@@ -18,10 +18,12 @@ public final class UiSmoke extends Instrumentation {
             final Throwable[] failure={null};
             runOnMainSync(()->{try { checkImport(activity); } catch(Throwable error) { failure[0]=error; }});
             if(failure[0]!=null) throw new AssertionError(failure[0]);
+            TownUiChecks.run(activity,this);
+            screenshot(activity,"v0.8-town.png");
             TradeUiChecks.run(activity,this);
             purchaseScreenshot(activity);
             checkAnimation(activity);
-            result.putString("result","PASS: in-transit import, automatic arrival, budget/quantity/max/sale UI; original progress restored");
+            result.putString("result","PASS: in-transit import, automatic arrival, town walk/cancel, budget/quantity/max/sale UI; original progress restored");
         } catch(Throwable error) { status=Activity.RESULT_CANCELED;result.putString("error",error.toString()); }
         finish(status,result);
     }
@@ -33,7 +35,7 @@ public final class UiSmoke extends Instrumentation {
         Engine journey=new Engine();TravelFlow.begin(journey,1,1);int gold=journey.gold,day=journey.day;
         try {
             runOnMainSync(()->{try { field.set(activity,journey);invoke(activity,"showSailing"); } catch(Exception error) { throw new RuntimeException(error); }});
-            Thread.sleep(1400);screenshot(activity,"v0.6-sailing.png");
+            Thread.sleep(1400);screenshot(activity,"v0.8-sailing.png");
             awaitArrival(journey);
             if(journey.town.moving() || journey.gold!=gold || journey.day!=day) throw new AssertionError("automatic arrival failed");
         } finally {
@@ -53,7 +55,26 @@ public final class UiSmoke extends Instrumentation {
         AlertDialog[] sample={null};Throwable[] failure={null};
         runOnMainSync(()->{try { sample[0]=TradeUiChecks.sample(activity); } catch(Throwable error) { failure[0]=error; }});
         if(failure[0]!=null) throw new AssertionError(failure[0]);
-        try { Thread.sleep(1000);screenshot(activity,"v0.7-order.png"); }
+        try {
+            Thread.sleep(1000);screenshot(activity,"v0.7-order.png");
+            runOnMainSync(()->{
+                android.view.View decor=sample[0].getWindow().getDecorView();
+                android.view.View input=decor.findViewWithTag("trade-input");input.requestFocus();
+                android.view.inputmethod.InputMethodManager keyboard=(android.view.inputmethod.InputMethodManager)activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                keyboard.showSoftInput(input,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+            });
+            Thread.sleep(700);
+            runOnMainSync(()->{
+                android.widget.ScrollView scroll=sample[0].getWindow().getDecorView().findViewWithTag("trade-scroll");
+                scroll.fullScroll(android.view.View.FOCUS_DOWN);
+            });waitForIdleSync();Thread.sleep(500);
+            screenshot(activity,"v0.8-order-keyboard.png");
+            runOnMainSync(()->{
+                android.view.View button=sample[0].getWindow().getDecorView().findViewWithTag("trade-confirm");
+                android.graphics.Rect bounds=new android.graphics.Rect();
+                if(!button.getGlobalVisibleRect(bounds) || bounds.height()<button.getHeight()*.9) throw new AssertionError("trade confirm clipped with keyboard/large font");
+            });
+        }
         finally { runOnMainSync(()->sample[0].dismiss()); }
     }
     private void screenshot(MainActivity activity,String name) throws IOException {

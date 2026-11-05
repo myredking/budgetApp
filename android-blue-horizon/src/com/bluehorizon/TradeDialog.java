@@ -19,6 +19,7 @@ public final class TradeDialog {
     private final Consumer<Boolean> complete;
     private final AlertDialog dialog;
     private final LinearLayout body;
+    private final LinearLayout footer;
     private EditText input;
     private TextView receipt,hint;
     private Button confirm;
@@ -30,13 +31,16 @@ public final class TradeDialog {
     public TradeDialog(Activity owner,Engine state,int item,boolean sale,int quantity,Consumer<Boolean> callback) {
         activity=owner;game=state;good=item;selling=sale;initial=quantity;complete=callback;
         body=column();body.setPadding(dp(18),dp(12),dp(18),dp(12));body.setBackgroundColor(MainActivity.NAVY);
-        ScrollView scroll=new ScrollView(activity);scroll.setFillViewport(true);scroll.addView(body);
-        dialog=new AlertDialog.Builder(activity).setView(scroll).setNegativeButton("닫기",null).create();
+        ScrollView scroll=new ScrollView(activity);scroll.setTag("trade-scroll");scroll.setFillViewport(true);scroll.addView(body);
+        LinearLayout frame=column();frame.setBackgroundColor(MainActivity.NAVY);
+        frame.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        footer=column();footer.setPadding(dp(18),dp(4),dp(18),dp(8));frame.addView(footer,new LinearLayout.LayoutParams(-1,-2));
+        dialog=new AlertDialog.Builder(activity).setView(frame).setNegativeButton("닫기",null).create();
         render();
     }
     public void show() {
         dialog.show();dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-        dialog.getWindow().setLayout(-1,-2);
+        dialog.getWindow().setLayout(-1,-1);
     }
     private void render() {
         body.removeAllViews();
@@ -47,6 +51,7 @@ public final class TradeDialog {
         modeChoices();
         text(body,mode==1?"사용할 예산 (G)":"거래 수량 (개)",14,MainActivity.GOLD);
         input=new EditText(activity);input.setSingleLine();input.setInputType(2);input.setTextColor(MainActivity.INK);
+        input.setTag("trade-input");
         input.setTextSize(22);input.setSelectAllOnFocus(true);input.setText(String.valueOf(mode==1?500:initial));
         input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(13)});
         input.setEnabled(mode!=2);body.addView(input,new LinearLayout.LayoutParams(-1,dp(54)));
@@ -56,7 +61,7 @@ public final class TradeDialog {
         receipt=text(body,"",17,0xff382d21);receipt.setPadding(dp(16),dp(14),dp(16),dp(14));
         receipt.setBackground(shape(0xffefe0bb));
         hint=text(body,"",13,MainActivity.TEAL);
-        confirm=button("거래 확정",true);body.addView(confirm,params());confirm.setOnClickListener(v->submit());
+        footer.removeAllViews();confirm=button("거래 확정",true);confirm.setTag("trade-confirm");footer.addView(confirm,params());confirm.setOnClickListener(v->submit());
         input.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s,int start,int count,int after) { }
             public void onTextChanged(CharSequence s,int start,int before,int count) { refresh(); }

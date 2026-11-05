@@ -17,10 +17,11 @@ public final class TownRpg {
         return (int)Math.min(100000000,value);
     }
     public static int rank(Engine e) { return Math.min(20,1+experience(e)/80); }
+    public static int rankBonus(Engine e) { return Math.min(3,rank(e)/5); }
     public static int supplyCost(Engine e,int cost) { return e.town.morale<25?(cost*105+99)/100:cost; }
     public static int attackBonus(Engine e) {
-        if(e.town.morale>=85) return 2;
-        return e.town.morale<25?-1:0;
+        if(e.town.morale>=85) return 2+rankBonus(e);
+        return (e.town.morale<25?-1:0)+rankBonus(e);
     }
     public static boolean rest(Engine e) {
         if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 마친 뒤 쉬세요.");

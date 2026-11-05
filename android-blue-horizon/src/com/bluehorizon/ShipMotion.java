@@ -6,6 +6,16 @@ public final class ShipMotion {
     public static float spriteSize(int width,int height) {
         return Math.max(1,Math.min(width*.78f,(height-150)/2f));
     }
+    public static float fitSize(int width,int height,float heading) {
+        double angle=Math.toRadians(heading),c=Math.abs(Math.cos(angle)),s=Math.abs(Math.sin(angle));
+        return (float)Math.max(1,Math.min((width-48)/(c+2*s),(height-190)/(s+2*c)));
+    }
+    public float heading(double progress) {
+        float[] a=position(Math.max(0,progress-.003)),b=position(Math.min(1,progress+.003));
+        double dx=b[0]-a[0];if(dx>180) dx-=360;if(dx< -180) dx+=360;
+        dx*=Math.cos(Math.toRadians((a[1]+b[1])/2));
+        return (float)Math.toDegrees(Math.atan2(dx,b[1]-a[1]));
+    }
     public final List<float[]> points=new ArrayList<float[]>();
     private final List<Double> ends=new ArrayList<Double>();
     private double distance;

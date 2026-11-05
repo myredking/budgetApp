@@ -10,11 +10,14 @@ public final class SailingView extends View {
     private final int tier;
     private final Runnable done;
     private final ShipMotion motion;
+    private final RouteInset inset;
+    private float bearing;
     private long previous,elapsed;
     private boolean paused,finished;
     public SailingView(Context context,int level,int from,int to,Runnable callback) {
         super(context);tier=level-1;done=callback;
         motion=new ShipMotion(from,to);
+        bearing=motion.heading(0);inset=new RouteInset(context,from,to,motion);
         ships=SceneView.load(context,"sailing-ships-v1.png");previous=SystemClock.uptimeMillis();
         setContentDescription("파도를 가르며 항해하는 배");
     }
@@ -25,22 +28,15 @@ public final class SailingView extends View {
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);if(finished) return;
         long now=SystemClock.uptimeMillis();if(!paused) elapsed+=Math.min(100,now-previous);previous=now;
-        canvas.drawColor(0xff16647b);waves(canvas);ship(canvas);route(canvas);
+        updateBearing();canvas.drawColor(0xff16647b);waves(canvas);ship(canvas);
+        inset.draw(canvas,getWidth(),motion.position(Math.min(1,elapsed/5500.0)));
         paint.setColor(0xffe4bf7b);canvas.drawRect(24,getHeight()-30,24+(getWidth()-48)*Math.min(1f,elapsed/5500f),getHeight()-22,paint);
         if(elapsed>=5500) { finished=true;post(done);return; }
         if(!paused) postInvalidateOnAnimation();
     }
-    private void route(Canvas canvas) {
-        float scale=getWidth()/380f;
-        paint.setColor(0xcc101f30);canvas.drawRect(8,8,getWidth()-8,110,paint);
-        paint.setColor(0xff65c9b5);paint.setStrokeWidth(2);
-        for(int i=1;i<motion.points.size();i++) {
-            float[] a=motion.points.get(i-1),b=motion.points.get(i);
-            if(Math.abs(a[0]-b[0])>180) continue;
-            canvas.drawLine((a[0]+190)*scale,60-a[1]*.5f,(b[0]+190)*scale,60-b[1]*.5f,paint);
-        }
-        float[] p=motion.position(Math.min(1,elapsed/5500.0));paint.setColor(0xffffdda0);
-        canvas.drawCircle((p[0]+190)*scale,60-p[1]*.5f,6,paint);
+    private void updateBearing() {
+        float target=motion.heading(Math.min(1,elapsed/5500.0)),difference=(target-bearing+540)%360-180;
+        bearing+=difference*.06f;
     }
     private void waves(Canvas canvas) {
         paint.setStrokeWidth(3);paint.setColor(0x558be0e5);
@@ -51,20 +47,24 @@ public final class SailingView extends View {
                 canvas.drawLine(x,y,x+38,y+5,paint);
             }
         }
-        paint.setColor(0x99d4fcf5);float x=getWidth()/2f,y=getHeight()*.65f;
+    }
+    private void wake(Canvas canvas,float size) {
+        paint.setColor(0x99d4fcf5);paint.setStrokeWidth(2);
         for(int i=0;i<7;i++) {
-            float spread=18+i*10+(elapsed%500)/35f;
-            canvas.drawLine(x-spread,y+i*17,x-spread-20,y+i*17+22,paint);
-            canvas.drawLine(x+spread,y+i*17,x+spread+20,y+i*17+22,paint);
+            float pulse=(elapsed%650)/650f,spread=size*(.08f+i*.025f+pulse*.03f),y=size*.65f+i*10+pulse*10;
+            paint.setAlpha(150-i*18);
+            canvas.drawLine(-spread,y,-spread-12,y+12,paint);canvas.drawLine(spread,y,spread+12,y+12,paint);
         }
     }
     private void ship(Canvas canvas) {
         if(ships==null) return;
         paint.setAlpha(255);
-        float size=ShipMotion.spriteSize(getWidth(),getHeight()),x=getWidth()/2f,y=(getHeight()+85)/2f+(float)Math.sin(elapsed/300f)*5;
-        canvas.save();canvas.rotate((float)Math.sin(elapsed/650f)*3,x,y);
+        float angle=bearing+(float)Math.sin(elapsed/650f)*2;
+        float size=ShipMotion.fitSize(getWidth(),getHeight(),angle),x=getWidth()/2f+(float)Math.sin(elapsed/1000f)*getWidth()*.015f;
+        float y=(getHeight()+110)/2f+(float)Math.sin(elapsed/300f)*3;
+        canvas.save();canvas.translate(x,y);canvas.rotate(angle);wake(canvas,size);paint.setAlpha(255);
         int width=ships.getWidth()/3;
         canvas.drawBitmap(ships,new Rect(tier*width,0,(tier+1)*width,ships.getHeight()),
-            new RectF(x-size/2,y-size,x+size/2,y+size),paint);canvas.restore();
+            new RectF(-size/2,-size,size/2,size),paint);canvas.restore();
     }
 }

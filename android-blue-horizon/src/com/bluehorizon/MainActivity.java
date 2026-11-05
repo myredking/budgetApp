@@ -30,6 +30,7 @@ public final class MainActivity extends Activity {
     private AlertDialog eventDialog;
     private int tab=7, quantity=5, mapRegion=-1, selectedGood=0;
     private SailingView sailing;
+    private TownView townView;
     private SharedPreferences prefs;
     private LinearLayout root, content;
     private TextView status;
@@ -57,7 +58,7 @@ public final class MainActivity extends Activity {
         if(game.adventure.pending>=0) root.post(()->showEvent());
     }
     @Override protected void onResume() { super.onResume();if(audio!=null) audio.resume();if(sailing!=null) sailing.resume(); }
-    @Override protected void onPause() { if(sailing!=null) sailing.pause();if(audio!=null) audio.pause();super.onPause();if(game!=null) save(); }
+    @Override protected void onPause() { if(townView!=null) townView.cancelWalk();if(sailing!=null) sailing.pause();if(audio!=null) audio.pause();super.onPause();if(game!=null) save(); }
     @Override protected void onDestroy() {
         if(sailing!=null) sailing.stop();if(eventDialog!=null) eventDialog.dismiss();if(audio!=null) audio.release();super.onDestroy();
     }
@@ -115,18 +116,44 @@ public final class MainActivity extends Activity {
     }
     private void town() {
         label(content,World.PORTS[game.port]+" · 항구 마을",26,GOLD);
-        label(content,TownRpg.FLAVORS[TownRpg.style(game.port)],13,MUTED);
-        TownView view=new TownView(this,TownRpg.style(game.port),location->enterBuilding(location));
-        content.addView(view,new LinearLayout.LayoutParams(-1,dp(330)));
-        label(content,"건물 이름을 누르면 들어갑니다",12,MUTED);
-        for(int i=0;i<4;i++) {
-            final int location=i;fullAction(content,TownLayout.NAMES[i],()->enterBuilding(location),false);
+        planCard();
+        townView=new TownView(this,TownRpg.style(game.port),location->enterBuilding(location));
+        content.addView(townView,new LinearLayout.LayoutParams(-1,dp(250)));
+        label(content,TownRpg.FLAVORS[TownRpg.style(game.port)],12,MUTED);
+        for(int line=0;line<2;line++) {
+            LinearLayout buildings=row();content.addView(buildings);
+            for(int col=0;col<2;col++) {
+                final int location=line*2+col;action(buildings,TownLayout.NAMES[location],()->townView.walkTo(location),false);
+            }
         }
-        LinearLayout quest=card(content);label(quest,"진행 중인 이야기 · "+Story.TITLES[game.chapter],17,GOLD);
-        label(quest,Story.GOALS[game.chapter],14,INK);
-        label(quest,"선장 등급 "+TownRpg.rank(game)+" · 활동 경험 "+TownRpg.experience(game)+" · 일행 사기 "+game.town.morale+" / 100",13,TEAL);
-        label(quest,"등급은 활동 기록입니다. 사기 85 이상: 포격 +2 / 25 미만: 포격 −1·보급비 +5%",12,MUTED);
-        fullAction(quest,"출항 지도로",()->{tab=0;render();},true);
+        LinearLayout progress=card(content);label(progress,"선장 등급 "+TownRpg.rank(game)+" · 사기 "+game.town.morale+" / 100",16,TEAL);
+        growthBar(progress);
+        label(progress,"방문 "+game.visitedCount()+" / 56 · 이야기 "+game.chapter+" / 8 · 의뢰 "+game.adventure.deliveries+"회",13,INK);
+        fullAction(progress,"항구 의뢰 · 세 가지 제안 살펴보기",()->{tab=5;render();},true);
+        fullAction(progress,"출항 지도",()->{tab=0;render();},false);
+    }
+    private void growthBar(LinearLayout parent) {
+        int rank=TownRpg.rank(game),xp=TownRpg.experience(game);
+        android.widget.ProgressBar bar=new android.widget.ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+        bar.setMax(80);bar.setProgress(rank==20?80:xp%80);parent.addView(bar,new LinearLayout.LayoutParams(-1,dp(10)));
+        label(parent,rank==20?"최고 등급 · 숙련 포격 +3":"다음 등급까지 "+(80-xp%80)+" 경험 · 숙련 포격 +"+TownRpg.rankBonus(game),12,GOLD);
+        label(parent,"항구 방문·의뢰·사건 해결로 성장 · 등급 5/10/15에서 포격 +1씩",12,MUTED);
+    }
+    private void planCard() {
+        CaptainPlan plan=CaptainPlan.next(game);LinearLayout box=card(content);
+        label(box,"선장의 다음 한 걸음",11,TEAL);label(box,plan.body,12,MUTED);
+        fullAction(box,plan.title,()->actPlan(plan),true);
+    }
+    private void actPlan(CaptainPlan plan) {
+        if(plan.continueStory) { game.advanceStory();changed(true,"chapter");return; }
+        if(plan.event) { if(game.town.moving()) showSailing();else showEvent();return; }
+        if(plan.achievement>=0) { changed(Achievements.claim(game,plan.achievement),"discovery");return; }
+        if(plan.deliver) { changed(Contracts.deliver(game),"discovery");return; }
+        if(plan.good>=0) {
+            selectedGood=plan.good;quantity=plan.amount;tab=1;render();openTrade(plan.good,plan.selling);return;
+        }
+        if(plan.target>=0) { voyage(plan.target);return; }
+        tab=plan.page;render();
     }
     private void enterBuilding(int location) {
         audio.play("click");
@@ -378,11 +405,10 @@ public final class MainActivity extends Activity {
     private void contractCard() {
         LinearLayout box=card(content);label(box,"항구 납품 의뢰",18,GOLD);AdventureState a=game.adventure;
         if(a.target<0) {
-            Contract c=Contracts.offer(game);
-            label(box,World.PORTS[game.port]+" → "+World.PORTS[c.target],17,INK);
-            label(box,Engine.GOODS[c.good]+" "+c.amount+"개 · "+c.deadline+"일째까지\n보상 "+c.reward+" G + 명성 3",14,TEAL);
-            label(box,"화물은 직접 준비해야 합니다. 납품 시 소모됩니다. 의뢰는 한 번에 하나만 받을 수 있습니다.",12,MUTED);
-            fullAction(box,"의뢰 수락",()->changed(Contracts.accept(game)),true);return;
+            label(box,"이동 거리·기한·화물 비용을 비교해 하나를 선택하세요. 완료하면 새 제안으로 바뀝니다.",13,MUTED);
+            Contract[] offers=Contracts.offers(game);
+            for(int choice=0;choice<offers.length;choice++) contractOffer(box,offers[choice],choice);
+            return;
         }
         label(box,World.PORTS[a.origin]+" → "+World.PORTS[a.target],17,INK);
         label(box,Engine.GOODS[a.good]+" "+a.amount+"개 납품 · 보유 "+game.inventory[a.good]+"개\n보상 "+a.reward+" G + 명성 3",14,TEAL);
@@ -391,6 +417,15 @@ public final class MainActivity extends Activity {
         fullAction(box,"의뢰 목적지 항로 보기",()->voyage(a.target),false);
         fullAction(box,"의뢰 취소 · 위약금 없음",()->new AlertDialog.Builder(this).setTitle("의뢰를 취소할까요?")
             .setMessage("준비한 화물은 그대로 남습니다.").setPositiveButton("취소하기",(d,w)->changed(Contracts.cancel(game))).setNegativeButton("유지",null).show(),false);
+    }
+    private void contractOffer(LinearLayout parent,Contract offer,int choice) {
+        LinearLayout box=card(parent);
+        label(box,Contracts.TYPES[choice]+" · "+World.PORTS[offer.target],18,GOLD);
+        int cargo=game.buyPrice(offer.good)*offer.amount,supplies=game.travelCost(offer.target,1);
+        label(box,Engine.GOODS[offer.good]+" "+offer.amount+"개 · 약 "+game.travelDays(offer.target)+"일 항해",14,INK);
+        label(box,"기한 "+offer.deadline+"일째 ("+(offer.deadline-game.day)+"일 남음) · 보상 "+offer.reward+" G + 명성 3",13,TEAL);
+        label(box,"현지 매입 "+cargo+" G + 안전항로 보급 "+supplies+" G\n예상 잔여 "+(offer.reward-cargo-supplies)+" G · 수리·귀환·사건 비용 별도",12,MUTED);
+        fullAction(box,"이 의뢰 수락",()->changed(Contracts.accept(game,choice)),true);
     }
     private void collectionCard() {
         LinearLayout box=card(content);label(box,"일곱 해역의 기념품",18,GOLD);
@@ -465,22 +500,21 @@ public final class MainActivity extends Activity {
             .setNegativeButton("취소",null).show();
     }
     private void market() {
-        scene("facility-scenes-v1.png",TownRpg.style(game.port));
-        npc("교역소 상인","좋은 물건을 찾으시나요? 진열품을 골라 오늘의 가격을 확인하세요.");
-        label(content,"PORT MARKET",11,TEAL); label(content,Engine.PORTS[game.port]+" 교역소",26,INK);
-        label(content,"1개 기준 · 담당·항구 투자·상단 상태 반영",12,MUTED);
-        label(content,Rivals.NAMES[Rivals.owner(game.port)]+" · 경쟁 압력 "+game.rivals.pressure[World.region(game.port)]+" / 80\n현지 매입 수수료 "+Rivals.buyFee(game,game.port)+"% · 상단 판매 우대 +"+Rivals.saleBonus(game,game.port)+"%p",12,TEAL);
-        LinearLayout quantities=row(); content.addView(quantities);
-        for(int amount:new int[]{1,5,10}) action(quantities,amount+"개씩",()->{quantity=amount;render();},quantity==amount);
-        for(int row=0;row<2;row++) {
+        label(content,Engine.PORTS[game.port]+" 교역소",26,GOLD);
+        content.addView(new SceneView(this,"facility-scenes-v1.png",TownRpg.style(game.port)),new LinearLayout.LayoutParams(-1,dp(130)));
+        label(content,"상인 · 물건을 골라 주문서를 확인하세요.",13,MUTED);
+        label(content,"매입 수수료 "+Rivals.buyFee(game,game.port)+"% · 판매 우대 +"+Rivals.saleBonus(game,game.port)+"%p · 화물 여유 "+(game.capacity()-game.cargo())+"개",12,TEAL);
+        for(int line=0;line<2;line++) {
             LinearLayout shelf=row();content.addView(shelf);
             for(int col=0;col<3;col++) {
-                final int good=row*3+col;action(shelf,Engine.GOODS[good],()->{selectedGood=good;render();},selectedGood==good);
+                final int good=line*3+col;
+                String name=Engine.GOODS[good]+"  "+game.buyPrice(good)+" G";
+                action(shelf,name,()->{selectedGood=good;render();},selectedGood==good);
             }
         }
         goodsCard(selectedGood);
-        LinearLayout tip=card(content); label(tip,"초보 선장의 무역 수첩",16,GOLD);
-        label(tip,World.marketTip(game.port),14,INK);
+        LinearLayout tip=card(content);label(tip,"현지 상인의 조언",16,GOLD);label(tip,World.marketTip(game.port),13,INK);
+        fullAction(tip,"라이벌 상단과 현지 상권",()->{tab=6;render();},false);
     }
     private void goodsCard(int good) {
         LinearLayout box=card(content);
