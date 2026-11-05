@@ -4,6 +4,7 @@ import android.graphics.*;
 /** Small clay diorama buildings, drawn at logical battlefield coordinates. */
 public final class BuildingPainter {
     private final Paint p=new Paint(3);
+    private final FactionPainter factions=new FactionPainter();
     private void polygon(Canvas c,int color,float... points) {
         Path path=new Path();path.moveTo(points[0],points[1]);
         for(int i=2;i<points.length;i+=2) path.lineTo(points[i],points[i+1]);
@@ -29,7 +30,7 @@ public final class BuildingPainter {
             case Engine.FORTRESS: fortress(c,color);break;
             default: headquarters(c,color);break;
         }
-        flag(c,color,time);c.restore();
+        flag(c,t.owner,time);c.restore();
         c.save();c.translate(x,y);c.scale(Math.max(.8f,detail),Math.max(.8f,detail));badge(c,t,color,detail);c.restore();
     }
     private void selection(Canvas c,double time) {
@@ -84,16 +85,17 @@ public final class BuildingPainter {
             p.setColor(0xff9bcbd0);c.drawLine(x+i*8+1,y+2,x+i*8+1,y+6,p);
         }
     }
-    private void flag(Canvas c,int color,double time) {
+    private void flag(Canvas c,int owner,double time) {
         p.setColor(0xff52615d);p.setStrokeWidth(1.7f);c.drawLine(23,-13,23,-49,p);
         float wave=(float)Math.sin(time*3)*2;
-        polygon(c,color,23,-49,37,-46+wave,34,-36+wave,23,-39);
+        polygon(c,SceneStyle.team(owner),23,-49,45,-47+wave,43,-30+wave,23,-32);
+        factions.draw(c,owner,33,-40+wave/2,6);
         p.setColor(0xffffd77c);c.drawCircle(23,-49,2,p);
     }
     private void badge(Canvas c,Engine.Tower t,int color,float detail) {
         p.setColor(0x33344330);c.drawRoundRect(-21,18,23,41,10,10,p);
         p.setColor(0xff24394b);c.drawRoundRect(-23,16,21,39,9,9,p);
-        p.setColor(color);c.drawCircle(-16,27,3,p);
+        factions.draw(c,t.owner,-16,27,5);
         p.setColor(Color.WHITE);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
         p.setTextSize(17);p.setTextAlign(Paint.Align.CENTER);c.drawText(String.valueOf(t.units),3,33,p);
         p.setTextSize(detail<.8f?11:9);p.setColor(SceneStyle.INK);

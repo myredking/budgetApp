@@ -6,6 +6,7 @@ public final class WorldRenderer {
     private final Paint p=new Paint(3);
     private final Bitmap terrain;
     private final BuildingPainter buildings=new BuildingPainter();
+    private final FactionPainter factions=new FactionPainter();
     public WorldRenderer(Context context) {
         int id=context.getResources().getIdentifier("battlefield","drawable",context.getPackageName());
         BitmapFactory.Options options=new BitmapFactory.Options();options.inScaled=false;
@@ -44,7 +45,12 @@ public final class WorldRenderer {
             float y=ay+(by-ay)*v+(float)Math.cos(angle)*side;
             soldier(c,x,y,f.owner,e.elapsed+i*.13);
         }
-        number(c,ax+(bx-ax)*(float)f.progress,ay+(by-ay)*(float)f.progress-15,f.units);
+    }
+    public void fleetBadge(Canvas c,Engine e,Engine.Fleet f) {
+        Engine.Tower a=e.towers.get(f.from),b=e.towers.get(f.to);
+        float x=BattleControls.x(a)+(BattleControls.x(b)-BattleControls.x(a))*(float)f.progress;
+        float y=BattleControls.y(a)+(BattleControls.y(b)-BattleControls.y(a))*(float)f.progress;
+        number(c,x,y-15,f.units,f.owner);
     }
     private void soldier(Canvas c,float x,float y,int owner,double time) {
         float bob=(float)Math.sin(time*16)*.8f;
@@ -55,9 +61,10 @@ public final class WorldRenderer {
         p.setColor(0xffe9c79d);c.drawCircle(x,y-5+bob,2.3f,p);
         p.setColor(SceneStyle.team(owner));c.drawArc(x-3,y-9+bob,x+3,y-3+bob,180,180,true,p);
     }
-    private void number(Canvas c,float x,float y,int units) {
-        p.setColor(SceneStyle.INK);c.drawRoundRect(x-12,y-8,x+12,y+7,5,5,p);
+    private void number(Canvas c,float x,float y,int units,int owner) {
+        p.setColor(SceneStyle.INK);c.drawRoundRect(x-21,y-9,x+15,y+8,5,5,p);
+        factions.draw(c,owner,x-13,y,5);
         p.setColor(Color.WHITE);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);
-        p.setTextSize(10);c.drawText(String.valueOf(units),x,y+3,p);
+        p.setTextSize(10);c.drawText(String.valueOf(units),x+3,y+3,p);
     }
 }

@@ -13,6 +13,7 @@ public final class BattleView extends View {
     private final BattleEffects effects=new BattleEffects();
     private final EffectRenderer renderer=new EffectRenderer();
     private final TacticsPainter tactics=new TacticsPainter();
+    private final FactionPainter factions=new FactionPainter();
     private final WorldRenderer world;
     private final int[] depth;
     private float scale=1,left,top,dragX,dragY,downX,downY,lastX,lastY;
@@ -79,6 +80,7 @@ public final class BattleView extends View {
         board(c);tactics.ground(c,engine);
         for(Engine.Fleet f:engine.fleets) world.fleet(c,engine,f);
         for(int i:depth) world.tower(c,engine.towers.get(i),controls.selected==i,effects.towerScale(i),SceneStyle.buildingScale(engine),engine.elapsed);
+        for(Engine.Fleet f:engine.fleets) world.fleetBadge(c,engine,f);
         tactics.buffs(c,engine);renderer.drawBursts(c,effects);drawDrag(c);c.restore();
     }
     private void drawMapZoom(Canvas c) {
@@ -178,8 +180,8 @@ public final class BattleView extends View {
     private void factionLegend(Canvas c) {
         for(int team=1;team<=engine.enemyCount+1;team++) {
             float x=24+(team-1)*32;
-            paint.setColor(SceneStyle.team(team));c.drawCircle(x,screen.legendY()-4,3,paint);
-            text(c,team==1?"나":String.valueOf(team-1),x+9,screen.legendY(),9,WHITE);
+            factions.draw(c,team,x-6,screen.legendY()-4,5);
+            text(c,team==1?"나":String.valueOf(team-1),x+10,screen.legendY(),9,WHITE);
         }
     }
     private boolean canUpgrade() {
