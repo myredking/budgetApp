@@ -24,11 +24,11 @@ public final class MatchOverlay extends View {
         box(c,14,14,246,90,Color.argb(225,9,22,34));
         text(c,"VISITOR   "+game.away,27,39,17,Color.WHITE);
         text(c,"MY DECK   "+game.home,27,64,17,Color.rgb(255,215,128));
-        text(c,game.inning+"회 "+(game.batting?"말":"초"),190,40,17,Color.WHITE);
+        text(c,game.finished?"FINAL":game.inning+"회 "+(game.batting?"말":"초"),190,40,17,Color.WHITE);
         text(c,"B "+game.balls+"   S "+game.strikes+"   O "+game.outs,27,90,14,Color.rgb(99,224,198));
         box(c,737,14,209,57,Color.argb(215,9,22,34));
         text(c,"2026 × LEGENDS · 3D",749,37,14,Color.WHITE);
-        text(c,game.batting?"BATTING / 공격":"PITCHING / 수비",749,59,12,Color.rgb(99,224,198));
+        text(c,game.finished?"FINAL / 경기 종료":(game.batting?"BATTING / 공격":"PITCHING / 수비"),749,59,12,Color.rgb(99,224,198));
         for(int i=0;i<3;i++) box(c,278+i*18,22,12,12,game.bases[i]?Color.rgb(255,205,95):Color.argb(180,58,75,82));
     }
     void cards(Canvas c) {

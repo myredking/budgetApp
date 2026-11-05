@@ -144,7 +144,7 @@ public final class GameEngine {
         outs = 0; Arrays.fill(bases, false);
         if (batting) { inning++; batting = false; } else batting = true;
         if (inning > 3) {
-            finished = true; career.matchReward(home>away);
+            finished = true;feedback="FINAL · 경기 종료";lastSkills="";career.matchReward(home>away);
             message = home == away ? "경기 종료 · 무승부" : (home > away ? "경기 종료 · 승리!" : "경기 종료 · 패배");
         } else message = inning + "회 " + (batting ? "말 · 공격" : "초 · 수비");
     }

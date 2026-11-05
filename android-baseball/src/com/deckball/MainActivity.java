@@ -20,7 +20,7 @@ public final class MainActivity extends Activity {
     LinearLayout root, controls, tools;
     BallparkView field;
     TextView status, score;
-    boolean playing, automatic, inFlight;
+    boolean playing, automatic, inFlight, completionSaved;
     long pitchStart;
     int kind, location = 4;
     final Runnable ticker = new Runnable() {
@@ -268,23 +268,27 @@ public final class MainActivity extends Activity {
         } catch (org.json.JSONException e) { toast("커스텀 선수 데이터를 읽을 수 없습니다"); }
     }
     void match() {
-        screen("", ""); root.removeAllViews(); root.setOrientation(0); playing = true;
+        screen("", ""); root.removeAllViews(); root.setOrientation(0); playing = true;completionSaved=false;
         field = new BallparkView(this,engine);
         root.addView(field,new LinearLayout.LayoutParams(0,-1,1));
         ScrollView rail = new ScrollView(this); LinearLayout box = column(); rail.addView(box);
-        root.addView(rail,new LinearLayout.LayoutParams(dp(200),-1));
+        root.addView(rail,new LinearLayout.LayoutParams(railWidth(),-1));
         box.addView(text("DECK / BALL  ’26",18));
         score = text("",15); box.addView(score);
         status = text("",14); box.addView(status);
         controls = new LinearLayout(this); controls.setOrientation(1); box.addView(controls);
         refresh(); handler.postDelayed(ticker,30);
     }
+    void restartMatch() {
+        engine.start();automatic=false;inFlight=false;completionSaved=false;field.progress=-1;
+        refresh();handler.removeCallbacks(ticker);handler.postDelayed(ticker,30);
+    }
     void refresh() {
-        score.setText("VISITOR  " + engine.away + "   :   " + engine.home + "  MY DECK");
+        score.setText("상대 " + engine.away + " : " + engine.home + " 내 팀");
         status.setText(engine.message); controls.removeAllViews();
-        if(engine.finished) office.save();
+        if(engine.finished && !completionSaved) {office.save();completionSaved=true;}
         if (engine.finished) {
-            controls.addView(button("다시 경기", () -> { engine.start(); refresh(); }));
+            controls.addView(button("다시 경기",this::restartMatch));
         } else if (automatic) {
             controls.addView(button("감독 모드 · 자동 진행 중 / 직접 조작으로 전환", () -> { automatic = false; refresh(); }));
         } else manualControls();
@@ -301,10 +305,10 @@ public final class MainActivity extends Activity {
             }));
         } else {
             LinearLayout options = new LinearLayout(this);
-            options.addView(button("구종: " + new String[]{"직구","슬라이더","커브"}[kind], () -> {
+            options.addView(button(new String[]{"직구","슬라이더","커브"}[kind]+" ▾", () -> {
                 if (!inFlight) { kind = (kind + 1) % 3; refresh(); }
             }),new LinearLayout.LayoutParams(0,-2,1));
-            options.addView(button("코스: " + new String[]{"좌상","우상","좌하","우하","중앙"}[location], this::chooseLocation),new LinearLayout.LayoutParams(0,-2,1));
+            options.addView(button(new String[]{"좌상","우상","좌하","우하","중앙"}[location]+" ▾", this::chooseLocation),new LinearLayout.LayoutParams(0,-2,1));
             controls.addView(options);
             controls.addView(button(inFlight ? "릴리스!" : "투구 준비", this::pitchAction));
         }
@@ -327,19 +331,21 @@ public final class MainActivity extends Activity {
         if (!inFlight) { beginPitch(); return; }
         engine.pitch(kind,location,progress()); resolve();
     }
+    void autoTick() {
+        if(!automatic || SystemClock.elapsedRealtime()-pitchStart<=900) return;
+        engine.autoPlate();if(engine.lastHit>0) field.contact();pitchStart=SystemClock.elapsedRealtime();refresh();
+    }
+    void flightTick() {
+        if(!inFlight) return;
+        field.progress=(float)progress();field.refresh();
+        if(progress()<1) return;
+        if(engine.batting) engine.take();else engine.pitch(kind,location,1);
+        resolve();
+    }
     void tick() {
-        if (!playing) return;
-        if (automatic && !engine.finished && SystemClock.elapsedRealtime() - pitchStart > 900) {
-            engine.autoPlate(); if(engine.lastHit>0) field.contact(); pitchStart = SystemClock.elapsedRealtime(); refresh();
-        }
-        if (inFlight) {
-            field.progress = (float)progress(); field.refresh();
-            if (progress() >= 1) {
-                if (engine.batting) engine.take(); else engine.pitch(kind,location,1);
-                resolve();
-            }
-        }
-        field.refresh(); handler.postDelayed(ticker,30);
+        if(!playing || engine.finished) return;
+        autoTick();flightTick();field.refresh();
+        if(!engine.finished) handler.postDelayed(ticker,30);
     }
     void leaveMatch() {
         handler.removeCallbacks(ticker);

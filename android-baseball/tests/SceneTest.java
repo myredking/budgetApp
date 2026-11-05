@@ -14,7 +14,7 @@ public final class SceneTest {
         check(!java.util.Arrays.equals(stance.array(),swung.array()),"Batter skeleton changes with same ball state");
         Mesh3D set=PlayerModel.player(false,0,PlayerModel.RED),release=PlayerModel.player(false,1,PlayerModel.RED);
         check(!java.util.Arrays.equals(set.array(),release.array()),"Pitcher skeleton changes with same ball state");
-        reusableActors();
+        reusableActors();batCrossesPlate();
         float[] start=BallparkScene.ballPosition(0),end=BallparkScene.ballPosition(1);
         check(start[2]>end[2] && end[2]<1,"Ball moves from mound toward home");
         float[] camera=Camera3D.matrix(16f/9f,0);
@@ -22,6 +22,16 @@ public final class SceneTest {
         float[] plate=Camera3D.project(camera,new float[]{0,0,0});
         check(plate[3]>0,"Home plate in front of camera");
         check(Math.abs(plate[0]/plate[3])<1,"Home plate inside viewport");
+    }
+    static void batCrossesPlate() {
+        float[] hand=PlayerModel.batHand(1),tip=PlayerModel.batTip(1);
+        double yaw=.35;
+        double handX=-1.1+hand[0]*Math.cos(yaw)+hand[2]*Math.sin(yaw);
+        double tipX=-1.1+tip[0]*Math.cos(yaw)+tip[2]*Math.sin(yaw);
+        check(handX<0 && tipX>0,"Swing reaches across the home plate instead of moving away");
+        double fraction=-handX/(tipX-handX);
+        double z=.05-(hand[0]+fraction*(tip[0]-hand[0]))*Math.sin(yaw)+(hand[2]+fraction*(tip[2]-hand[2]))*Math.cos(yaw);
+        check(Math.abs(z)<.5,"Bat crosses home plate depth");
     }
     static void reusableActors() {
         Mesh3D reused=new Mesh3D();

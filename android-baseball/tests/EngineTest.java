@@ -82,6 +82,8 @@ public final class EngineTest {
         int guard = 0;
         while (!game.finished && guard++ < 1000) game.autoPlate();
         check(game.finished, "Finite three inning game");
+        check(game.feedback.startsWith("FINAL"), "Final feedback replaces live action at game end");
+        check(game.lastSkills.isEmpty(), "Clear stale skill activation at game end");
         int score = game.home + game.away;
         game.hit(4);
         game.out();

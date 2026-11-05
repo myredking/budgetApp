@@ -57,12 +57,18 @@ public final class PlayerModel {
         m.tube(elbow,hand,.065f,.042f,SKIN);
         m.ellipsoid(hand[0],hand[1],hand[2],.05f,.065f,.05f,0xe8e7df);
     }
+    public static float[] batHand(float pose) {
+        float a=Math.max(0,Math.min(1,pose));
+        return v(.26f+a*.22f,1.38f-a*.30f,-.12f+a*.10f);
+    }
+    public static float[] batTip(float pose) {
+        float a=Math.max(0,Math.min(1,pose));float[] hand=batHand(a);
+        return v(hand[0]+.30f+a*.80f,2.16f-a*1.05f,hand[2]+.25f+a*.30f);
+    }
     static void battingArms(Mesh3D m,float pose,int uniform) {
-        float a=Math.max(0,pose),x=.26f-a*.62f,z=-.12f-a*.32f;
-        float[] hand=v(x,1.38f-a*.20f,z);
+        float[] hand=batHand(pose),tip=batTip(pose);
         limb(m,v(-.20f,1.39f,0),v(-.18f,1.18f,-.21f),hand,uniform);
-        limb(m,v(.20f,1.39f,0),v(.36f,1.25f,-.02f),v(x+.04f,hand[1]+.06f,z),uniform);
-        float[] tip=v(x+.30f-a*1.0f,2.16f-a*.9f,z+.25f-a*.35f);
+        limb(m,v(.20f,1.39f,0),v(.36f,1.25f,-.02f),v(hand[0]+.04f,hand[1]+.06f,hand[2]),uniform);
         m.tube(hand,tip,.024f,.052f,0xb29164);
         m.ellipsoid(tip[0],tip[1],tip[2],.051f,.045f,.051f,0xc3a276);
     }
