@@ -27,6 +27,7 @@ public final class MainActivity extends Activity {
     static final int INK=0xffecede5, MUTED=0xff9eb7bd, TEAL=0xff65c9b5;
     private Engine game;
     private AudioController audio;
+    private AlertDialog eventDialog;
     private int tab=0, quantity=5, mapRegion=-1;
     private SharedPreferences prefs;
     private LinearLayout root, content;
@@ -51,10 +52,13 @@ public final class MainActivity extends Activity {
         if(fresh) dialog("푸른 수평선", Story.introduction());
         if(recovered) dialog("저장 복원", "최근 저장을 읽을 수 없어 이전 자동 저장을 복원했습니다.");
         if(game.message.startsWith("세계 확장 버전")) dialog("세계 항해 버전으로 이전",game.message);
+        if(game.adventure.pending>=0) root.post(()->showEvent());
     }
     @Override protected void onResume() { super.onResume();if(audio!=null) audio.resume(); }
     @Override protected void onPause() { if(audio!=null) audio.pause();super.onPause();if(game!=null) save(); }
-    @Override protected void onDestroy() { if(audio!=null) audio.release();super.onDestroy(); }
+    @Override protected void onDestroy() {
+        if(eventDialog!=null) eventDialog.dismiss();if(audio!=null) audio.release();super.onDestroy();
+    }
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out); out.putInt("tab",tab); out.putInt("quantity",quantity);
         out.putInt("region",mapRegion);
@@ -77,6 +81,7 @@ public final class MainActivity extends Activity {
         audio.play(sound);
         Toast.makeText(this,game.message,Toast.LENGTH_LONG).show();
         if(success && game.chapter>previousChapter) storyReveal(previousChapter);
+        else if(game.adventure.pending>=0) showEvent();
     }
     private void render() {
         shownChapter=game.chapter;
@@ -91,6 +96,7 @@ public final class MainActivity extends Activity {
         if(tab==2) shipyard();
         if(tab==3) crewPage();
         if(tab==4) journal();
+        if(tab==5) adventurePage();
         navigation();
         audio.scene(tab==0?"sea":"harbor");
     }
@@ -148,7 +154,8 @@ public final class MainActivity extends Activity {
         label(panel,"다음 목표: "+Story.GOALS[game.chapter],14,TEAL);
         ScrollView scroll=new ScrollView(this);scroll.addView(panel);
         new AlertDialog.Builder(this).setTitle(game.chapter==Story.REVEALS.length?"세계 해도의 완성":"새로운 항해 기록")
-            .setView(scroll).setPositiveButton("계속 항해하기",null).show();
+            .setCancelable(game.adventure.pending<0)
+            .setView(scroll).setPositiveButton("계속 항해하기",(dialog,which)->{if(game.adventure.pending>=0) showEvent();}).show();
     }
     private void audioSettings() {
         LinearLayout box=card(content);label(box,"음악과 효과음",18,GOLD);
@@ -168,6 +175,81 @@ public final class MainActivity extends Activity {
         label(box,"추천 판매처: "+World.PORTS[hint.port]+" · 예상 차익 +"+hint.net+" G",13,TEAL);
         label(box,"현재 매입가·"+quantity+"개·일반항로 편도 기준 / 수리·귀환비 별도\n매입+보급 필요 "+hint.cost+" G",11,MUTED);
     }
+    private void adventureShortcut(LinearLayout parent) {
+        fullAction(parent,"의뢰 · 탐험 · 달성 기록",()->{tab=5;render();},false);
+    }
+    private void showEvent() {
+        if(isFinishing() || isDestroyed()) return;
+        if(game.adventure.pending<0) return;
+        if(eventDialog!=null && eventDialog.isShowing()) return;
+        LinearLayout box=column();box.setPadding(dp(18),dp(12),dp(18),dp(12));box.setBackgroundColor(NAVY);
+        int person=Crew.guidePerson(game.chapter);
+        box.addView(new PortraitView(this,person),new LinearLayout.LayoutParams(dp(92),dp(92)));
+        label(box,Crew.NAMES[person]+"와 함께 결정하세요",14,GOLD);
+        label(box,EventCatalog.body(game),15,INK);
+        ScrollView scroll=new ScrollView(this);scroll.addView(box);
+        final AlertDialog dialog=new AlertDialog.Builder(this).setTitle(EventCatalog.title(game)).setView(scroll).create();
+        dialog.setCancelable(false);eventDialog=dialog;
+        dialog.setOnDismissListener(d->{if(eventDialog==dialog) eventDialog=null;});
+        for(int index=0;index<3;index++) {
+            final int choice=index;
+            fullAction(box,EventCatalog.option(game,choice),()->{dialog.dismiss();root.post(()->resolveEvent(choice));},index==0);
+        }
+        dialog.show();
+    }
+    private void resolveEvent(int choice) {
+        if(isFinishing() || isDestroyed()) return;
+        int chapter=game.chapter,souvenirs=game.adventure.souvenirs;
+        boolean battle=game.adventure.battleHP>0;
+        boolean success=VoyageEvents.choose(game,choice);
+        String sound=battle && choice<2?"cannon":"trade";
+        if(game.adventure.souvenirs!=souvenirs) sound="discovery";
+        changed(success,sound);
+        if(success && game.adventure.pending<0 && game.chapter==chapter) dialog("항해 사건 결과",game.message);
+    }
+    private void adventurePage() {
+        label(content,"ADVENTURE & COMMISSIONS",11,TEAL);label(content,"선장의 모험 수첩",25,INK);
+        fullAction(content,"항해 지도로 돌아가기",()->{tab=0;render();},false);
+        LinearLayout stats=card(content);label(stats,"지금까지의 항해",18,GOLD);
+        AdventureState a=game.adventure;
+        label(stats,"출항 "+a.voyages+"회 · 사건 해결 "+a.resolved+"회\n해상전 승리 "+a.battles+"회 · 구조 "+a.rescues+"회\n의뢰 완료 "+a.deliveries+"회 · 해류 관측 "+a.surveys+"회",14,INK);
+        label(stats,"첫 출항에는 사건이 없습니다. 이후 일반 항로는 매회, 안전 항로는 두 번에 한 번 사건이 발생합니다.",12,MUTED);
+        contractCard();collectionCard();
+        for(int index=0;index<Achievements.NAMES.length;index++) achievementCard(index);
+    }
+    private void contractCard() {
+        LinearLayout box=card(content);label(box,"항구 납품 의뢰",18,GOLD);AdventureState a=game.adventure;
+        if(a.target<0) {
+            Contract c=Contracts.offer(game);
+            label(box,World.PORTS[game.port]+" → "+World.PORTS[c.target],17,INK);
+            label(box,Engine.GOODS[c.good]+" "+c.amount+"개 · "+c.deadline+"일째까지\n보상 "+c.reward+" G + 명성 3",14,TEAL);
+            label(box,"화물은 직접 준비해야 합니다. 납품 시 소모됩니다. 의뢰는 한 번에 하나만 받을 수 있습니다.",12,MUTED);
+            fullAction(box,"의뢰 수락",()->changed(Contracts.accept(game)),true);return;
+        }
+        label(box,World.PORTS[a.origin]+" → "+World.PORTS[a.target],17,INK);
+        label(box,Engine.GOODS[a.good]+" "+a.amount+"개 납품 · 보유 "+game.inventory[a.good]+"개\n보상 "+a.reward+" G + 명성 3",14,TEAL);
+        label(box,game.day>a.deadline?"납품 기한이 지났습니다. 위약금 없이 취소할 수 있습니다.":"납기 "+a.deadline+"일째 · 남은 기간 "+(a.deadline-game.day)+"일",13,GOLD);
+        fullAction(box,"목적지에서 납품하기",()->changed(Contracts.deliver(game)),true);
+        fullAction(box,"의뢰 목적지 항로 보기",()->voyage(a.target),false);
+        fullAction(box,"의뢰 취소 · 위약금 없음",()->new AlertDialog.Builder(this).setTitle("의뢰를 취소할까요?")
+            .setMessage("준비한 화물은 그대로 남습니다.").setPositiveButton("취소하기",(d,w)->changed(Contracts.cancel(game))).setNegativeButton("유지",null).show(),false);
+    }
+    private void collectionCard() {
+        LinearLayout box=card(content);label(box,"일곱 해역의 기념품",18,GOLD);
+        label(box,"난파선과 작은 섬에서 해역별 기념품을 발견할 수 있습니다. 같은 해역의 기념품은 하나로 기록됩니다.",13,INK);
+        for(int region=0;region<World.REGIONS.length;region++) {
+            boolean found=(game.adventure.souvenirs & (1<<region))!=0;
+            label(box,(found?"◆ ":"◇ ")+World.REGIONS[region]+(found?" · 수집 완료":" · 미발견"),14,found?TEAL:MUTED);
+        }
+    }
+    private void achievementCard(int index) {
+        LinearLayout box=card(content);boolean claimed=Achievements.claimed(game,index);
+        label(box,Achievements.NAMES[index],18,GOLD);label(box,Achievements.GOALS[index],13,INK);
+        label(box,"보상 "+Achievements.REWARDS[index]+" G + 명성 1",13,TEAL);
+        Button claim=button(claimed?"보상 수령 완료":"달성 보상 받기",!claimed);
+        claim.setEnabled(!claimed && Achievements.ready(game,index));
+        claim.setOnClickListener(v->changed(Achievements.claim(game,index)));box.addView(claim,buttonParams());
+    }
     private void harbor() {
         label(content,"WORLD ATLAS · 7 SEAS · 56 PORTS",11,TEAL);
         label(content,Engine.PORTS[game.port]+" 항구",27,INK);
@@ -181,6 +263,7 @@ public final class MainActivity extends Activity {
         label(quest,Story.TITLES[game.chapter],17,GOLD);
         label(quest,Story.GOALS[game.chapter],14,INK);
         goalShortcut(quest);
+        adventureShortcut(quest);
         LinearLayout actions=row(); content.addView(actions);
         action(actions,"교역소",()-> {tab=1;render();},true);
         action(actions,"조선소",()-> {tab=2;render();},false);
@@ -219,8 +302,8 @@ public final class MainActivity extends Activity {
         Route route=WorldRoutes.between(game.port,target);
         String info=route.description()+"\n\n약 "+Math.round(route.miles)+"해리 · "+route.days()+"일 항해\n\n일반 항로: "+game.travelCost(target,0)+" G · 선체 −"+game.travelDamage(target,0)+"\n안전 항로: "+game.travelCost(target,1)+" G · 선체 −"+game.travelDamage(target,1)+"\n\n선체 25 이상이면 출항할 수 있습니다. 경유 항구는 정박하지 않으며, 방문 기록은 목적지에만 남습니다.";
         new AlertDialog.Builder(this).setTitle("출항 준비").setMessage(info)
-            .setPositiveButton("일반 항로",(d,w)->changed(game.sail(target,0),"depart"))
-            .setNeutralButton("안전 항로",(d,w)->changed(game.sail(target,1),"depart"))
+            .setPositiveButton("일반 항로",(d,w)->changed(Adventure.sail(game,target,0),"depart"))
+            .setNeutralButton("안전 항로",(d,w)->changed(Adventure.sail(game,target,1),"depart"))
             .setNegativeButton("취소",null).show();
     }
     private void market() {
@@ -262,6 +345,7 @@ public final class MainActivity extends Activity {
         LinearLayout quest=card(content); label(quest,Story.TITLES[game.chapter],18,GOLD);
         label(quest,Story.GOALS[game.chapter],14,INK);
         goalShortcut(quest);audioSettings();
+        adventureShortcut(quest);
         for(int i=0;i<game.chapter;i++) { LinearLayout story=card(content); label(story,Story.REVEALS[i],14,INK); }
         LinearLayout entries=card(content); label(entries,"최근 항해 기록",17,TEAL);
         for(int i=game.log.size()-1;i>=0;i--) label(entries,game.log.get(i),13,INK);
@@ -273,7 +357,7 @@ public final class MainActivity extends Activity {
         fullAction(backup,"새 항해 시작",()->newGame(),false);
     }
     private String help() {
-        return "1. 리스본에서 목재 5개를 매입하세요.\n2. 항해 지도에서 세비야를 선택해 출항하세요.\n3. 도착 후 목재 5개를 한 번에 판매하면 첫 장이 열립니다.\n\n세계 지도와 위쪽 해역 버튼을 이용해 7해역·56개 항구를 탐험하세요. 해역 버튼은 좌우로 밀 수 있습니다.\n\n먼 항해는 해상 경유 항구를 거치며 보급비가 증가합니다. 경유만으로는 방문 기록이 남지 않으니 목표 항구에 직접 정박하세요.\n\n항해일지의 8장 목표를 따라가세요. 금화가 부족하면 조선소에서 항구 일거리로 보급·수리비를 마련할 수 있습니다.\n\n원작과 별개의 창작 이야기입니다. 전투·해적·보물 탐색은 아직 포함되지 않았습니다.\n\n지도: Natural Earth (공개 지도 데이터). 항구 좌표와 항로는 게임용 근사치입니다.";
+        return "1. 리스본에서 목재 5개를 매입하세요.\n2. 항해 지도에서 세비야를 선택해 출항하세요.\n3. 도착 후 목재 5개를 한 번에 판매하면 첫 장이 열립니다.\n\n세계 지도와 위쪽 해역 버튼을 이용해 7해역·56개 항구를 탐험하세요. 해역 버튼은 좌우로 밀 수 있습니다.\n\n먼 항해는 해상 경유 항구를 거치며 보급비가 증가합니다. 방문 기록은 목적지에 직접 정박해야 남습니다.\n\n첫 출항 이후 항해 사건이 발생합니다. 선택 전 비용과 위험을 확인하세요. 해상전은 포격·회피 사격·도주로 진행합니다.\n\n항해 화면이나 일지에서 ‘의뢰 · 탐험 · 달성 기록’을 열어 납품 의뢰, 해역 기념품, 달성 보상을 확인하세요. 화물 유실·기증 시 목록의 첫 보유 상품부터 소모됩니다.\n\n동료는 이야기 진행에 맞춰 합류합니다. 일지에서 BGM과 효과음을 따로 끌 수 있습니다.\n\n금화가 부족하면 조선소에서 하루 일해 보급·수리비를 마련할 수 있습니다.\n\n원작과 별개의 창작 이야기입니다. 지도는 Natural Earth 공개 데이터를 사용하며 좌표·항로는 게임용 근사치입니다.";
     }
     private void navigation() {
         status=text(saved?"● 기기에 자동 저장됨 · 오프라인":"저장 실패 · 백업 필요",11,saved?TEAL:GOLD);
@@ -336,7 +420,9 @@ public final class MainActivity extends Activity {
         dialog("불러오기 완료",summary);
     }
     private void dialog(String title,String body) {
-        new AlertDialog.Builder(this).setTitle(title).setMessage(body).setPositiveButton("확인",null).show();
+        new AlertDialog.Builder(this).setTitle(title).setMessage(body)
+            .setCancelable(game.adventure.pending<0)
+            .setPositiveButton("확인",(d,w)->{if(game.adventure.pending>=0) showEvent();}).show();
     }
     private LinearLayout column() { LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);return box; }
     private LinearLayout row() { LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.HORIZONTAL);return box; }

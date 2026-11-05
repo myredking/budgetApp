@@ -13,6 +13,7 @@ public final class Engine {
     public long visited = 1L;
     public final int[] inventory = new int[6], influence = new int[World.COUNT];
     public final List<String> log = new ArrayList<String>();
+    public AdventureState adventure=new AdventureState();
     public String message = "서린 선장, 세비야에 목재 5개를 전해 주세요.";
 
     public Engine() { note("리스본에서 첫 출항 준비. 일곱 바다의 공동 해도를 만들기 위한 항해가 시작된다."); }
@@ -32,6 +33,7 @@ public final class Engine {
         return good >= 0 && good < GOODS.length && amount > 0 && amount <= 70;
     }
     public boolean buy(int good, int amount) {
+        if(busy()) return fail("항해 사건을 먼저 처리하세요.");
         if (!goodAmount(good, amount)) return fail("거래 수량을 확인해 주세요.");
         if (cargo() + amount > capacity()) return fail("적재 공간이 부족합니다.");
         int cost = buyPrice(good) * amount;
@@ -41,6 +43,7 @@ public final class Engine {
         return true;
     }
     public boolean sell(int good, int amount) {
+        if(busy()) return fail("항해 사건을 먼저 처리하세요.");
         if (!goodAmount(good, amount)) return fail("거래 수량을 확인해 주세요.");
         if (inventory[good] < amount) return fail("판매할 화물이 부족합니다.");
         int earned = sellPrice(good) * amount;
@@ -64,6 +67,7 @@ public final class Engine {
         return mode==1?Math.max(2,(int)Math.ceil(days/15.0)):Math.min(40,5+(day+target)%10+days/10);
     }
     public boolean sail(int target, int mode) {
+        if(busy()) return fail("항해 사건을 먼저 처리하세요.");
         if (!World.validPort(target) || target == port) return fail("다른 항구를 선택하세요.");
         if (mode < 0 || mode > 1) return fail("항로를 확인하세요.");
         if (hull < 25) return fail("선체를 먼저 수리하세요. 선체 25 이상 필요.");
@@ -79,6 +83,7 @@ public final class Engine {
     }
     public int repairCost() { return (maxHull() - hull) * 3; }
     public boolean repair() {
+        if(busy()) return fail("항해 사건을 먼저 처리하세요.");
         int cost = repairCost();
         if (cost == 0) return fail("선체 상태가 완벽합니다.");
         if (gold < cost) return fail("수리비가 부족합니다. 항구 일거리를 이용하세요.");
@@ -87,6 +92,7 @@ public final class Engine {
     }
     public int upgradeCost() { return level * 2400; }
     public boolean upgrade() {
+        if(busy()) return fail("항해 사건을 먼저 처리하세요.");
         if (level == 3) return fail("최고 등급의 선박입니다.");
         int cost = upgradeCost();
         if (gold < cost) return fail("새 선박 구입비가 부족합니다.");
@@ -96,6 +102,7 @@ public final class Engine {
         return true;
     }
     public boolean invest() {
+        if(busy()) return fail("항해 사건을 먼저 처리하세요.");
         if (influence[port] == 3) return fail("이 항구와의 동맹이 완성되었습니다.");
         int cost = (influence[port] + 1) * 300;
         if (gold < cost) return fail("투자할 금화가 부족합니다.");
@@ -104,6 +111,7 @@ public final class Engine {
         advanceStory(); return true;
     }
     public boolean work() {
+        if(busy()) return fail("항해 사건을 먼저 처리하세요.");
         gold += 120; day++; note("부두 운송을 도왔다. 하루 경과 · +120 G");
         advanceStory(); return true;
     }
@@ -119,6 +127,7 @@ public final class Engine {
         while (log.size() > 12) log.remove(0);
     }
     private boolean fail(String text) { message = text; return false; }
+    private boolean busy() { return adventure.pending>=0; }
     public String encode() { return SaveCodec.encode(this); }
     public static Engine decode(String text) { return SaveCodec.decode(text); }
 }

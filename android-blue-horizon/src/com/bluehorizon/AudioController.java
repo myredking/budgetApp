@@ -42,7 +42,7 @@ public final class AudioController implements AudioSession.Output {
         loadEffects();
     }
     private void loadEffects() {
-        for(String name:new String[]{"click","trade","depart","chapter","error","upgrade"}) {
+        for(String name:new String[]{"click","trade","depart","chapter","error","upgrade","cannon","discovery"}) {
             try(AssetFileDescriptor file=context.getAssets().openFd(name+".wav")) {
                 ids.put(name,sounds.load(file,1));
             } catch(IOException ex) { android.util.Log.w("BlueHorizon","Effect unavailable: "+name,ex); }

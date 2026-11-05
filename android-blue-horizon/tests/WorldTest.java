@@ -68,7 +68,7 @@ public final class WorldTest {
         check(e.gold==1584 && e.day==5 && e.inventory[0]==5,"legacy possessions and day retained");
         check(e.port==World.find("세비야") && e.influence[e.port]==2,"legacy harbor translated");
         check(e.chapter==0 && e.message.contains("확장"),"new world story restart explained");
-        check(Engine.decode(e.encode())!=null && e.encode().startsWith("BLUE2:"),"migration upgrades to v2");
+        check(Engine.decode(e.encode())!=null && e.encode().startsWith("BLUE3:"),"migration upgrades to current save version");
     }
     private static void globalRandomActions() {
         Engine e=new Engine(); java.util.Random rng=new java.util.Random(1742);

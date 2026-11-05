@@ -1,6 +1,7 @@
 """Compose two original synthesized nautical loops and six short game cues."""
 from array import array
 import math
+import random
 from pathlib import Path
 import sys
 import wave
@@ -74,6 +75,17 @@ def cue(name: str, pitches: list[int], interval: float, duration: float) -> None
     write(name, samples)
 
 
+def cannon() -> None:
+    rng = random.Random(601)
+    samples = array("f", [0]) * round(.65 * RATE)
+    noise = 0.0
+    for index in range(len(samples)):
+        time = index / RATE
+        noise = .78 * noise + .22 * rng.uniform(-1, 1)
+        samples[index] = min(1, time/.01) * math.exp(-8*time) * (noise + .35*math.sin(math.tau*48*time))
+    write("cannon", samples)
+
+
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
     arrangement("harbor", 100, [[50,54,57],[55,59,62],[47,50,54],[45,49,52]],
@@ -88,7 +100,9 @@ def main() -> None:
     cue("chapter", [62,66,69,74,78,81], .095, .45)
     cue("error", [50,45], .08, .13)
     cue("upgrade", [57,62,66,69,74], .075, .32)
-    print("Created 2 original music loops and 6 effects (mono PCM, 22050 Hz).")
+    cue("discovery", [74,81,86,90], .08, .3)
+    cannon()
+    print("Created 2 original music loops and 8 effects (mono PCM, 22050 Hz).")
 
 
 if __name__ == "__main__":

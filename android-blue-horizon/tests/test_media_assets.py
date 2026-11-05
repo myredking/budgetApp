@@ -11,7 +11,7 @@ import pytest
 
 PROJECT = Path(__file__).resolve().parents[1]
 MUSIC = ["harbor", "sea"]
-EFFECTS = ["click", "trade", "depart", "chapter", "error", "upgrade"]
+EFFECTS = ["click", "trade", "depart", "chapter", "error", "upgrade", "cannon", "discovery"]
 
 
 @pytest.mark.parametrize("name", MUSIC + EFFECTS)

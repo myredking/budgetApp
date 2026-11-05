@@ -13,7 +13,7 @@ public final class SaveCodec {
         try {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             DataOutputStream out = new DataOutputStream(bytes);
-            out.writeInt(2);
+            out.writeInt(3);
             int[] values = {e.gold,e.port,e.day,e.hull,e.level,e.fame,e.chapter,e.profit};
             for (int value : values) out.writeInt(value);
             out.writeLong(e.visited);
@@ -21,9 +21,10 @@ public final class SaveCodec {
             for (int value : e.influence) out.writeInt(value);
             out.writeUTF(e.message); out.writeInt(e.log.size());
             for (String line : e.log) out.writeUTF(line);
+            e.adventure.write(out);
             out.flush();
             byte[] data = bytes.toByteArray(); CRC32 crc = new CRC32(); crc.update(data);
-            return "BLUE2:" + crc.getValue() + ":" + Base64.getEncoder().encodeToString(data);
+            return "BLUE3:" + crc.getValue() + ":" + Base64.getEncoder().encodeToString(data);
         } catch (IOException ex) { throw new IllegalStateException(ex); }
     }
     public static Engine decode(String text) {
@@ -49,6 +50,7 @@ public final class SaveCodec {
     private static int version(String header) {
         if(header.equals("BLUE1")) return 1;
         if(header.equals("BLUE2")) return 2;
+        if(header.equals("BLUE3")) return 3;
         return 0;
     }
     private static Engine readState(DataInputStream in,int version) throws IOException {
@@ -57,7 +59,7 @@ public final class SaveCodec {
         e.level=in.readInt(); e.fame=in.readInt();
         if(version==1) e.visited=in.readInt();
         e.chapter=in.readInt(); e.profit=in.readInt();
-        if(version==2) e.visited=in.readLong();
+        if(version>=2) e.visited=in.readLong();
         for (int i=0; i<6; i++) e.inventory[i]=in.readInt();
         int ports=version==1?5:World.COUNT;
         for (int i=0; i<ports; i++) e.influence[i]=in.readInt();
@@ -65,12 +67,13 @@ public final class SaveCodec {
         int count=in.readInt();
         if (count < 0 || count > 12) throw new IOException("Invalid log size");
         for (int i=0; i<count; i++) e.log.add(in.readUTF());
+        if(version>=3) e.adventure=AdventureState.read(in);
         return e;
     }
     private static boolean valid(Engine e) {
         if (!World.validPort(e.port) || !range(e.level,1,3) || !range(e.chapter,0,Story.REVEALS.length)) return false;
         if (!range(e.gold,0,100000000) || !range(e.day,1,10000000)) return false;
-        return validProgress(e) && validCargo(e) && validInfluence(e);
+        return validProgress(e) && validCargo(e) && validInfluence(e) && e.adventure.valid();
     }
     private static boolean validProgress(Engine e) {
         if (!range(e.fame,0,100000000) || !range(e.profit,0,100000000)) return false;

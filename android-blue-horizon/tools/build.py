@@ -21,7 +21,8 @@ def run(args: list[str | Path]) -> None:
 def test() -> None:
     target = BUILD / "test"
     target.mkdir(parents=True, exist_ok=True)
-    names = ["Engine", "Story", "SaveCodec", "World", "WorldRoutes", "Route", "MapProjection", "MapLabels", "SeaPaths", "AudioSession", "Crew", "TradeHint"]
+    names = ["Engine", "Story", "SaveCodec", "World", "WorldRoutes", "Route", "MapProjection", "MapLabels", "SeaPaths", "AudioSession", "Crew", "TradeHint",
+             "AdventureState", "Adventure", "VoyageEvents", "SeaBattle", "EventCatalog", "Contract", "Contracts", "Achievements"]
     sources = [PROJECT / f"src/com/bluehorizon/{name}.java" for name in names]
     run([JAVA / "javac.exe", "-encoding", "UTF-8", "-d", target,
          *sources, *list((PROJECT / "tests").glob("*.java"))])
@@ -29,6 +30,7 @@ def test() -> None:
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.WorldTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.SeaRouteTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.PresentationTest"])
+    run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.AdventureTest"])
 
 
 def compile_app() -> Path:
