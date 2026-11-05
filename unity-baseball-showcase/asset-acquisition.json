@@ -1,0 +1,39 @@
+{
+  "budget": "free_only",
+  "makehuman_commit": "a8bc2d54ff0ac92e78ff71431b1023eda42bf482",
+  "acquired_raw_files": [
+    {
+      "path": "Assets/Showcase/Art/Raw/MakeHuman/base.obj",
+      "source": "https://raw.githubusercontent.com/makehumancommunity/makehuman/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/3dobjs/base.obj",
+      "sha256": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c",
+      "bytes": 1749303
+    },
+    {
+      "path": "Assets/Showcase/Art/Raw/MakeHuman/default.mhskel",
+      "source": "https://raw.githubusercontent.com/makehumancommunity/makehuman/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/rigs/default.mhskel",
+      "sha256": "99f179bce0aa850b45d4191a1d0d234c5851f881c057439470ded3bddf729a24",
+      "bytes": 117790
+    },
+    {
+      "path": "Assets/Showcase/Art/Raw/MakeHuman/default_weights.mhw",
+      "source": "https://raw.githubusercontent.com/makehumancommunity/makehuman/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/rigs/default_weights.mhw",
+      "sha256": "0f3641d651ae3d00ad6b4ccee43142edb109d3bd909d27d9e4139ef1beed8625",
+      "bytes": 897521
+    },
+    {
+      "path": "Assets/Showcase/Art/Raw/MakeHuman/LICENSE.md",
+      "source": "https://raw.githubusercontent.com/makehumancommunity/makehuman/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/LICENSE.md",
+      "sha256": "edd99571ca62698f78c943fd4fffb159a413c315fa0d4819d3cec5cadaf8b4f1",
+      "bytes": 3598
+    }
+  ],
+  "status": "raw_character_geometry_only_not_a_finished_player",
+  "needs": [
+    "skin textures",
+    "baseball uniform",
+    "retargeted baseball animations",
+    "stadium asset",
+    "Unity editor validation"
+  ],
+  "license_note": "Core graphics assets CC0; software code has separate license. Keep upstream LICENSE.md."
+}

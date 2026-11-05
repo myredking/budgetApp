@@ -1,0 +1,38 @@
+{
+  "scope": {
+    "batters": 1,
+    "pitchers": 1,
+    "stadiums": 1
+  },
+  "engine": "Unity 6 LTS / URP",
+  "generated_primitive_players_allowed": false,
+  "status": "awaiting_editor_activation_and_art_assets",
+  "acceptance": {
+    "preview_resolution": [
+      1920,
+      1080
+    ],
+    "camera": "behind home plate, batter foreground, pitcher center",
+    "comparison": "side-by-side against user reference at equal resolution",
+    "required_motion": [
+      "batter_idle",
+      "swing_contact_followthrough",
+      "pitcher_windup_release"
+    ],
+    "required_art": [
+      "rigged anatomical human",
+      "textured uniform with normal maps",
+      "textured stadium",
+      "real shadows",
+      "skin and cloth materials"
+    ],
+    "playback": "10 second actual engine clip plus still, not an AI illustration"
+  },
+  "acceptance_not_yet_verified": [
+    "reference-level character fidelity",
+    "asset imports",
+    "runtime lighting",
+    "animation retargeting",
+    "Android performance"
+  ]
+}
