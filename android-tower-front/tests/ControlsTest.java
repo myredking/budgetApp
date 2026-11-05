@@ -23,6 +23,7 @@ public final class ControlsTest {
         Engine one=new Engine(1);one.towers.get(0).units=1;
         check(one.sendAll(0,2),"full dispatch may send final unit");
         touchTolerance();
+        previewChecks();
         System.out.println("Touch and full dispatch checks passed");
     }
     private static void touchTolerance() {
@@ -34,5 +35,27 @@ public final class ControlsTest {
         check(BattleControls.hitTouch(e,x+60,y,20)==-1,"radius follows physical zoom");
         check(BattleControls.releaseTarget(0,2,3,8)==0,"finger jitter keeps pressed tower");
         check(BattleControls.releaseTarget(0,2,20,8)==2,"intentional drag reaches target");
+    }
+    private static void previewChecks() {
+        Engine e=new Engine(1);BattleControls c=new BattleControls(e);
+        check(c.previewUnits(2)==0,"no selection has no preview");
+        c.press(0);e.towers.get(0).units=31;
+        check(c.previewUnits(2)==15,"half preview rounds down");
+        check(c.previewUnits(0)==0 && c.previewUnits(-1)==0,"self and empty ground cancel");
+        check(c.previewUnits(999)==0,"invalid target safe");
+        check(e.fleets.isEmpty() && e.towers.get(0).units==31,"preview does not send");
+        c.all=true;check(c.previewUnits(2)==31,"full preview sends all");
+        e.towers.get(2).owner=1;
+        check(c.previewUnits(2)==31,"allied support uses same amount");
+        e.towers.get(2).owner=0;
+        e.towers.get(0).units=1;c.all=false;
+        check(c.previewUnits(2)==0,"half cannot send final troop");
+        c.all=true;check(c.previewUnits(2)==1,"full can send final troop");
+        check(c.release(2)==1 && e.fleets.get(0).units==1,"actual dispatch matches preview");
+        c.press(0);e.towers.get(0).owner=2;
+        check(c.previewUnits(2)==0,"captured source cannot preview");
+        Engine ended=new Engine(1);BattleControls done=new BattleControls(ended);done.press(0);
+        for(Engine.Tower tower:ended.towers) tower.owner=1;
+        check(done.previewUnits(2)==0,"completed battle cannot preview dispatch");
     }
 }

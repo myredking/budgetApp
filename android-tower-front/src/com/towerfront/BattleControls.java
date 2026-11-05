@@ -50,5 +50,12 @@ public final class BattleControls {
         boolean sent=all?engine.sendAll(selected,target):engine.send(selected,target);
         selected=-1;return sent?1:-1;
     }
+    public int previewUnits(int target) {
+        validate();
+        if(selected<0 || target<0 || target>=engine.towers.size()) return 0;
+        if(target==selected || engine.result()!=0) return 0;
+        int units=engine.towers.get(selected).units;
+        return all?units:units/2;
+    }
     public void cancel() {selected=-1;pressed=false;}
 }

@@ -22,6 +22,7 @@ public final class BattleView extends View {
     private boolean running=true,paused,dragging,reported;
     private int pressedButton=-1;
     private int downTarget=-1;
+    private int previewTarget=-1;
     private long last;
     private double sinceSave,soundCooldown;
     private String notice="아군을 선택한 뒤 목표를 터치하세요";
@@ -147,12 +148,27 @@ public final class BattleView extends View {
     private void drawDrag(Canvas c) {
         if(!dragging || controls.selected<0) return;
         Engine.Tower t=engine.towers.get(controls.selected);
-        line(c,BattleControls.x(t),BattleControls.y(t),dragX,dragY,WHITE,2);
-        paint.setColor(WHITE);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2);
-        c.drawCircle(dragX,dragY,12,paint);paint.setStyle(Paint.Style.FILL);
+        int count=controls.previewUnits(previewTarget);
+        float x=dragX,y=dragY;
+        if(count>0) {Engine.Tower target=engine.towers.get(previewTarget);x=BattleControls.x(target);y=BattleControls.y(target);}
+        int tint=count>0?MainActivity.CYAN:GRAY;
+        line(c,BattleControls.x(t),BattleControls.y(t),x,y,tint,3/camera.zoom);
+        paint.setColor(tint);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(3/camera.zoom);
+        if(count>0) c.drawRoundRect(x-48,y-72,x+48,y+48,12,12,paint);
+        else c.drawCircle(x,y,12/camera.zoom,paint);
+        paint.setStyle(Paint.Style.FILL);
+    }
+    private String previewLabel() {
+        int count=controls.previewUnits(previewTarget);
+        if(count>0) return (engine.towers.get(previewTarget).owner==1?"지원 ":"공격 ")+count+"명 · 손을 떼면 출병";
+        if(previewTarget==controls.selected) return "목표 타워로 끌어주세요";
+        if(previewTarget<0) return "출병 취소 · 목표가 없습니다";
+        return "출병 불가 · 병력이 부족합니다";
     }
     private void footer(Canvas c) {
-        text(c,noticeTime>0?notice:"아군 선택 → 출병 / 전술 스킬",200,screen.noticeY,12,WHITE);
+        String hint=noticeTime>0?notice:"아군 선택 → 출병 / 전술 스킬";
+        if(dragging && controls.selected>=0) hint=previewLabel();
+        text(c,hint,200,screen.noticeY,12,WHITE);
         box(c,18,screen.commandTop,174,screen.buttonHeight,MainActivity.CARD);
         text(c,"출병 "+(controls.all?"100%":"50%"),105,screen.commandTop+screen.buttonHeight/2+screen.font(16)/3,16,MainActivity.CYAN);
         box(c,208,screen.commandTop,174,screen.buttonHeight,canUpgrade()?MainActivity.CYAN:MainActivity.CARD);
@@ -239,7 +255,7 @@ public final class BattleView extends View {
         return true;
     }
     private void cancelTouch() {
-        controls.cancel();dragging=false;pressedButton=-1;downTarget=-1;panCandidate=false;mapPanning=false;
+        controls.cancel();dragging=false;pressedButton=-1;downTarget=-1;previewTarget=-1;panCandidate=false;mapPanning=false;
     }
     private int hitWorld(float x,float y) {
         if(!inside(x,y,screen.boardLeft,screen.boardTop,screen.boardRight-screen.boardLeft,screen.boardBottom-screen.boardTop)) return -1;
@@ -254,7 +270,7 @@ public final class BattleView extends View {
         int target=hitWorld(x,y);downTarget=target;panCandidate=target<0;downX=x;downY=y;lastX=x;lastY=y;
         if(panCandidate) return;
         int previous=controls.selected;
-        controls.press(target);dragX=camera.worldX(x);dragY=camera.worldY(y);dragging=true;
+        controls.press(target);dragX=camera.worldX(x);dragY=camera.worldY(y);dragging=true;previewTarget=target;
         if(previous!=controls.selected && host.haptics) performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
     }
     private void touchMove(float x,float y) {
@@ -264,6 +280,10 @@ public final class BattleView extends View {
             lastX=x;lastY=y;return;
         }
         dragX=camera.worldX(x);dragY=camera.worldY(y);
+        previewTarget=gestureTarget(x,y);
+    }
+    private int gestureTarget(float x,float y) {
+        return BattleControls.releaseTarget(downTarget,hitWorld(x,y),Math.hypot(x-downX,y-downY),8*screen.pixelDensity/screen.scale);
     }
     private void touchUp(float x,float y,boolean overlay) {
         dragging=false;performClick();
@@ -276,7 +296,7 @@ public final class BattleView extends View {
         if(panCandidate) {
             if(!mapPanning) controls.cancel();panCandidate=false;mapPanning=false;return;
         }
-        int target=BattleControls.releaseTarget(downTarget,hitWorld(x,y),Math.hypot(x-downX,y-downY),8*screen.pixelDensity/screen.scale);
+        int target=gestureTarget(x,y);
         int result=controls.release(target);
         if(result==1) {notice("병력 출발");signal(true);}
         if(result==-1) {notice("출병할 병력이 부족합니다");signal(false);}
