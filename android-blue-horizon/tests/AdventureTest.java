@@ -74,7 +74,7 @@ public final class AdventureTest {
     }
     private static void newSaveAndLegacy() throws Exception {
         Engine e=encounter(1,30);VoyageEvents.choose(e,0);Contracts.offer(e);
-        check(e.encode().startsWith("BLUE3:"),"new format includes adventure state");
+        check(e.encode().startsWith(SaveCodec.PREFIX),"new format includes adventure state");
         Engine resumed=Engine.decode(e.encode());
         check(resumed!=null && resumed.adventure.battleHP==e.adventure.battleHP,"mid-battle state restored");
         String fixture=new String(Files.readAllBytes(Paths.get("tests/fixtures/v2-save.txt")),StandardCharsets.US_ASCII);

@@ -14,6 +14,7 @@ public final class Engine {
     public final int[] inventory = new int[6], influence = new int[World.COUNT];
     public final List<String> log = new ArrayList<String>();
     public AdventureState adventure=new AdventureState();
+    public CrewState crew=new CrewState();
     public String message = "서린 선장, 세비야에 목재 5개를 전해 주세요.";
 
     public Engine() { note("리스본에서 첫 출항 준비. 일곱 바다의 공동 해도를 만들기 위한 항해가 시작된다."); }
@@ -24,9 +25,10 @@ public final class Engine {
         for (int value : inventory) total += value;
         return total;
     }
-    public int buyPriceAt(int harbor, int good) { return World.price(harbor,good); }
-    public int buyPrice(int good) { return World.price(port,good); }
-    public int sellPrice(int good) { return World.price(port,good) * (85 + influence[port] * 2) / 100; }
+    public int buyPriceAt(int harbor, int good) { return CrewAbilities.buyAt(this,harbor,good); }
+    public int buyPrice(int good) { return buyPriceAt(port,good); }
+    public int sellPriceAt(int harbor,int good) { return World.price(harbor,good)*CrewAbilities.salePercent(this,harbor)/100; }
+    public int sellPrice(int good) { return sellPriceAt(port,good); }
     public boolean hasVisited(int harbor) { return World.validPort(harbor) && (visited & (1L << harbor))!=0; }
     public int visitedCount() { return Long.bitCount(visited); }
     private boolean goodAmount(int good, int amount) {
@@ -61,10 +63,11 @@ public final class Engine {
     public int travelDays(int target) {
         return WorldRoutes.between(port,target).days();
     }
-    public int travelCost(int target, int mode) { return travelDays(target) * (mode == 1 ? 24 : 16); }
+    public int travelCost(int target, int mode) { return CrewAbilities.supply(this,travelDays(target) * (mode == 1 ? 24 : 16)); }
     public int travelDamage(int target,int mode) {
         int days=travelDays(target);
-        return mode==1?Math.max(2,(int)Math.ceil(days/15.0)):Math.min(40,5+(day+target)%10+days/10);
+        int raw=mode==1?Math.max(2,(int)Math.ceil(days/15.0)):Math.min(40,5+(day+target)%10+days/10);
+        return CrewAbilities.damage(this,raw);
     }
     public boolean sail(int target, int mode) {
         if(busy()) return fail("항해 사건을 먼저 처리하세요.");
@@ -74,6 +77,7 @@ public final class Engine {
         int cost = travelCost(target, mode), days = travelDays(target);
         if (gold < cost) return fail("보급비가 부족합니다. 항구 일거리로 금화를 모으세요.");
         int damage=travelDamage(target,mode);
+        if(!hasVisited(target)) fame++;
         gold -= cost; day += days; port = target; visited |= 1L << target;
         hull = Math.max(1, hull - damage);
         note(PORTS[port] + " 도착 · " + days + "일 항해 · 보급 −" + cost + " G");

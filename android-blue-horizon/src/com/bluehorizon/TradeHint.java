@@ -10,7 +10,7 @@ public final class TradeHint {
         for(int target=0;target<World.COUNT;target++) {
             if(target==game.port) continue;
             int buy=game.buyPrice(good)*amount;
-            int sale=World.price(target,good)*(85+game.influence[target]*2)/100*amount;
+            int sale=game.sellPriceAt(target,good)*amount;
             int cost=buy+game.travelCost(target,0),net=sale-cost;
             if(best==null || net>best.net) best=new TradeHint(target,net,cost);
         }

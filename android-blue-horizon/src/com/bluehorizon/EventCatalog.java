@@ -31,6 +31,9 @@ public final class EventCatalog {
     public static String option(Engine e,int choice) {
         if(e.adventure.battleHP>0) return new String[]{"포격 · 높은 공격력","회피 사격 · 반격 피해 감소","긴급 도주 · 화물 1개 또는 최대 40 G, 선체 −3, 하루"}[choice];
         if(e.adventure.pending==1 && choice==1) return "통행료 교섭 · "+(80+World.region(e.port)*20)+" G";
-        return OPTIONS[e.adventure.pending][choice];
+        String text=OPTIONS[e.adventure.pending][choice];
+        if(e.adventure.pending==2 && choice==1) return text.replace("60%",CrewAbilities.explorationChance(e,60)+"%");
+        if(e.adventure.pending==7 && choice==1) return text.replace("65%",CrewAbilities.explorationChance(e,65)+"%");
+        return text;
     }
 }

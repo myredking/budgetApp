@@ -41,7 +41,7 @@ public final class VoyageEvents {
             e.gold+=120;e.day+=2;Adventure.damage(e,3);return Adventure.finish(e,"난파선 갑판에서 물자를 건졌다. +120 G, 선체 −3, 이틀 경과.");
         }
         if(choice==1) {
-            if(e.adventure.roll<60) {
+            if(e.adventure.roll<CrewAbilities.explorationChance(e,60)) {
                 Adventure.souvenir(e);e.gold+=250;e.fame+=4;Adventure.damage(e,5);
                 return Adventure.finish(e,"잠긴 선실에서 해역의 기념품을 발견했다! +250 G, 명성 +4, 선체 −5.");
             }
@@ -89,7 +89,7 @@ public final class VoyageEvents {
         }
         if(choice==1) {
             e.day+=3;
-            if(e.adventure.roll<65) {
+            if(e.adventure.roll<CrewAbilities.explorationChance(e,65)) {
                 Adventure.souvenir(e);e.gold+=220;e.fame+=5;
                 return Adventure.finish(e,"오래된 관측소의 흔적을 발견했다! 사흘 경과, 기념품, +220 G, 명성 +5.");
             }

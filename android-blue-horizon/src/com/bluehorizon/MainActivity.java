@@ -132,6 +132,12 @@ public final class MainActivity extends Activity {
     private void crewPage() {
         label(content,"COMPANIONS OF THE SEVEN SEAS",11,TEAL);label(content,"함께 만드는 세계 해도",25,INK);
         label(content,"이야기가 진행되면 새로운 동료가 합류합니다. 초상화와 소개를 확인해 보세요.",13,MUTED);
+        LinearLayout duty=card(content);label(duty,"전문 담당 · 두 명까지 배치",18,GOLD);
+        label(duty,"서린의 첫 방문 명성 보너스는 항상 적용됩니다. 다른 동료의 능력은 담당으로 배치했을 때 적용됩니다.",13,INK);
+        for(int slot=0;slot<2;slot++) {
+            final int index=slot;int person=slot==0?game.crew.first:game.crew.second;
+            fullAction(duty,"담당 "+(slot+1)+": "+(person<0?"비어 있음":Crew.NAMES[person])+" · 변경",()->assignCrew(index),false);
+        }
         for(int person=0;person<Crew.NAMES.length;person++) crewCard(person);
     }
     private void crewCard(int person) {
@@ -144,6 +150,31 @@ public final class MainActivity extends Activity {
         label(info,Crew.NAMES[person],22,aboard?GOLD:MUTED);label(info,Crew.ROLES[person],13,INK);
         String joined=aboard?"● 함께 항해 중":Crew.JOINS[person]+"장 완료 후 합류";
         label(info,joined,12,aboard?TEAL:MUTED);label(box,Crew.BIO[person],14,INK);
+        label(box,(CrewAbilities.active(game,person)?"◆ 적용 중 · ":"능력 · ")+CrewAbilities.EFFECTS[person],13,TEAL);
+        crewStory(box,person);
+    }
+    private void assignCrew(int slot) {
+        java.util.ArrayList<String> names=new java.util.ArrayList<String>();java.util.ArrayList<Integer> people=new java.util.ArrayList<Integer>();
+        names.add("비워 두기");people.add(-1);
+        for(int person=1;person<6;person++) {
+            if(!Crew.available(person,game.chapter)) continue;
+            names.add(Crew.NAMES[person]+" · "+CrewAbilities.EFFECTS[person]);people.add(person);
+        }
+        new AlertDialog.Builder(this).setTitle("전문 담당 "+(slot+1)+" 선택")
+            .setItems(names.toArray(new String[0]),(d,index)->changed(CrewAbilities.assign(game,slot,people.get(index))))
+            .setNegativeButton("닫기",null).show();
+    }
+    private void crewStory(LinearLayout box,int person) {
+        label(box,"개인 기록: "+CrewAbilities.GOALS[person],12,MUTED);
+        if(CrewAbilities.storyClaimed(game,person)) {
+            fullAction(box,"열어 본 동료 기록 다시 읽기",()->dialog(Crew.NAMES[person]+"의 기록",CrewAbilities.RECORDS[person]),false);return;
+        }
+        Button button=button("개인 기록 열기 · "+(250+person*100)+" G + 명성 2",true);
+        button.setEnabled(CrewAbilities.storyReady(game,person));
+        button.setOnClickListener(v->{
+            boolean success=CrewAbilities.claimStory(game,person);changed(success,"chapter");
+            if(success) dialog(Crew.NAMES[person]+"의 기록",CrewAbilities.RECORDS[person]);
+        });box.addView(button,buttonParams());
     }
     private void storyReveal(int previous) {
         LinearLayout panel=column();panel.setPadding(dp(20),dp(12),dp(20),dp(12));

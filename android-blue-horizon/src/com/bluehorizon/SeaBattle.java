@@ -8,6 +8,7 @@ public final class SeaBattle {
         a.battleHP=Math.max(0,a.battleHP-attack);
         if(a.battleHP==0) return victory(e);
         int damage=4+World.region(e.port)+a.draw(4);if(choice==1) damage=Math.max(1,damage-4);
+        damage=CrewAbilities.damage(e,damage);
         Adventure.damage(e,damage);
         if(e.hull==1 || a.battleTurn>=12) return defeat(e);
         e.note("전술 "+a.battleTurn+"턴 · 해적 선체 −"+attack+", 우리 선체 −"+damage+".");return true;
