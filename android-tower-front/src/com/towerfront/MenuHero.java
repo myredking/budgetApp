@@ -9,6 +9,8 @@ public final class MenuHero extends View {
         setContentDescription("푸른 기지와 붉은 요새가 있는 섬 전장 미리보기");
     }
     @Override protected void onDraw(Canvas c) {
-        c.save();c.scale(getWidth()/400f,getHeight()/220f);world.hero(c);c.restore();
+        float scale=Math.max(getWidth()/400f,getHeight()/220f);
+        c.save();c.translate((getWidth()-400*scale)/2,(getHeight()-220*scale)/2);
+        c.scale(scale,scale);world.hero(c);c.restore();
     }
 }

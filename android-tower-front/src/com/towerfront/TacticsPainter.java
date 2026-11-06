@@ -58,8 +58,11 @@ public final class TacticsPainter {
     }
     private void skillButton(Canvas c,Engine e,int selected,int type,ScreenLayout screen) {
         float x=18+type*124;boolean ready=e.rules.ready(type,selected);
-        box(c,x,screen.skillTop,116,screen.buttonHeight,ready?SceneStyle.BLUE:0xfffffcf3);
-        int color=ready?Color.WHITE:0xff657469;float center=screen.skillTop+screen.buttonHeight/2;
+        int accent=new int[]{SceneStyle.BLUE,0xff278359,0xffb56c32}[type];
+        box(c,x,screen.skillTop,116,screen.buttonHeight,ready?0xffedf2ed:0xfff0eee4);
+        p.setColor(ready?accent:0xffb9bbae);p.setStrokeWidth(2);
+        c.drawLine(x+14,screen.skillTop+7,x+102,screen.skillTop+7,p);
+        int color=ready?SceneStyle.INK:0xff657469;float center=screen.skillTop+screen.buttonHeight/2;
         controlText(c,BattleRules.skillName(type),x+58,center-2,11,color,screen,104);
         int cooldown=(int)Math.ceil(e.rules.cooldowns[type]);
         String state=cooldown>0?cooldown+"초 후":"에너지 "+BattleRules.cost(type);

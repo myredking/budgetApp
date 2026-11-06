@@ -6,12 +6,12 @@ public final class ScreenTest {
     }
     public static void main(String[] args) {
         float[][] sizes={{320,496,1},{720,1136,2},{1080,2184,3},{1080,2214,2.625f},{1200,1776,2},{600,600,2}};
-        for(float[] size:sizes) verify(size);
+        for(float[] size:sizes) for(float font:new float[]{1,1.5f,2}) verify(size,font);
         cameraChecks();
         System.out.println("Responsive screen, minimum touch targets, camera and input mapping checks passed");
     }
-    private static void verify(float[] size) {
-        ScreenLayout l=new ScreenLayout(size[0],size[1],size[2],1.5f);
+    private static void verify(float[] size,float fontScale) {
+        ScreenLayout l=new ScreenLayout(size[0],size[1],size[2],fontScale);
         check(l.left>=0 && l.top>=0,"scene remains on screen");
         check(l.buttonHeight*l.scale/size[2]>=47.99,"minimum48dp buttons");
         check(l.skillTop+l.buttonHeight<=l.height,"skills stay above system navigation");
@@ -20,12 +20,13 @@ public final class ScreenTest {
         check(l.overlayMenuTop+l.buttonHeight<l.height,"pause menu stays inside screen");
         check(l.overlayTitle-l.font(32)*.9f>=7,"large pause title cannot clip top");
         check(l.boardTop>=l.objectiveY()+l.font(10)*.3f+4,"header text stays above battlefield");
+        check(l.objectiveTop()>=l.statusBottom()+1.99f,"status cards cannot overlap objective pill");
         if(l.compact) check(242+43<294,"compact enemy count stays left of pause button");
         else check(l.statusY()-l.font(14)*.9f>=l.pauseTop()+l.buttonHeight+3,"pause and status separated");
         float x=220,y=l.skillTop+l.buttonHeight/2;
         check(Math.abs(l.toX(l.left+x*l.scale)-x)<.01,"horizontal input roundtrip");
         check(Math.abs(l.toY(l.top+y*l.scale)-y)<.01,"vertical input roundtrip");
-        check(l.font(10)*l.scale/size[2]>=12,"HUD text has readable minimum");
+        check(l.font(10)*l.scale/size[2]>=11.99f,"HUD text has readable minimum");
     }
     private static void cameraChecks() {
         ScreenLayout l=new ScreenLayout(720,1136,2,1);

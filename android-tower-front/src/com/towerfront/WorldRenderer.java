@@ -46,11 +46,12 @@ public final class WorldRenderer {
             soldier(c,x,y,f.owner,e.elapsed+i*.13);
         }
     }
-    public void fleetBadge(Canvas c,Engine e,Engine.Fleet f) {
+    public void fleetBadge(Canvas c,Engine e,Engine.Fleet f,boolean detailed) {
         Engine.Tower a=e.towers.get(f.from),b=e.towers.get(f.to);
         float x=BattleControls.x(a)+(BattleControls.x(b)-BattleControls.x(a))*(float)f.progress;
         float y=BattleControls.y(a)+(BattleControls.y(b)-BattleControls.y(a))*(float)f.progress;
-        number(c,x,y-15,f.units,f.owner);
+        if(detailed) number(c,x,y-15,f.units,f.owner);
+        else factions.draw(c,f.owner,x,y-15,4);
     }
     private void soldier(Canvas c,float x,float y,int owner,double time) {
         float bob=(float)Math.sin(time*16)*.8f;

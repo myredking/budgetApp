@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.towerfront" android:versionCode="14" android:versionName="6.3.0">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.towerfront" android:versionCode="15" android:versionName="6.4.0">
 <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35"/>
 <application android:label="타워 프론트" android:icon="@drawable/icon" android:theme="@style/TowerTheme" android:allowBackup="false" android:supportsRtl="true" android:enableOnBackInvokedCallback="false">
 <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>

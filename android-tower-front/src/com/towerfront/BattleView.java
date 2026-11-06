@@ -59,7 +59,10 @@ public final class BattleView extends View {
         paint.setColor(color);c.drawText(value,x,y,paint);
     }
     private void box(Canvas c,float x,float y,float width,float height,int color) {
-        paint.setColor(color);c.drawRoundRect(x,y,x+width,y+height,14,14,paint);
+        paint.setColor(0x10334455);c.drawRoundRect(x,y+2,x+width,y+height+2,12,12,paint);
+        paint.setColor(color);c.drawRoundRect(x,y,x+width,y+height,12,12,paint);
+        paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.6f);paint.setColor(0x18334455);
+        c.drawRoundRect(x,y,x+width,y+height,12,12,paint);paint.setStyle(Paint.Style.FILL);
     }
     private void line(Canvas c,float ax,float ay,float bx,float by,int color,float width) {
         paint.setColor(color);paint.setStrokeWidth(width);c.drawLine(ax,ay,bx,by,paint);
@@ -80,7 +83,7 @@ public final class BattleView extends View {
         board(c);tactics.ground(c,engine);
         for(Engine.Fleet f:engine.fleets) world.fleet(c,engine,f);
         for(int i:depth) world.tower(c,engine.towers.get(i),controls.selected==i,effects.towerScale(i),SceneStyle.buildingScale(engine),engine.elapsed);
-        for(Engine.Fleet f:engine.fleets) world.fleetBadge(c,engine,f);
+        for(Engine.Fleet f:engine.fleets) world.fleetBadge(c,engine,f,!camera.overview() || f.owner==1);
         tactics.buffs(c,engine);renderer.drawBursts(c,effects);drawDrag(c);c.restore();
     }
     private void drawMapZoom(Canvas c) {
@@ -120,17 +123,19 @@ public final class BattleView extends View {
     }
     private void header(Canvas c) {
         boolean compact=screen.compact;
-        text(c,"TOWER / FRONT",133,screen.titleY(),compact?18:21,WHITE);
+        text(c,"TOWER FRONT",133,screen.titleY(),compact?18:21,WHITE);
         String title=engine.skirmish?"자유전 · "+Skirmish.name(engine.mapId)+" · AI"+engine.enemyCount:String.format(Locale.KOREA,"%02d  %s",engine.level,Campaign.name(engine.level));
         text(c,title,143,screen.nameY(),12,GRAY);
         float pauseTop=screen.pauseTop();
         box(c,294,pauseTop,88,screen.buttonHeight,MainActivity.CARD);
         text(c,"일시정지",338,pauseTop+screen.buttonHeight/2+screen.font(12)/3,12,WHITE);
         strength(c,screen.statusY());
+        box(c,18,screen.objectiveTop(),364,screen.font(10)*1.2f+6,0xffe8eee4);
         text(c,engine.rules.objectiveText(),200,screen.objectiveY(),10,WHITE);
         if(!compact) headerDetails(c);
     }
     private void strength(Canvas c,float baseline) {
+        statusCards(c);
         int[] strength=new int[12];
         for(Engine.Tower t:engine.towers) strength[t.owner]+=t.units;
         for(Engine.Fleet f:engine.fleets) strength[f.owner]+=f.units;
@@ -138,6 +143,12 @@ public final class BattleView extends View {
         text(c,clock(engine.elapsed),screen.compact?145:200,baseline,screen.compact?14:18,WHITE);
         int total=0;for(int i=2;i<strength.length;i++) total+=strength[i];
         text(c,(screen.compact?"적 ":"적군 ")+total,screen.compact?242:335,baseline,14,color(2));
+    }
+    private void statusCards(Canvas c) {
+        float y=screen.statusTop(),h=screen.statusBottom()-y;
+        box(c,screen.compact?10:18,y,screen.compact?76:94,h,0xffe4eef5);
+        box(c,screen.compact?104:144,y,screen.compact?82:112,h,MainActivity.CARD);
+        box(c,screen.compact?204:288,y,screen.compact?76:94,h,0xfff5e5dc);
     }
     private void headerDetails(Canvas c) {
         text(c,Campaign.difficultyName(engine.difficulty)+(engine.skirmish?" · 생존 "+engine.remainingEnemies()+"진영":" · 미션 "+engine.level+" / 100"),200,screen.detailsY(),10,GRAY);
@@ -168,6 +179,7 @@ public final class BattleView extends View {
         return "출병 불가 · 병력이 부족합니다";
     }
     private void footer(Canvas c) {
+        box(c,8,screen.boardBottom+4,384,screen.height-screen.boardBottom,MainActivity.CARD);
         String hint=noticeTime>0?notice:"아군 선택 → 출병 / 전술 스킬";
         if(dragging && controls.selected>=0) hint=previewLabel();
         text(c,hint,200,screen.noticeY,12,WHITE);

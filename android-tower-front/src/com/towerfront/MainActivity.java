@@ -6,6 +6,8 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
+import android.content.res.ColorStateList;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.os.Build;
@@ -109,13 +111,15 @@ public final class MainActivity extends Activity {
         LinearLayout layout=new LinearLayout(this);layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(dp(24),dp(20),dp(24),dp(28));
         scroll.addView(layout);root.addView(scroll);
-        TextView heading=label(title,30,SceneStyle.INK);heading.setTypeface(null,Typeface.BOLD);
-        layout.addView(heading);layout.addView(label(subtitle,13,MUTED));
+        TextView heading=label(title,30,SceneStyle.INK);heading.setTypeface(null,Typeface.BOLD);heading.setGravity(Gravity.START);
+        TextView caption=label(subtitle,13,MUTED);caption.setGravity(Gravity.START);
+        layout.addView(heading);layout.addView(caption);
         return layout;
     }
     private Button button(LinearLayout parent,String title,boolean primary,Runnable action) {
         Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextSize(16);
-        button.setTextColor(primary?0xffffffff:SceneStyle.INK);button.setBackground(surface(primary?CYAN:CARD));
+        button.setTextColor(primary?0xffffffff:SceneStyle.INK);
+        button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22334455),surface(primary?CYAN:CARD),null));
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         button.setMinHeight(dp(58));button.setPadding(dp(12),dp(14),dp(12),dp(14));
         params.topMargin=dp(12);parent.addView(button,params);
@@ -125,16 +129,17 @@ public final class MainActivity extends Activity {
         campaignPage=false;
         saveBattle(false);
         LinearLayout panel=page("TOWER FRONT","타워 프론트 · 오프라인 전략 캠페인");
-        panel.addView(new MenuHero(this),new LinearLayout.LayoutParams(-1,dp(Math.min(185,Math.max(110,getResources().getConfiguration().screenHeightDp/5)))));
-        panel.addView(label("섬을 지휘하고, 전선을 넓히세요",18,SceneStyle.INK));
-        panel.addView(label("미션 100단계  /  자유전 AI 최대 10진영",12,MUTED));
+        MenuHero hero=new MenuHero(this);hero.setBackground(surface(CARD));hero.setClipToOutline(true);
+        panel.addView(hero,new LinearLayout.LayoutParams(-1,dp(Math.min(185,Math.max(110,getResources().getConfiguration().screenHeightDp/5)))));
         if(engine!=null) button(panel,engine.result()==0?(engine.skirmish?"자유전 이어하기":"미션 "+engine.level+" 이어하기"):"지난 전투 결과",true,()->openBattle(engine));
-        button(panel,"미션 모드 · 100스테이지",engine==null,()->openMissions());
-        button(panel,"자유전 · 무작위 게임",false,()->showSkirmish());
+        TextView section=label("작전 선택",15,SceneStyle.INK);section.setGravity(Gravity.START);section.setTypeface(null,Typeface.BOLD);panel.addView(section);
+        MenuCards cards=new MenuCards(this);
+        cards.add(panel,"미션 모드 · 100스테이지","목표를 달성하며 100개 작전에 도전하세요","01",CYAN,()->openMissions());
+        cards.add(panel,"자유전 · 무작위 게임","맵과 적 진영 수를 골라 나만의 전투를 만드세요","02",0xffb56c32,()->showSkirmish());
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v6.3 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v6.4 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();

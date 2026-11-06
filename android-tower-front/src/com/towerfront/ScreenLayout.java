@@ -30,6 +30,9 @@ public final class ScreenLayout {
         return Math.max(111,pauseTop()+buttonHeight+font(14)*.9f+6);
     }
     public float objectiveY() {return Math.max(compact?108:132,statusY()+font(14)*.3f+font(10)*.9f+6);}
+    public float statusTop() {return statusY()-font(18)*.9f-4;}
+    public float statusBottom() {return statusY()+font(14)*.3f+1;}
+    public float objectiveTop() {return objectiveY()-font(10)*.9f-3;}
     public float detailsY() {return objectiveY()+font(10)*1.2f+5;}
     public float legendY() {return detailsY()+font(10)*1.2f+5;}
     private float headerEnd() {
