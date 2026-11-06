@@ -14,7 +14,7 @@ public final class CampaignPlaytest {
             System.out.println("Half-dispatch with reinforcement policy mode="+mode+" wins="+wins+"/12");
         }
     }
-    private static Engine play(int stage,int mode) {
+    static Engine play(int stage,int mode) {
         Engine e=new Engine(stage,mode);
         for(int step=0;step<12000 && e.result()==0;step++) {
             if(step%8==0) command(e);
