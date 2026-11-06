@@ -18,3 +18,16 @@ def test_music_loop() -> None:
     assert .1 < peak < .9
     assert .02 < rms < .4
     assert abs(samples[0] - samples[-1]) / 32768 < .01
+
+
+def test_sound_effects() -> None:
+    root = Path(__file__).resolve().parents[1] / 'android-tower-front/res/raw'
+    names = ('action', 'error', 'hit', 'capture', 'reinforce', 'win', 'loss')
+    for name in names:
+        with wave.open(str(root / f'sfx_{name}.wav'), 'rb') as sound:
+            assert sound.getnchannels() == 1 and sound.getsampwidth() == 2
+            assert sound.getframerate() == 22050
+            assert .06 < sound.getnframes() / sound.getframerate() < 1.2
+            samples = array('h', sound.readframes(sound.getnframes()))
+        assert .1 < max(abs(sample) for sample in samples) / 32768 < .9
+        assert abs(samples[0]) < 100 and abs(samples[-1]) < 100

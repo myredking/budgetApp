@@ -9,7 +9,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.content.res.ColorStateList;
 import android.media.AudioManager;
-import android.media.ToneGenerator;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -22,7 +21,7 @@ public final class MainActivity extends Activity {
     static final int CYAN=SceneStyle.BLUE,MUTED=0xff657469;
     private FrameLayout root;
     private SharedPreferences preferences;
-    private ToneGenerator tone;
+    private GameSound effectsAudio;
     private GameMusic music;
     private BattleView battle;
     private boolean campaignPage;
@@ -48,7 +47,7 @@ public final class MainActivity extends Activity {
         customEnemies=Math.max(1,Math.min(10,preferences.getInt("customEnemies",3)));
         customDifficulty=Math.max(0,Math.min(2,preferences.getInt("customDifficulty",1)));
         engine=SaveCodec.decode(preferences.getString("battle",""));
-        try {tone=new ToneGenerator(AudioManager.STREAM_MUSIC,45);} catch(RuntimeException ex) {tone=null;}
+        try {effectsAudio=new GameSound(this);} catch(RuntimeException ex) {effectsAudio=null;}
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         root=new FrameLayout(this);root.setBackgroundColor(BG);setContentView(root);
         root.setOnApplyWindowInsetsListener((view,insets)->applyInsets(view,insets));
@@ -71,7 +70,7 @@ public final class MainActivity extends Activity {
     @Override public void onPause() {
         if(battle!=null) battle.suspend();
         if(music!=null) music.foreground(false);
-        if(tone!=null) tone.stopTone();
+        if(effectsAudio!=null) effectsAudio.stop();
         saveBattle(true);super.onPause();
     }
     @Override public void onResume() {
@@ -79,7 +78,7 @@ public final class MainActivity extends Activity {
     }
     @Override public void onDestroy() {
         if(music!=null) music.close();
-        if(tone!=null) tone.release();super.onDestroy();
+        if(effectsAudio!=null) effectsAudio.close();super.onDestroy();
     }
     @Override public void onBackPressed() {
         if(battle!=null) {battle.back();return;}
@@ -93,13 +92,13 @@ public final class MainActivity extends Activity {
         if(immediate) edit.commit();else edit.apply();
     }
     void feedback(boolean positive) {
-        if(!sound || tone==null) return;
-        tone.startTone(positive?ToneGenerator.TONE_PROP_ACK:ToneGenerator.TONE_PROP_NACK,90);
+        if(sound && effectsAudio!=null) effectsAudio.play(positive?GameSound.ACTION:GameSound.ERROR);
     }
     void battleSound(int kind) {
-        if(!sound || tone==null) return;
-        int[] tones={ToneGenerator.TONE_PROP_BEEP,ToneGenerator.TONE_PROP_BEEP2,ToneGenerator.TONE_PROP_ACK};
-        tone.startTone(tones[kind],kind==Engine.CAPTURE?140:65);
+        if(sound && effectsAudio!=null) effectsAudio.battle(kind);
+    }
+    void resultSound(boolean win) {
+        if(sound && effectsAudio!=null) effectsAudio.play(win?GameSound.WIN:GameSound.LOSS);
     }
     void message(String text) {Toast.makeText(this,text,Toast.LENGTH_SHORT).show();}
     private int dp(int value) {return Math.round(value*getResources().getDisplayMetrics().density);}
@@ -147,7 +146,7 @@ public final class MainActivity extends Activity {
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v6.7 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v6.8 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();
@@ -271,7 +270,7 @@ public final class MainActivity extends Activity {
         String[] names={"효과음","터치 진동","전투 연출","초반 미션 조작 안내","배경음악"};boolean[] checked={sound,haptics,visuals,guidance,musicEnabled};
         new AlertDialog.Builder(this).setTitle("소리·진동·연출")
             .setMultiChoiceItems(names,checked,(dialog,which,value)->{
-                if(which==0) sound=value;
+                if(which==0) {sound=value;if(!value && effectsAudio!=null) effectsAudio.stop();}
                 if(which==1) haptics=value;
                 if(which==2) visuals=value;
                 if(which==3) guidance=value;

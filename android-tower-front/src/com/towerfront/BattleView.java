@@ -104,7 +104,7 @@ public final class BattleView extends View {
         processImpacts();sinceSave+=dt;
         if(sinceSave>=5) {host.saveBattle(false);sinceSave=0;}
         if(engine.result()!=0 && !reported) {
-            reported=true;host.saveBattle(true);host.feedback(engine.result()==1);
+            reported=true;host.saveBattle(true);host.resultSound(engine.result()==1);
             if(host.visuals && engine.result()==1) effects.celebrate();
         }
     }
