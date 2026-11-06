@@ -10,6 +10,7 @@ namespace DeckBall.Showcase
         public AnimationClip[] swingClips;
         public BattingSession Session { get; private set; }
         public InningSession Inning { get; private set; }
+        public RosterBook Roster { get; private set; }
         public FieldPresentation field;
         public bool Started { get; private set; }
         public bool Paused { get; private set; }
@@ -35,6 +36,7 @@ namespace DeckBall.Showcase
 
         private void Awake()
         {
+            InitializeRoster();
             Session = new BattingSession(1);
             batClip = batter.GetComponent<Animation>().clip;
             pitchClip = pitcher.GetComponent<Animation>().clip;
@@ -49,6 +51,21 @@ namespace DeckBall.Showcase
             Screen.orientation = ScreenOrientation.LandscapeLeft;
             Screen.autorotateToLandscapeLeft = Screen.autorotateToLandscapeRight = true;
             Screen.autorotateToPortrait = Screen.autorotateToPortraitUpsideDown = false;
+        }
+
+        private void InitializeRoster()
+        {
+            var source = Resources.Load<TextAsset>("KboRoster2026");
+            if (source == null) return;
+            Roster = RosterBook.Load(source.text);
+            Roster.Restore(PlayerPrefs.GetString("DeckBall.Roster.v1", ""));
+        }
+
+        public void SaveRoster()
+        {
+            if (Roster == null) return;
+            PlayerPrefs.SetString("DeckBall.Roster.v1", Roster.Save());
+            PlayerPrefs.Save();
         }
 
         public void StartChallenge(int level)
@@ -88,7 +105,8 @@ namespace DeckBall.Showcase
             pitchClip.SampleAnimation(pitcher, 2);
             release = ball.position;
             var target = new Vector3(Random.Range(-.08f, .08f), Random.Range(.84f, 1.02f), .2f);
-            if (Inning != null && Random.value < .3f) target.x = Random.value < .5f ? -.38f : .38f;
+            var ballChance = Roster == null ? .3f : .45f - Roster.Pitcher.EffectiveControl * .003f;
+            if (Inning != null && Random.value < ballChance) target.x = Random.value < .5f ? -.38f : .38f;
             pitchInZone = Mathf.Abs(target.x) <= .216f;
             duration = Vector3.Distance(release, target) / PitchSpeed;
             arrival = 2 + duration;
@@ -106,7 +124,7 @@ namespace DeckBall.Showcase
         {
             if (!Started || Finished || Paused || clock < 2 || Session.Resolved) return false;
             var error = clock + TrialRules.SwingLead - arrival;
-            if (!Session.TryResolve(error, Power)) return false;
+            if (!Session.TryResolve(AdjustedError(error), Power)) return false;
             swingTime = clock;
             swung = true;
             Feedback = new[] { error < 0 ? "너무 빨라요" : "늦었어요", "빗맞음", "좋은 타격!", "완벽한 타이밍!" }[Session.LastGrade];
@@ -115,11 +133,20 @@ namespace DeckBall.Showcase
             return true;
         }
 
+        private float AdjustedError(float error)
+        {
+            if (Roster == null) return error;
+            var scoring = Inning != null && (Inning.Bases & 6) != 0;
+            var window = TrialRules.PlayerWindow(Session.Level, Power, Roster.Batter.EffectiveContact(scoring));
+            return error * TrialRules.Window(Session.Level, Power) / window;
+        }
+
         private void PrepareHit(float error)
         {
             if (Session.LastGrade == 0) return;
             hitVelocity = TrialRules.LaunchVelocity(Session.LastGrade, Session.LastPower, SwingStyle,
                 error / TrialRules.Window(Session.Level, Session.LastPower));
+            if (Roster != null) hitVelocity = TrialRules.AdjustPower(hitVelocity, Roster.Batter.EffectivePower);
             var flight = (hitVelocity.y + Mathf.Sqrt(hitVelocity.y * hitVelocity.y + 2 * Gravity)) / Gravity;
             EstimatedDistance = new Vector2(hitVelocity.x, hitVelocity.z).magnitude * flight;
             resultDuration = Mathf.Clamp(flight + .3f, 1.5f, 4.8f);

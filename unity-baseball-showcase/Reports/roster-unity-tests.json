@@ -1,0 +1,225 @@
+{
+  "success": true,
+  "command": "command test",
+  "data": {
+    "command": "test",
+    "parameters": {
+      "mode": "EditMode",
+      "filter": "DeckBall.Showcase.Tests",
+      "filter-type": "assembly"
+    },
+    "result": {
+      "Summary": {
+        "Total": 27,
+        "Passed": 27,
+        "Failed": 0,
+        "Skipped": 0,
+        "Inconclusive": 0
+      },
+      "Results": [
+        {
+          "FullName": "BattingTrialTests.EditedContactWidensWindowAndEditedPowerChangesExitSpeed",
+          "Status": "Passed",
+          "Duration": 0.026503,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.HomeRunUsesCurvedFenceAndExcludesFoulAndLowBalls",
+          "Status": "Passed",
+          "Duration": 0.0100024,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.ImpactSoundHasFiniteAudibleSamplesAndQuietEnds",
+          "Status": "Passed",
+          "Duration": 0.0087486,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(2340,1080,120,56,2220,1024)",
+          "Status": "Passed",
+          "Duration": 0.0040996,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(2340,1080,0,56,2220,1024)",
+          "Status": "Passed",
+          "Duration": 0.0010389,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(1920,1080,0,0,1920,1080)",
+          "Status": "Passed",
+          "Duration": 0.0010114,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.OnePitchCannotScoreTwiceAndTenPitchesEndChallenge",
+          "Status": "Passed",
+          "Duration": 0.003498,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.SwingReachesContactWithinOneTenthSecond",
+          "Status": "Passed",
+          "Duration": 0.0012662,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TimingDifficultyAndPowerHaveClearTradeoffs",
+          "Status": "Passed",
+          "Duration": 0.0011843,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TouchSwingStylesChangeDirectionAndGroundBallAngle",
+          "Status": "Passed",
+          "Duration": 0.0024564,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TouchUsesBottomLeftScreenCoordinatesAndIgnoresCutout",
+          "Status": "Passed",
+          "Duration": 0.0018328,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.ChallengeRunsTenPitchesPausesAndRestarts",
+          "Status": "Passed",
+          "Duration": 15.8180827,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.DiamondPlacesPitcherAndCameraTowardHome",
+          "Status": "Passed",
+          "Duration": 7.08143,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.InningModeEndsOnThreeStrikeoutsInsteadOfTenPitches",
+          "Status": "Passed",
+          "Duration": 9.1425636,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.SuccessfulHitScoresTracksBallAndRestoresBest",
+          "Status": "Passed",
+          "Duration": 8.7444023,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "FieldPlayTests.FieldersHaveLegalIndexAndFiniteResolutionTime",
+          "Status": "Passed",
+          "Duration": 0.0047228,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "FieldPlayTests.ShortGroundBallCanBeThrownOutButOverFenceIsHomeRun",
+          "Status": "Passed",
+          "Duration": 0.0016144,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "InningRulesTests.HomeRunScoresAllRunnersAndClearsBases",
+          "Status": "Passed",
+          "Duration": 0.002672,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "InningRulesTests.ThirdOutEndsInningAndRejectsFurtherActions",
+          "Status": "Passed",
+          "Duration": 0.001583,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "InningRulesTests.TwoStrikeFoulsDoNotStrikeOutButThirdMissDoes",
+          "Status": "Passed",
+          "Duration": 0.0013192,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "InningRulesTests.WalkOnlyMovesForcedRunnersAndLoadedWalkScoresOne",
+          "Status": "Passed",
+          "Duration": 0.0012092,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "PlayerStudyTests.ImportedPlayersHaveSkinningAndMovingAnimation",
+          "Status": "Passed",
+          "Duration": 3.6432603,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "PlayerStudyTests.PitchBallLeavesLeftHandAtReleaseWithoutChangingSize",
+          "Status": "Passed",
+          "Duration": 10.3777187,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "RosterBookTests.InvalidEditIsAtomicAndSkillsRespectRoleAndTwoSlotLimit",
+          "Status": "Passed",
+          "Duration": 0.0184624,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "RosterBookTests.InvalidLaterEditAndWrongRolesDoNotPartiallyMutateBook",
+          "Status": "Passed",
+          "Duration": 0.0049425,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "RosterBookTests.SaveRestorePreservesEditsAndSelectedPlayers",
+          "Status": "Passed",
+          "Duration": 0.0055891,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "RosterBookTests.SnapshotContainsCurrentAndHistoricalCardsAndEditingKeepsSourceRecord",
+          "Status": "Passed",
+          "Duration": 0.0034993,
+          "Message": null,
+          "StackTrace": null
+        }
+      ],
+      "Duration": 61.91,
+      "StatusPath": null,
+      "Mode": "EditMode",
+      "FilterApplied": "assembly: DeckBall.Showcase.Tests",
+      "success": true,
+      "result": null
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

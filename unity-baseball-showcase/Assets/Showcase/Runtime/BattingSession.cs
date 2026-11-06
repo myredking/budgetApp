@@ -21,6 +21,12 @@ namespace DeckBall.Showcase
             return new[] { .18f, .12f, .08f }[level] * (power ? .7f : 1);
         }
 
+        public static float PlayerWindow(int level, bool power, int contact) => Window(level, power)
+            * Mathf.Lerp(.8f, 1.2f, Mathf.Clamp(contact,1,110) / 110f);
+
+        public static Vector3 AdjustPower(Vector3 velocity, int power) => velocity
+            * Mathf.Lerp(.85f, 1.15f, Mathf.Clamp(power,1,110) / 110f);
+
         public static int Grade(float error, int level, bool power)
         {
             if (float.IsNaN(error) || float.IsInfinity(error)) throw new ArgumentOutOfRangeException(nameof(error));

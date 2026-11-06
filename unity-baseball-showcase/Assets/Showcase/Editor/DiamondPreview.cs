@@ -6,6 +6,13 @@ namespace DeckBall.Showcase.Editor
 {
     internal static class DiamondPreview
     {
+        [MenuItem("DeckBall/Diamond Challenge/Open Roster Preview")]
+        public static void OpenRoster()
+        {
+            if (!EditorApplication.isPlaying) throw new System.InvalidOperationException("Enter Play mode first.");
+            Object.FindFirstObjectByType<RosterPanel>().Open();
+        }
+
         [MenuItem("DeckBall/Diamond Challenge/Start Inning Preview")]
         public static void StartInning()
         {

@@ -7,6 +7,7 @@ namespace DeckBall.Showcase
         public BattingTrialGame game;
         public Font font;
         public Texture2D batterPortrait, pitcherPortrait;
+        public RosterPanel roster;
         public bool previewSafeArea;
         public Vector4 previewInsets = new Vector4(120, 0, 0, 56);
         private int level = 1, lastInputFrame = -1;
@@ -30,6 +31,7 @@ namespace DeckBall.Showcase
         {
             layout = Layout();
             if (layout.Portrait) return;
+            if (roster != null && roster.Opened) return;
             if (Input.GetKeyDown(KeyCode.Escape)) game.TogglePause();
             if (!game.Started || game.Paused || game.Finished) return;
             if (Input.GetKeyDown(KeyCode.Space)) Activate(1);
@@ -76,17 +78,39 @@ namespace DeckBall.Showcase
             if (game == null || game.Session == null) return;
             layout = Layout();
             PrepareStyles();
+            if (roster != null && roster.Opened) { roster.Draw(layout.Safe,layout.Scale,font); return; }
             if (layout.Portrait) { PortraitMessage(); return; }
             DrawScore();
-            DrawCard(layout.Card, batterPortrait, "KIA  ·  5", "김도영", "우타 · 내야수", new Color(.68f, .04f, .10f),
-                     "안타 " + (game.Inning != null ? game.Inning.Hits : game.Session.Hits) + "    정타 " + game.Session.Perfects);
-            DrawCard(layout.PitcherCard, pitcherPortrait, "HANWHA  ·  99", "류현진", "좌완 · 투수", new Color(.95f, .37f, .08f),
-                     "연습구  " + Mathf.RoundToInt(game.PitchSpeed * 3.6f) + " km/h");
+            DrawBatterCard();
+            DrawPitcherCard();
             Panel(layout.Menu, navy);
             GUI.Label(layout.Menu, "Ⅱ  메뉴", centered);
             DrawControls();
             DrawFeedback();
-            if (!game.Started || game.Paused || game.Finished) DrawMenu();
+            if (!game.Started || game.Paused || game.Finished) { DrawMenu(); DrawRosterButton(); }
+        }
+
+        private void DrawBatterCard()
+        {
+            var hitter = game.Roster?.Batter;
+            DrawCard(layout.Card, batterPortrait, hitter != null ? hitter.Team + " · " + hitter.Year : "KIA  ·  5", hitter?.Name ?? "김도영", hitter?.Position ?? "우타 · 내야수", new Color(.68f, .04f, .10f),
+                     "안타 " + (game.Inning != null ? game.Inning.Hits : game.Session.Hits) + "    정타 " + game.Session.Perfects);
+        }
+
+        private void DrawPitcherCard()
+        {
+            var thrower = game.Roster?.Pitcher;
+            DrawCard(layout.PitcherCard, pitcherPortrait, thrower != null ? thrower.Team + " · " + thrower.Year : "HANWHA  ·  99", thrower?.Name ?? "류현진", "투수 · 공용 모델", new Color(.95f, .37f, .08f),
+                     "연습구  " + Mathf.RoundToInt(game.PitchSpeed * 3.6f) + " km/h");
+        }
+
+        private void DrawRosterButton()
+        {
+            if (roster == null || game.Roster == null) return;
+            GUI.enabled = !game.Paused;
+            var s = layout.Scale;
+            if (GUI.Button(new Rect(layout.Safe.x + 18*s,layout.Safe.yMax-102*s,330*s,84*s),"선수 선택 · 능력치 편집")) roster.Open();
+            GUI.enabled = true;
         }
 
         private void Panel(Rect rect, Color color)
@@ -115,7 +139,7 @@ namespace DeckBall.Showcase
         {
             var s = layout.Scale;
             var row = new Rect(r.x + 16*s, r.y + 8*s, r.width - 28*s, 36*s);
-            GUI.Label(row, "1회 초   KIA  vs  HANWHA", text);
+            GUI.Label(row, "1회 초   " + (game.Roster?.Batter.Team ?? "KIA") + " vs " + (game.Roster?.Pitcher.Team ?? "HANWHA"), text);
             row.y += 34*s;
             GUI.Label(row, "득점 " + game.Inning.Runs + "   안타 " + game.Inning.Hits + "   " + game.Inning.Outs + " 아웃", text);
             row.y += 34*s;
@@ -131,6 +155,7 @@ namespace DeckBall.Showcase
             var s = layout.Scale;
             GUI.Label(new Rect(r.x + 10 * s, r.y + 3 * s, r.width - 16 * s, 31 * s), club, text);
             if (portrait != null) GUI.DrawTexture(new Rect(r.x + 4 * s, r.y + 34 * s, r.width - 8 * s, 154 * s), portrait, ScaleMode.ScaleAndCrop);
+            GUI.Label(new Rect(r.x + 8*s,r.y + 158*s,r.width - 16*s,30*s),"공용 3D 모델",text);
             Panel(new Rect(r.x, r.y + 188 * s, r.width, 38 * s), color);
             GUI.Label(new Rect(r.x, r.y + 188 * s, r.width, 38 * s), name, heading);
             GUI.Label(new Rect(r.x + 8 * s, r.y + 231 * s, r.width - 12 * s, 33 * s), role, text);

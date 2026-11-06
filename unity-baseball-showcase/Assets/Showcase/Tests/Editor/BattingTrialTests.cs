@@ -112,6 +112,21 @@ public sealed class BattingTrialTests
     }
 
     [Test]
+    public void EditedContactWidensWindowAndEditedPowerChangesExitSpeed()
+    {
+        var rules = Find("TrialRules");
+        var window = rules.GetMethod("PlayerWindow");
+        var power = rules.GetMethod("AdjustPower");
+        Assert.That(window, Is.Not.Null); Assert.That(power, Is.Not.Null);
+        var low = (float)window.Invoke(null, new object[] { 1, false, 20 });
+        var high = (float)window.Invoke(null, new object[] { 1, false, 99 });
+        Assert.That(high, Is.GreaterThan(low));
+        var weak = (Vector3)power.Invoke(null, new object[] { new Vector3(0,15,30), 20 });
+        var strong = (Vector3)power.Invoke(null, new object[] { new Vector3(0,15,30), 99 });
+        Assert.That(strong.magnitude, Is.GreaterThan(weak.magnitude));
+    }
+
+    [Test]
     public void ImpactSoundHasFiniteAudibleSamplesAndQuietEnds()
     {
         var method = Find("TrialSound").GetMethod("CreateImpact");

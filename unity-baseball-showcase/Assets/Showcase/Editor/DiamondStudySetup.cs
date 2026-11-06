@@ -38,6 +38,8 @@ namespace DeckBall.Showcase.Editor
             controller.field = DiamondFielders.Build(batter, pitcher);
             var hud = controller.gameObject.AddComponent<TrialHud>();
             hud.game = controller;
+            hud.roster = controller.gameObject.AddComponent<RosterPanel>();
+            hud.roster.game = controller;
             hud.font = AssetDatabase.LoadAssetAtPath<Font>(Art + "Fonts/NotoSansKR.ttf");
             hud.batterPortrait = Portrait(batter, .75f, "batter");
             hud.pitcherPortrait = Portrait(pitcher, 0, "pitcher");
