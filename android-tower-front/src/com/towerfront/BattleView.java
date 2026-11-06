@@ -31,6 +31,7 @@ public final class BattleView extends View {
     private static final int WHITE=SceneStyle.INK,GRAY=0xff657469;
     public BattleView(MainActivity activity,Engine state) {
         super(activity);host=activity;engine=state;controls=new BattleControls(engine);
+        if(host.guidance) {notice=BattleCoach.tip(engine,-1);if(!engine.skirmish && engine.level<=3) noticeTime=0;}
         world=new WorldRenderer(activity);depth=SceneStyle.towerOrder(engine);
         setFocusable(true);setContentDescription("타워 프론트 전장. 아군 선택 후 목표 터치 또는 드래그.");
     }
@@ -38,7 +39,7 @@ public final class BattleView extends View {
         super.onSizeChanged(w,h,oldW,oldH);
         screen=new ScreenLayout(w,h,getResources().getDisplayMetrics().density,getResources().getConfiguration().fontScale);
         camera=new BattleCamera(screen);scale=screen.scale;left=screen.left;top=screen.top;cancelTouch();
-        if(screen.compact) notice("지도 +로 확대 · 빈 땅을 드래그해 이동");
+        if(screen.compact && (!host.guidance || engine.skirmish || engine.level>3)) notice("지도 +로 확대 · 빈 땅을 드래그해 이동");
     }
     public void suspend() {running=false;paused=true;controls.cancel();last=0;}
     public void wake() {running=true;last=0;invalidate();}
@@ -180,7 +181,7 @@ public final class BattleView extends View {
     }
     private void footer(Canvas c) {
         box(c,8,screen.boardBottom+4,384,screen.height-screen.boardBottom,MainActivity.CARD);
-        String hint=noticeTime>0?notice:"아군 선택 → 출병 / 전술 스킬";
+        String hint=noticeTime>0?notice:host.guidance?BattleCoach.tip(engine,controls.selected):BattleCoach.GENERAL;
         if(dragging && controls.selected>=0) hint=previewLabel();
         text(c,hint,200,screen.noticeY,12,WHITE);
         box(c,18,screen.commandTop,174,screen.buttonHeight,MainActivity.CARD);
@@ -232,6 +233,7 @@ public final class BattleView extends View {
     }
     private String overlayMessage(boolean win) {
         if(win && engine.skirmish) return "최후까지 살아남은 진영입니다!";
+        if(engine.result()==2) return BattleCoach.defeatHint(engine);
         return paused?"전투를 안전하게 저장했습니다":"생산 기지 확보와 증원으로 다시 도전하세요";
     }
     private String primaryLabel(int result) {

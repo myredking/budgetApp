@@ -29,7 +29,7 @@ public final class MainActivity extends Activity {
     Engine engine;
     Profile profile;
     int mode=1;
-    boolean sound=true,haptics=true,visuals=true;
+    boolean sound=true,haptics=true,visuals=true,guidance=true;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -40,6 +40,7 @@ public final class MainActivity extends Activity {
         mode=preferences.getInt("mode",1);mode=Math.max(0,Math.min(2,mode));
         sound=preferences.getBoolean("sound",true);haptics=preferences.getBoolean("haptics",true);
         visuals=preferences.getBoolean("visuals",true);
+        guidance=preferences.getBoolean("guidance",true);
         migrateProgress();
         customMap=Math.max(0,Math.min(5,preferences.getInt("customMap",0)));
         customEnemies=Math.max(1,Math.min(10,preferences.getInt("customEnemies",3)));
@@ -139,7 +140,7 @@ public final class MainActivity extends Activity {
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v6.4 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v6.5 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();
@@ -260,14 +261,15 @@ public final class MainActivity extends Activity {
         start(Campaign.next(engine.level));
     }
     private void showSettings() {
-        String[] names={"효과음","터치 진동","전투 연출"};boolean[] checked={sound,haptics,visuals};
+        String[] names={"효과음","터치 진동","전투 연출","초반 미션 조작 안내"};boolean[] checked={sound,haptics,visuals,guidance};
         new AlertDialog.Builder(this).setTitle("소리·진동·연출")
             .setMultiChoiceItems(names,checked,(dialog,which,value)->{
                 if(which==0) sound=value;
                 if(which==1) haptics=value;
                 if(which==2) visuals=value;
+                if(which==3) guidance=value;
                 preferences.edit().putBoolean("sound",sound).putBoolean("haptics",haptics)
-                    .putBoolean("visuals",visuals).apply();
+                    .putBoolean("visuals",visuals).putBoolean("guidance",guidance).apply();
             }).setPositiveButton("완료",null).show();
     }
     void showHelp() {
