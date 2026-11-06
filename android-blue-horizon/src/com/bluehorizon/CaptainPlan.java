@@ -71,7 +71,9 @@ public final class CaptainPlan {
         return !e.hasVisited(source)?route(source):trade(e,good,source,target);
     }
     private static CaptainPlan publication(Engine e) {
-        return e.gold<12000?page("공동 해도 출판 기금","목표 12,000 G · 의뢰와 교역으로 기금을 마련하세요.",5):route(0);
+        if(e.gold>=FundingPlan.required(e)) return route(0);
+        String budget="출판 12,000 G"+(e.port==0?"":" + 안전항로 귀환 "+e.travelCost(0,1)+" G + 사건 예비 200 G");
+        return page("출판 자금 · "+e.gold+" / "+FundingPlan.required(e)+" G",budget+"\n"+FundingPlan.description(e),FundingPlan.page(e));
     }
     private static CaptainPlan northern(Engine e) {
         if(!e.hasVisited(2)) return route(2);

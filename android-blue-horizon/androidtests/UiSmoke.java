@@ -24,6 +24,7 @@ public final class UiSmoke extends Instrumentation {
             purchaseScreenshot(activity);
             checkAnimation(activity);
             VoyageSpeedUiChecks.run(activity,this);
+            FundingUiChecks.run(activity,this);
             ExpeditionUiChecks.run(activity,this);
             result.putString("result","PASS: in-transit import, automatic arrival, town walk/cancel, orders, expedition/conversation/boss import UI; original progress restored");
         } catch(Throwable error) { status=Activity.RESULT_CANCELED;result.putString("error",error.toString()); }

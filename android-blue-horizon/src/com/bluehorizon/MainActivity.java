@@ -667,6 +667,7 @@ public final class MainActivity extends Activity {
         new TradeDialog(this,game,good,selling,quantity,success->changed(success)).show();
     }
     private void shipyard() {
+        if(game.gold<Math.max(FundingPlan.recoveryCost(game),game.hull<40?game.repairCost():40)) recoveryWork();
         scene("town-scenes-v1.png",7);
         npc("조선소 장인","돛과 선체를 살펴보겠소. 먼바다에 나가기 전엔 수리부터 챙기시오.");
         label(content,"FLEET & HARBOR",11,TEAL); label(content,"선박과 항구",26,INK);
@@ -685,6 +686,12 @@ public final class MainActivity extends Activity {
         LinearLayout work=card(content); label(work,"항구 일거리",18,TEAL);
         label(work,"부두에서 하루 일하면 120 G를 받습니다. 보급비와 수리비가 부족할 때 이용하세요.",14,INK);
         fullAction(work,"하루 일하기 · +120 G",()->changed(game.work()),true);
+    }
+    private void recoveryWork() {
+        LinearLayout work=card(content);label(work,"다시 출항할 준비",19,GOLD);
+        label(work,"자금이 부족할 때 이용할 수 있는 항구 일거리입니다. 하루 경과 · +120 G. 의뢰와 경주 기한도 흐릅니다.",13,INK);
+        Button earn=button("하루 일하기 · +120 G",true);earn.setTag("funding-recovery");
+        earn.setOnClickListener(v->changed(game.work()));work.addView(earn,buttonParams());
     }
     private void refitCards() {
         LinearLayout summary=card(content);label(summary,"선박 개조 · 슬롯 "+game.refits.used()+" / "+Refits.slots(game),18,GOLD);

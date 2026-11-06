@@ -35,6 +35,7 @@ def build() -> Path:
 def main() -> None:
     apk = build()
     adb = SDK / "platform-tools/adb.exe"
+    run([adb, "-s", "emulator-5554", "install", "-r", PROJECT / "BlueHorizon.apk"])
     run([adb, "-s", "emulator-5554", "shell", "input", "keyevent", "224"])
     run([adb, "-s", "emulator-5554", "install", "-r", apk])
     result = subprocess.run([str(adb), "-s", "emulator-5554", "shell", "am", "instrument", "-w",
