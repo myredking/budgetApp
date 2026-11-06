@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Showcase/Art/Diamond/DiamondChallenge.unity
+    guid: 2da20c5a7b2c5a64c98c12111db89d87
   m_configObjects: {}

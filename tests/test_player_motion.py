@@ -79,3 +79,20 @@ def test_ball_flight_starts_at_release_and_uses_elapsed_time() -> None:
     assert module.ball_flight([0, 0, 1.5], [0, -32, 0], .1) == pytest.approx([0, -3.2, 1.45095])
     with pytest.raises(ValueError):
         module.ball_flight([0, 0, 1.5], [0, -32, 0], -.1)
+
+
+def test_swing_variants_have_distinct_contact_poses_without_mutating_base() -> None:
+    module = motion_module()
+    base = module.load_profiles(ROOT / "player-profiles.json")[0]
+    import copy
+    original = copy.deepcopy(base)
+    push = module.swing_variant(base, 1)
+    pull = module.swing_variant(base, 2)
+    down = module.swing_variant(base, 3)
+    assert base == original
+    push_axis = module.sample_track(push["poses"], "bat_direction", 1.7)
+    pull_axis = module.sample_track(pull["poses"], "bat_direction", 1.7)
+    assert push_axis[0] < pull_axis[0]
+    assert module.sample_track(down["poses"], "left_hand", 1.7)[2] < module.sample_track(base["poses"], "left_hand", 1.7)[2]
+    with pytest.raises(ValueError):
+        module.swing_variant(base, 0)

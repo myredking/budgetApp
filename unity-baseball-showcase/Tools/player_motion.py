@@ -1,6 +1,7 @@
 """Sample hand-authored review motion in metres; not measured player mocap."""
 import json
 import math
+import copy
 from pathlib import Path
 
 
@@ -41,6 +42,21 @@ def sample_track(poses: list[dict], track: str, time: float) -> list[float]:
 def load_profiles(path: Path) -> list[dict]:
     data = json.loads(path.read_text(encoding="utf-8"))
     return data["players"]
+
+
+def swing_variant(base: dict, style: int) -> dict:
+    if style not in (1, 2, 3):
+        raise ValueError("Style must be push, pull or down")
+    result = copy.deepcopy(base)
+    result["id"] += ("_push", "_pull", "_down")[style - 1]
+    for pose in result["poses"]:
+        weight = max(0, 1 - abs(pose["time"] - 1.7) / .55)
+        pose["bat_direction"][0] += (-.22, .22, 0)[style - 1] * weight
+        if style == 3:
+            for hand in ("left_hand", "right_hand"):
+                pose[hand][2] -= .025 * weight
+            pose["bat_direction"][2] -= .08 * weight
+    return result
 
 
 def finite_vector(value: list[float]) -> None:

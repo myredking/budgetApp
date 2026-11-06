@@ -1,0 +1,141 @@
+{
+  "success": true,
+  "command": "command test",
+  "data": {
+    "command": "test",
+    "parameters": {
+      "mode": "EditMode",
+      "filter": "DeckBall.Showcase.Tests",
+      "filter-type": "assembly"
+    },
+    "result": {
+      "Summary": {
+        "Total": 15,
+        "Passed": 15,
+        "Failed": 0,
+        "Skipped": 0,
+        "Inconclusive": 0
+      },
+      "Results": [
+        {
+          "FullName": "BattingTrialTests.HomeRunUsesCurvedFenceAndExcludesFoulAndLowBalls",
+          "Status": "Passed",
+          "Duration": 0.0261922,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.ImpactSoundHasFiniteAudibleSamplesAndQuietEnds",
+          "Status": "Passed",
+          "Duration": 0.0140937,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(2340,1080,120,56,2220,1024)",
+          "Status": "Passed",
+          "Duration": 0.0044156,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(2340,1080,0,56,2220,1024)",
+          "Status": "Passed",
+          "Duration": 0.0006531,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(1920,1080,0,0,1920,1080)",
+          "Status": "Passed",
+          "Duration": 0.0005288,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.OnePitchCannotScoreTwiceAndTenPitchesEndChallenge",
+          "Status": "Passed",
+          "Duration": 0.0035004,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.SwingReachesContactWithinOneTenthSecond",
+          "Status": "Passed",
+          "Duration": 0.0018837,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TimingDifficultyAndPowerHaveClearTradeoffs",
+          "Status": "Passed",
+          "Duration": 0.0016501,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TouchSwingStylesChangeDirectionAndGroundBallAngle",
+          "Status": "Passed",
+          "Duration": 0.0030247,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TouchUsesBottomLeftScreenCoordinatesAndIgnoresCutout",
+          "Status": "Passed",
+          "Duration": 0.0016068,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.ChallengeRunsTenPitchesPausesAndRestarts",
+          "Status": "Passed",
+          "Duration": 15.7185771,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.DiamondPlacesPitcherAndCameraTowardHome",
+          "Status": "Passed",
+          "Duration": 6.9338233,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.SuccessfulHitScoresTracksBallAndRestoresBest",
+          "Status": "Passed",
+          "Duration": 11.0183682,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "PlayerStudyTests.ImportedPlayersHaveSkinningAndMovingAnimation",
+          "Status": "Passed",
+          "Duration": 2.8640765,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "PlayerStudyTests.PitchBallLeavesLeftHandAtReleaseWithoutChangingSize",
+          "Status": "Passed",
+          "Duration": 5.7182235,
+          "Message": null,
+          "StackTrace": null
+        }
+      ],
+      "Duration": 47.08,
+      "StatusPath": null,
+      "Mode": "EditMode",
+      "FilterApplied": "assembly: DeckBall.Showcase.Tests",
+      "success": true,
+      "result": null
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

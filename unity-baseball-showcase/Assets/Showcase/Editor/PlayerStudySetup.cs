@@ -31,7 +31,7 @@ namespace DeckBall.Showcase.Editor
             Debug.Log("Player motion study assembled. Likeness and reference-quality approval remain pending.");
         }
 
-        private static void ConfigurePipeline()
+        internal static void ConfigurePipeline()
         {
             var pipeline = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(Review + "Pipeline.asset");
             if (pipeline == null)
@@ -46,7 +46,7 @@ namespace DeckBall.Showcase.Editor
             PlayerSettings.runInBackground = true;
         }
 
-        private static void AddPlayer(string id, Vector3 position, float time)
+        internal static GameObject AddPlayer(string id, Vector3 position, float time)
         {
             var path = Art + "Players/" + id + ".fbx";
             var importer = AssetImporter.GetAtPath(path) as ModelImporter;
@@ -68,6 +68,7 @@ namespace DeckBall.Showcase.Editor
             animation.cullingType = AnimationCullingType.AlwaysAnimate;
             ReplaceMaterials(player);
             clip.SampleAnimation(player, time);
+            return player;
         }
 
         private static void ReplaceMaterials(GameObject player)

@@ -6,7 +6,7 @@
   },
   "engine": "Unity 6 LTS / URP",
   "generated_primitive_players_allowed": false,
-  "status": "awaiting_editor_activation_and_art_assets",
+  "status": "playable_field_prototype_reference_quality_pending",
   "acceptance": {
     "preview_resolution": [
       1920,
@@ -29,10 +29,8 @@
     "playback": "10 second actual engine clip plus still, not an AI illustration"
   },
   "acceptance_not_yet_verified": [
-    "reference-level character fidelity",
-    "asset imports",
-    "runtime lighting",
-    "animation retargeting",
-    "Android performance"
+    "reference-level character and stadium fidelity",
+    "measured player motion similarity",
+    "physical Android performance and input latency"
   ]
 }

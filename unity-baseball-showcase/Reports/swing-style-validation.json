@@ -1,0 +1,17 @@
+[
+  {
+    "id": "kim_doyoung_push",
+    "max_palm_handle_error_m": 7.998427684313942e-05,
+    "attachment_passed": true
+  },
+  {
+    "id": "kim_doyoung_pull",
+    "max_palm_handle_error_m": 0.00881319573924537,
+    "attachment_passed": true
+  },
+  {
+    "id": "kim_doyoung_down",
+    "max_palm_handle_error_m": 0.03216611592009444,
+    "attachment_passed": true
+  }
+]

@@ -1,0 +1,190 @@
+using UnityEngine;
+
+namespace DeckBall.Showcase
+{
+    public sealed class TrialHud : MonoBehaviour
+    {
+        public BattingTrialGame game;
+        public Font font;
+        public Texture2D batterPortrait, pitcherPortrait;
+        public bool previewSafeArea;
+        public Vector4 previewInsets = new Vector4(120, 0, 0, 56);
+        private int level = 1, lastInputFrame = -1;
+        private float pressedUntil, styleScale;
+        private GUIStyle text, centered, heading;
+        private TrialHudLayout layout;
+        private readonly Color navy = new Color(.025f, .055f, .09f, .93f);
+        private readonly Color accent = new Color(.18f, .79f, .88f, 1);
+
+        private TrialHudLayout Layout()
+        {
+            var safe = Screen.safeArea;
+            if (previewSafeArea)
+                safe = new Rect(previewInsets.x, previewInsets.w, Screen.width - previewInsets.x - previewInsets.z,
+                                Screen.height - previewInsets.y - previewInsets.w);
+            return TrialHudLayout.Create(Screen.width, Screen.height, safe, Screen.dpi);
+        }
+
+        private void Update()
+        {
+            layout = Layout();
+            if (layout.Portrait) return;
+            if (Input.GetKeyDown(KeyCode.Escape)) game.TogglePause();
+            if (!game.Started || game.Paused || game.Finished) return;
+            if (Input.GetKeyDown(KeyCode.Space)) Activate(1);
+            ReadPointer();
+        }
+
+        private void ReadPointer()
+        {
+            if (Input.touchCount > 0)
+            {
+                for (var index = 0; index < Input.touchCount; index++)
+                {
+                    var touch = Input.GetTouch(index);
+                    if (touch.phase == TouchPhase.Began) Activate(layout.HitTest(touch.position, Screen.height));
+                }
+            }
+            else if (Input.GetMouseButtonDown(0)) Activate(layout.HitTest(Input.mousePosition, Screen.height));
+        }
+
+        private void Activate(int action)
+        {
+            if (action == 0 || lastInputFrame == Time.frameCount) return;
+            lastInputFrame = Time.frameCount;
+            if (action == 1) { game.TrySwing(); pressedUntil = Time.unscaledTime + .1f; }
+            if (action == 2) game.TogglePower();
+            if (action == 3) game.TogglePause();
+            if (action == 4) game.CycleSwingStyle();
+        }
+
+        private void PrepareStyles()
+        {
+            GUI.skin.font = font != null ? font : GUI.skin.font;
+            if (text != null && Mathf.Abs(styleScale - layout.Scale) < .001f) return;
+            styleScale = layout.Scale;
+            text = new GUIStyle(GUI.skin.label) { fontSize = Mathf.RoundToInt(20 * layout.Scale), wordWrap = true, padding = new RectOffset() };
+            text.normal.textColor = Color.white;
+            centered = new GUIStyle(text) { alignment = TextAnchor.MiddleCenter };
+            heading = new GUIStyle(centered) { fontSize = Mathf.RoundToInt(25 * layout.Scale), fontStyle = FontStyle.Bold };
+            GUI.skin.button.fontSize = text.fontSize;
+        }
+
+        private void OnGUI()
+        {
+            if (game == null || game.Session == null) return;
+            layout = Layout();
+            PrepareStyles();
+            if (layout.Portrait) { PortraitMessage(); return; }
+            DrawScore();
+            DrawCard(layout.Card, batterPortrait, "KIA  ·  5", "김도영", "우타 · 내야수", new Color(.68f, .04f, .10f),
+                     "안타 " + game.Session.Hits + "    정타 " + game.Session.Perfects);
+            DrawCard(layout.PitcherCard, pitcherPortrait, "HANWHA  ·  99", "류현진", "좌완 · 투수", new Color(.95f, .37f, .08f),
+                     "연습구  " + Mathf.RoundToInt(game.PitchSpeed * 3.6f) + " km/h");
+            Panel(layout.Menu, navy);
+            GUI.Label(layout.Menu, "Ⅱ  메뉴", centered);
+            DrawControls();
+            DrawFeedback();
+            if (!game.Started || game.Paused || game.Finished) DrawMenu();
+        }
+
+        private void Panel(Rect rect, Color color)
+        {
+            var old = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = old;
+        }
+
+        private void DrawScore()
+        {
+            var r = layout.TopBar;
+            Panel(r, navy);
+            Panel(new Rect(r.x, r.y, 5 * layout.Scale, r.height), accent);
+            var row = new Rect(r.x + 16 * layout.Scale, r.y + 8 * layout.Scale, r.width - 28 * layout.Scale, 36 * layout.Scale);
+            GUI.Label(row, "DECKBALL 2026  |  10구 타격 챌린지", text);
+            row.y += 34 * layout.Scale;
+            GUI.Label(row, "점수  " + game.Session.Score.ToString("00000") + "     " + game.Session.Pitches + " / 10", text);
+            row.y += 34 * layout.Scale;
+            GUI.Label(row, "최고 " + game.Best + "       연속 성공  " + game.Session.Combo, text);
+        }
+
+        private void DrawCard(Rect r, Texture2D portrait, string club, string name, string role, Color color, string stats)
+        {
+            Panel(new Rect(r.x - 2, r.y - 2, r.width + 4, r.height + 4), new Color(.66f, .72f, .75f, .85f));
+            Panel(r, navy);
+            var s = layout.Scale;
+            GUI.Label(new Rect(r.x + 10 * s, r.y + 3 * s, r.width - 16 * s, 31 * s), club, text);
+            if (portrait != null) GUI.DrawTexture(new Rect(r.x + 4 * s, r.y + 34 * s, r.width - 8 * s, 154 * s), portrait, ScaleMode.ScaleAndCrop);
+            Panel(new Rect(r.x, r.y + 188 * s, r.width, 38 * s), color);
+            GUI.Label(new Rect(r.x, r.y + 188 * s, r.width, 38 * s), name, heading);
+            GUI.Label(new Rect(r.x + 8 * s, r.y + 231 * s, r.width - 12 * s, 33 * s), role, text);
+            GUI.Label(new Rect(r.x + 8 * s, r.y + 270 * s, r.width - 12 * s, 33 * s), stats, text);
+        }
+
+        private void DrawControls()
+        {
+            var active = game.Started && !game.Paused && !game.Finished && !game.Session.Resolved;
+            var flash = Time.unscaledTime < pressedUntil;
+            Panel(layout.Swing, active ? (flash ? Color.white : accent) : new Color(.2f, .24f, .28f, .8f));
+            var previous = heading.normal.textColor;
+            heading.normal.textColor = new Color(.025f, .07f, .10f);
+            GUI.Label(layout.Swing, game.Session.Resolved ? "다음 공 준비" : "스윙", heading);
+            heading.normal.textColor = previous;
+            Panel(layout.Power, game.Power ? new Color(.86f, .24f, .09f, .95f) : navy);
+            GUI.Label(layout.Power, game.Power ? "파워 ON" : "정확한 타격", centered);
+            Panel(layout.Style, navy);
+            GUI.Label(layout.Style, "타법: " + new[] { "기본", "밀어치기", "당겨치기", "내려치기" }[game.SwingStyle], centered);
+        }
+
+        private void DrawFeedback()
+        {
+            if (!game.Started) return;
+            var r = layout.Feedback;
+            Panel(r, new Color(.02f, .04f, .07f, .65f));
+            GUI.Label(new Rect(r.x, r.y, r.width, r.height * .65f), game.Feedback, heading);
+            var detail = game.EstimatedDistance > 0 ? "예상 비거리  " + Mathf.RoundToInt(game.EstimatedDistance) + "m" : "터치 순간 반응  ·  PC에서는 SPACE";
+            GUI.Label(new Rect(r.x, r.y + r.height * .65f, r.width, r.height * .35f), detail, centered);
+        }
+
+        private void DrawMenu()
+        {
+            var p = layout.Panel;
+            Panel(p, new Color(.02f, .04f, .065f, .98f));
+            var s = layout.Scale;
+            var title = MenuTitle();
+            GUI.Label(new Rect(p.x + 20 * s, p.y + 22 * s, p.width - 40 * s, 55 * s), title, heading);
+            GUI.Label(new Rect(p.x + 38 * s, p.y + 90 * s, p.width - 76 * s, 76 * s),
+                game.Finished ? "점수 " + game.Session.Score + "  ·  안타 " + game.Session.Hits + "  ·  정타 " + game.Session.Perfects :
+                "공이 홈에 닿기 직전에 스윙! 연속 성공으로 점수를 올리고, 파워 타격으로 장타를 노려보세요.", centered);
+            var names = new[] { "입문", "보통", "도전" };
+            GUI.enabled = !game.Paused;
+            for (var index = 0; index < 3; index++)
+            {
+                var button = new Rect(p.x + (40 + index * 185) * s, p.y + 190 * s, 170 * s, 74 * s);
+                GUI.backgroundColor = index == level ? accent : Color.gray;
+                if (GUI.Button(button, names[index])) level = index;
+            }
+            GUI.backgroundColor = Color.white;
+            GUI.enabled = true;
+            var start = new Rect(p.x + 40 * s, p.y + 292 * s, p.width - 80 * s, 90 * s);
+            if (GUI.Button(start, game.Paused ? "계속 플레이" : game.Finished ? "다시 도전" : "플레이 시작"))
+            {
+                if (game.Paused) game.TogglePause();
+                else game.StartChallenge(level);
+            }
+        }
+
+        private string MenuTitle()
+        {
+            if (game.Finished) return "챌린지 완료!";
+            return game.Paused ? "잠시 쉬어가기" : "10번의 공, 나만의 최고 기록";
+        }
+
+        private void PortraitMessage()
+        {
+            Panel(new Rect(0, 0, Screen.width, Screen.height), navy);
+            GUI.Label(new Rect(20, Screen.height * .35f, Screen.width - 40, Screen.height * .3f), "화면을 가로로 돌려주세요", heading);
+        }
+    }
+}

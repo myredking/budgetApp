@@ -2,16 +2,14 @@
   {
     "id": "kim_doyoung",
     "frames": 97,
-    "max_palm_handle_error_m": 7.998427684313942e-05,
-    "attachment_passed": true,
-    "source_blend_sha256": "747495a1b47319a5c886eddacb07f4ddb26bebfe1e9f622d2964b1f7bd34faa7"
+    "max_palm_handle_error_m": 0.0026171498472088535,
+    "attachment_passed": true
   },
   {
     "id": "ryu_hyunjin",
     "frames": 97,
     "max_ball_hand_error_m": 1.3333208984265686e-07,
     "travel_in_100ms_m": 3.20037616199666,
-    "release_passed": true,
-    "source_blend_sha256": "5c9390026951c6632ff3a3c49d862aa52b9906ac1c2658307b738c5326c5883e"
+    "release_passed": true
   }
 ]

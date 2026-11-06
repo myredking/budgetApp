@@ -86,3 +86,20 @@ Unity 테스트는 Test Runner의 EditMode에서 `PlayerStudyTests.ImportedPlaye
 투구 공은 왼손 기준점을 따라가다가 2.0초에 분리되고 이후 중력을 적용한 궤적으로 이동합니다. 속도 32m/s는 동작 확인을 위한 시제품 설정이며 류현진의 실제 측정 구속/구종 데이터가 아닙니다. 체격을 넓히는 변환이 공을 타원형으로 만들지 않도록 보정했습니다. 실제 공기저항·회전 변화·구종·타격 판정·포수 포구는 아직 연결하지 않았습니다.
 
 Python 검사 15건과 Unity EditMode 검사 2건(텍스처/모션, 릴리스/공 지름)을 통과했습니다. Unity 공 검사는 기존 공 없는 모델에서 실패를 확인한 다음 새 모델을 연결해 통과했습니다. 장비 검사 도구는 Blender에서 `--python-exit-code 1 --python Tools/validate_player_equipment.py -- --art SourceArt/Players --output Reports/player-equipment-validation.json`으로 실행합니다.
+
+## 10구 타격 챌린지 (2026-11-06)
+
+현재 동작하는 장면은 `DeckBall > Diamond Challenge > Build`로 만듭니다. 로컬 선수 FBX와 폰트가 필요하며 Play 버튼으로 실행합니다. `Start Preview`는 Play 중 입문 난이도와 밀어치기를 선택하는 검토용 메뉴입니다.
+
+- 자체 제작 연습 구장, 홈 뒤 시점, 양쪽 선수 카드, 점수판과 3×3 스트라이크 존 안내선.
+- 입문·보통·도전 난이도, 10구 종료와 재도전, 연속 성공 보너스, 난이도별 최고 기록 저장.
+- 터치 시작 순간 입력 처리, 0.10초의 스윙 접촉 시간, 정확도/파워 선택.
+- 기본·밀어치기·당겨치기·내려치기 버튼 전환. 방향·탄도와 자체 제작 동작 변형이 함께 바뀝니다. 실제 김도영의 타법을 측정한 모션은 아닙니다.
+- 타구 추적 시점, 땅볼 바운드, 구장 펜스 위치를 공유하는 홈런 표시, 자체 합성 타격음. 관중 녹음과 응원·해설은 미구현입니다.
+- Unity GameView에 Galaxy S26 2340×1080 고정 해상도를 추가했습니다. 좌우 컷아웃·하단 여백은 가정한 수치로 자동 검사합니다. 실제 S26 기기 성능·터치 지연은 확인하지 않았습니다. 참고: https://org-sec-b2c.samsung.com/sec/smartphones/galaxy-s26/specs/
+
+스트라이크 존은 연습용 고정 안내선입니다. 선수별 ABS 존·볼 판정이나 실제 9이닝 경기, 수비·포수·주루, 2026 전체 로스터, 스카우팅/특수 능력은 이 장면에 아직 연결하지 않았습니다. 현재 연습구 구속은 난이도용 설정이며 실제 선수 구종 데이터가 아닙니다.
+
+`Reports/diamond-unity-tests.json`에 최신 엔진 검사 결과, `Reports/swing-style-validation.json`에 97프레임 손잡이 연결 검사 결과가 있습니다. 이전 선수 스틸/GIF는 당시 검토 기록입니다. 새 타격 장면 캡처와 혼동하지 마세요. 참고 사진 수준의 실사 표현과 선수 닮은꼴 검토는 통과하지 않았습니다.
+
+폰트는 Noto Sans KR의 정적 파생본 DeckBallKorean이며 OFL 고지문을 StreamingAssets에 포함합니다. Art/SourceArt 본체는 Git 제외 대상이므로 이 저장소만 복제하면 곧바로 실행되지는 않습니다. Android Build Support 미설치로 이번 Unity APK는 만들지 않았고, 기존 `android-baseball/DeckBall.apk`도 이번 변경을 포함하지 않습니다.

@@ -75,26 +75,26 @@
     {
       "id": "kim_doyoung",
       "fbx_path": "Assets/Showcase/Art/Players/kim_doyoung.fbx",
-      "sha256": "5777764ecfae36dbfda80cd1e69f5f2b188b0d45284618b4cffe45e79e31b912",
+      "sha256": "01c2da51f53b8721276147da0280ff80dcd23186794c97f7c6d1f3e6ecf5b252",
       "blend_path": "SourceArt/Players/kim_doyoung.blend",
       "motion_type": "hand_authored_reference_inspired_blockout",
       "likeness_approved": false,
       "motion_similarity_approved": false,
       "unity_skinning_and_motion_verified": true,
       "runtime_playback_verified": true,
-      "blend_sha256": "747495a1b47319a5c886eddacb07f4ddb26bebfe1e9f622d2964b1f7bd34faa7"
+      "blend_sha256": "4e5a8461ed0c0e2cde6ef61718632ede3bb18f2831760a9acce1a0ee72c35b75"
     },
     {
       "id": "ryu_hyunjin",
       "fbx_path": "Assets/Showcase/Art/Players/ryu_hyunjin.fbx",
-      "sha256": "a796b10b3944223ca74fd9306e89e81e55fd0bf38dc755231c309efd163af618",
+      "sha256": "7d1c88058a59e4d83ef00f4a352a8cf65f6613b446722a31dc112432d1dda427",
       "blend_path": "SourceArt/Players/ryu_hyunjin.blend",
       "motion_type": "hand_authored_reference_inspired_blockout",
       "likeness_approved": false,
       "motion_similarity_approved": false,
       "unity_skinning_and_motion_verified": true,
       "runtime_playback_verified": true,
-      "blend_sha256": "5c9390026951c6632ff3a3c49d862aa52b9906ac1c2658307b738c5326c5883e"
+      "blend_sha256": "335b1208bb85d5a343c7f65a34b9feee5e18adaf0a9f9b98580b9afc0bf2254c"
     }
   ],
   "equipment_update": {
@@ -105,5 +105,19 @@
     "flight_speed_source": "prototype setting, not measured Ryu Hyun-jin velocity",
     "ball_diameter_m": 0.073,
     "glove": "open pocket, binding, laces, finger pads; still a visual draft"
+  },
+  "diamond_challenge": {
+    "date": "2026-11-06",
+    "stadium": "original procedurally authored practice park",
+    "swing_variations": "original artist-authored gameplay poses; not measured KBO player styles",
+    "font": {
+      "source": "https://github.com/google/fonts/tree/main/ofl/notosanskr",
+      "license": "SIL OFL 1.1",
+      "derivative_name": "DeckBallKorean",
+      "sha256": "1af8faacddf773b59657b1bd98f1be6600f0e9600c887c38ab2626ab0b7bf7f4"
+    },
+    "audio": "original deterministic synthesized bat impact; no recordings",
+    "physical_s26_tested": false,
+    "new_android_apk_built": false
   }
 }

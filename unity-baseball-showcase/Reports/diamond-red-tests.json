@@ -1,0 +1,134 @@
+{
+  "success": true,
+  "command": "command test",
+  "data": {
+    "command": "test",
+    "parameters": {
+      "mode": "EditMode",
+      "filter": "DeckBall.Showcase.Tests",
+      "filter-type": "assembly"
+    },
+    "result": {
+      "Summary": {
+        "Total": 14,
+        "Passed": 12,
+        "Failed": 2,
+        "Skipped": 0,
+        "Inconclusive": 0
+      },
+      "Results": [
+        {
+          "FullName": "BattingTrialTests.HomeRunUsesCurvedFenceAndExcludesFoulAndLowBalls",
+          "Status": "Failed",
+          "Duration": 0.0277678,
+          "Message": "  Expected: not null\r\n  But was:  null\r\n",
+          "StackTrace": "at BattingTrialTests.HomeRunUsesCurvedFenceAndExcludesFoulAndLowBalls () [0x00015] in C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase\\Assets\\Showcase\\Tests\\Editor\\BattingTrialTests.cs:107\r\n"
+        },
+        {
+          "FullName": "BattingTrialTests.ImpactSoundHasFiniteAudibleSamplesAndQuietEnds",
+          "Status": "Passed",
+          "Duration": 0.0206219,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(2340,1080,120,56,2220,1024)",
+          "Status": "Passed",
+          "Duration": 0.0056989,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(2340,1080,0,56,2220,1024)",
+          "Status": "Passed",
+          "Duration": 0.0010847,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(1920,1080,0,0,1920,1080)",
+          "Status": "Passed",
+          "Duration": 0.000856,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.OnePitchCannotScoreTwiceAndTenPitchesEndChallenge",
+          "Status": "Passed",
+          "Duration": 0.0149615,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.SwingReachesContactWithinOneTenthSecond",
+          "Status": "Passed",
+          "Duration": 0.0032641,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TimingDifficultyAndPowerHaveClearTradeoffs",
+          "Status": "Passed",
+          "Duration": 0.0038155,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TouchSwingStylesChangeDirectionAndGroundBallAngle",
+          "Status": "Passed",
+          "Duration": 0.004103,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TouchUsesBottomLeftScreenCoordinatesAndIgnoresCutout",
+          "Status": "Passed",
+          "Duration": 0.0030665,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.ChallengeRunsTenPitchesPausesAndRestarts",
+          "Status": "Failed",
+          "Duration": 15.9968162,
+          "Message": "  Expected: not null\r\n  But was:  null\r\n",
+          "StackTrace": "at DiamondSceneTests.ChallengeRunsTenPitchesPausesAndRestarts () [0x0008c] in C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase\\Assets\\Showcase\\Tests\\Editor\\DiamondSceneTests.cs:38\r\n"
+        },
+        {
+          "FullName": "DiamondSceneTests.DiamondPlacesPitcherAndCameraTowardHome",
+          "Status": "Passed",
+          "Duration": 6.6563807,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "PlayerStudyTests.ImportedPlayersHaveSkinningAndMovingAnimation",
+          "Status": "Passed",
+          "Duration": 2.497657,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "PlayerStudyTests.PitchBallLeavesLeftHandAtReleaseWithoutChangingSize",
+          "Status": "Passed",
+          "Duration": 4.4099027,
+          "Message": null,
+          "StackTrace": null
+        }
+      ],
+      "Duration": 32.05,
+      "StatusPath": null,
+      "Mode": "EditMode",
+      "FilterApplied": "assembly: DeckBall.Showcase.Tests",
+      "success": true,
+      "result": null
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}
