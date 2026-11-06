@@ -654,6 +654,7 @@ public final class MainActivity extends Activity {
         npc("조선소 장인","돛과 선체를 살펴보겠소. 먼바다에 나가기 전엔 수리부터 챙기시오.");
         label(content,"FLEET & HARBOR",11,TEAL); label(content,"선박과 항구",26,INK);
         LinearLayout ship=card(content); label(ship,Engine.SHIPS[game.level-1],21,GOLD);
+        label(ship,ShipPerformance.description(game.level),12,TEAL);
         label(ship,"선체 "+game.hull+" / "+game.maxHull()+"   ·   적재량 "+game.capacity()+"개",15,INK);
         label(ship,"항해마다 선체가 소모됩니다. 25 미만이면 수리가 필요해요.",13,MUTED);
         fullAction(ship,"선체 수리 · "+game.repairCost()+" G",()->changed(game.repair()),false);

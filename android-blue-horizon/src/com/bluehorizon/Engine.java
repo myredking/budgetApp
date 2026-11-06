@@ -70,7 +70,7 @@ public final class Engine {
         if (Story.deliveryReady(this,good)) completeChapter();
     }
     public int travelDays(int target) {
-        return Refits.days(this,WorldRoutes.between(port,target).days());
+        return Refits.days(this,ShipPerformance.days(this,WorldRoutes.between(port,target).days()));
     }
     public int travelCost(int target, int mode) { return TownRpg.supplyCost(this,CrewAbilities.supply(this,travelDays(target) * (mode == 1 ? 24 : 16))); }
     public int travelDamage(int target,int mode) {
