@@ -23,13 +23,14 @@ public final class MainActivity extends Activity {
     private FrameLayout root;
     private SharedPreferences preferences;
     private ToneGenerator tone;
+    private GameMusic music;
     private BattleView battle;
     private boolean campaignPage;
     private int missionChapter,customMap,customEnemies=3,customDifficulty=1;
     Engine engine;
     Profile profile;
     int mode=1;
-    boolean sound=true,haptics=true,visuals=true,guidance=true;
+    boolean sound=true,haptics=true,visuals=true,guidance=true,musicEnabled=true;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -41,6 +42,7 @@ public final class MainActivity extends Activity {
         sound=preferences.getBoolean("sound",true);haptics=preferences.getBoolean("haptics",true);
         visuals=preferences.getBoolean("visuals",true);
         guidance=preferences.getBoolean("guidance",true);
+        musicEnabled=preferences.getBoolean("music",true);music=new GameMusic(this,musicEnabled);
         migrateProgress();
         customMap=Math.max(0,Math.min(5,preferences.getInt("customMap",0)));
         customEnemies=Math.max(1,Math.min(10,preferences.getInt("customEnemies",3)));
@@ -68,10 +70,15 @@ public final class MainActivity extends Activity {
     }
     @Override public void onPause() {
         if(battle!=null) battle.suspend();
+        if(music!=null) music.foreground(false);
+        if(tone!=null) tone.stopTone();
         saveBattle(true);super.onPause();
     }
-    @Override public void onResume() {super.onResume();if(battle!=null) battle.wake();}
+    @Override public void onResume() {
+        super.onResume();if(battle!=null) battle.wake();if(music!=null) music.foreground(true);
+    }
     @Override public void onDestroy() {
+        if(music!=null) music.close();
         if(tone!=null) tone.release();super.onDestroy();
     }
     @Override public void onBackPressed() {
@@ -140,7 +147,7 @@ public final class MainActivity extends Activity {
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v6.6 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v6.7 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();
@@ -261,15 +268,16 @@ public final class MainActivity extends Activity {
         start(Campaign.next(engine.level));
     }
     private void showSettings() {
-        String[] names={"효과음","터치 진동","전투 연출","초반 미션 조작 안내"};boolean[] checked={sound,haptics,visuals,guidance};
+        String[] names={"효과음","터치 진동","전투 연출","초반 미션 조작 안내","배경음악"};boolean[] checked={sound,haptics,visuals,guidance,musicEnabled};
         new AlertDialog.Builder(this).setTitle("소리·진동·연출")
             .setMultiChoiceItems(names,checked,(dialog,which,value)->{
                 if(which==0) sound=value;
                 if(which==1) haptics=value;
                 if(which==2) visuals=value;
                 if(which==3) guidance=value;
+                if(which==4) {musicEnabled=value;if(music!=null) music.enabled(value);}
                 preferences.edit().putBoolean("sound",sound).putBoolean("haptics",haptics)
-                    .putBoolean("visuals",visuals).putBoolean("guidance",guidance).apply();
+                    .putBoolean("visuals",visuals).putBoolean("guidance",guidance).putBoolean("music",musicEnabled).apply();
             }).setPositiveButton("완료",null).show();
     }
     void showHelp() {
