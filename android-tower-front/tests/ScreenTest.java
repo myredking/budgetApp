@@ -27,6 +27,15 @@ public final class ScreenTest {
         check(Math.abs(l.toX(l.left+x*l.scale)-x)<.01,"horizontal input roundtrip");
         check(Math.abs(l.toY(l.top+y*l.scale)-y)<.01,"vertical input roundtrip");
         check(l.font(10)*l.scale/size[2]>=11.99f,"HUD text has readable minimum");
+        PauseMenuLayout pause=new PauseMenuLayout(l);
+        check(pause.title-l.font(28)*.9f>=10,"pause title stays inside screen");
+        for(int action=0;action<4;action++) {
+            check(pause.buttonTop(action)>=pause.title+l.font(28)*.3f+8,"pause actions stay below title");
+            check(pause.buttonTop(action)+l.buttonHeight<l.height-8,"four pause actions remain reachable");
+            check(pause.buttonAt(200,pause.buttonTop(action)+l.buttonHeight/2)==action,"pause taps match drawn actions");
+            if(action>0) check(pause.buttonTop(action)>=pause.buttonTop(action-1)+l.buttonHeight+7.99f,"pause actions do not overlap");
+        }
+        check(pause.buttonAt(12,pause.buttonTop(0))==-1,"pause background cannot activate an action");
     }
     private static void cameraChecks() {
         ScreenLayout l=new ScreenLayout(720,1136,2,1);

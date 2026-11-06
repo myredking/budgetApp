@@ -20,9 +20,11 @@ public final class BattleView extends View {
     private final long bestBefore;
     private float scale=1,left,top,dragX,dragY,downX,downY,lastX,lastY;
     private ScreenLayout screen=new ScreenLayout(400,820,1,1);
+    private PauseMenuLayout pauseMenu=new PauseMenuLayout(screen);
     private BattleCamera camera=new BattleCamera(screen);
     private boolean panCandidate,mapPanning;
     private boolean running=true,paused,dragging,reported;
+    private boolean inspectPaused;
     private int pressedButton=-1;
     private int downTarget=-1;
     private int previewTarget=-1;
@@ -31,6 +33,7 @@ public final class BattleView extends View {
     private String notice="아군을 선택한 뒤 목표를 터치하세요";
     private double noticeTime=5;
     private static final int WHITE=SceneStyle.INK,GRAY=0xff657469;
+    private static final int[] PAUSE_ACTIONS={3,10,4,5};
     public BattleView(MainActivity activity,Engine state) {
         super(activity);host=activity;engine=state;controls=new BattleControls(engine);
         bestBefore=host.records.bestMillis(engine.level,engine.difficulty);
@@ -41,22 +44,29 @@ public final class BattleView extends View {
     @Override protected void onSizeChanged(int w,int h,int oldW,int oldH) {
         super.onSizeChanged(w,h,oldW,oldH);
         screen=new ScreenLayout(w,h,getResources().getDisplayMetrics().density,getResources().getConfiguration().fontScale);
+        pauseMenu=new PauseMenuLayout(screen);
         camera=new BattleCamera(screen);scale=screen.scale;left=screen.left;top=screen.top;cancelTouch();
         if(screen.compact && (!host.guidance || engine.skirmish || engine.level>3)) notice("지도 +로 확대 · 빈 땅을 드래그해 이동");
     }
-    public void suspend() {running=false;paused=true;controls.cancel();last=0;}
+    public void suspend() {running=false;paused=true;inspectPaused=false;cancelTouch();describePause();last=0;}
     public void wake() {running=true;last=0;invalidate();}
     public void pause() {
-        paused=true;controls.cancel();setContentDescription("전투 일시정지 · 작전 "+engine.level);
+        paused=true;inspectPaused=false;cancelTouch();describePause();
         host.saveBattle(false);invalidate();
     }
     public void back() {
+        if(inspecting()) {toggleInspection();return;}
         if(paused || engine.result()!=0) host.showMenu();else pause();
     }
+    private boolean inspecting() {return paused && inspectPaused;}
+    private void describePause() {setContentDescription("전투 일시정지 · 작전 "+engine.level);}
     private int color(int owner) {return SceneStyle.team(owner);}
     private void text(Canvas c,String value,float x,float y,float size,int color) {
-        paint.setTypeface(bold);paint.setTextSize(screen.font(size));paint.setTextAlign(Paint.Align.CENTER);
         float limit=Math.min(368,2*Math.min(x-8,392-x));
+        textIn(c,value,x,y,size,color,limit);
+    }
+    private void textIn(Canvas c,String value,float x,float y,float size,int color,float limit) {
+        paint.setTypeface(bold);paint.setTextSize(screen.font(size));paint.setTextAlign(Paint.Align.CENTER);
         if(paint.measureText(value)>limit) {
             int end=paint.breakText(value,true,Math.max(0,limit-paint.measureText("…")),null);value=value.substring(0,end)+"…";
         }
@@ -97,7 +107,26 @@ public final class BattleView extends View {
             screen.zoomTop()+screen.buttonHeight/2+screen.font(size)/3,size,WHITE);
     }
     private void drawOverlay(Canvas c) {
-        if(paused || engine.result()!=0) overlay(c);
+        if(inspecting()) drawInspector(c);
+        else if(paused || engine.result()!=0) overlay(c);
+    }
+    private void drawInspector(Canvas c) {
+        box(c,294,screen.pauseTop(),88,screen.buttonHeight,MainActivity.CARD);
+        text(c,"돌아가기",338,screen.pauseTop()+screen.buttonHeight/2+screen.font(12)/3,12,WHITE);
+        float noticeTop=screen.boardBottom+1;
+        box(c,8,noticeTop,384,screen.energyTop-noticeTop-2,MainActivity.CARD);
+        text(c,"일시정지 · 확대하고 이동하세요",200,screen.noticeY,12,WHITE);
+        box(c,8,screen.commandTop-2,384,screen.height-screen.commandTop+2,MainActivity.CARD);
+        box(c,18,screen.commandTop,364,screen.buttonHeight,MainActivity.CYAN);
+        text(c,"전투 계속",200,screen.commandTop+screen.buttonHeight/2+screen.font(16)/3,16,Color.WHITE);
+        text(c,"출병·스킬은 전투 재개 후 사용",200,screen.skillTop+screen.buttonHeight/2+screen.font(12)/3,12,GRAY);
+    }
+    private void toggleInspection() {
+        if(!paused || engine.result()!=0) return;
+        inspectPaused=!inspectPaused;cancelTouch();
+        if(inspectPaused) setContentDescription("전장 확인 중 · 전투 일시정지");
+        else {describePause();host.saveBattle(false);}
+        invalidate();
     }
     private void tick(double dt) {
         engine.update(dt);controls.validate();noticeTime=Math.max(0,noticeTime-dt);
@@ -210,6 +239,7 @@ public final class BattleView extends View {
         return t.rank>=3?"최대 레벨":"강화 · 병력 "+20*t.rank;
     }
     private void overlay(Canvas c) {
+        if(paused && engine.result()==0) {pauseOverlay(c);return;}
         paint.setColor(Color.argb(245,245,239,223));c.drawRect(0,0,400,screen.height,paint);
         int result=engine.result();boolean win=result==1;float y=screen.overlayTitle;
         if(win && !paused) renderer.drawConfetti(c,effects,screen.overlayPrimaryTop-12);
@@ -224,6 +254,15 @@ public final class BattleView extends View {
         overlayButton(c,screen.overlayMenuTop,"시작 화면 · 자동 저장",false);
         if(screen.panel.footerVisible) text(c,resultFooter(win),200,screen.panel.footer,12,GRAY);
     }
+    private void pauseOverlay(Canvas c) {
+        paint.setColor(Color.argb(245,245,239,223));c.drawRect(0,0,400,screen.height,paint);
+        text(c,"전투 일시정지",200,pauseMenu.title,28,WHITE);
+        if(pauseMenu.showSubtitle) text(c,"전투가 멈춰 있습니다",200,pauseMenu.subtitle,12,GRAY);
+        overlayButton(c,pauseMenu.buttonTop(0),"계속하기",true);
+        overlayButton(c,pauseMenu.buttonTop(1),"전장 확인",false);
+        overlayButton(c,pauseMenu.buttonTop(2),"현재 작전 다시 시작",false);
+        overlayButton(c,pauseMenu.buttonTop(3),"시작 화면 · 자동 저장",false);
+    }
     private String resultDetail(boolean win) {
         if(!win || engine.skirmish) return engine.rules.objectiveText();
         if(!screen.panel.footerVisible) return BattleDebrief.nextTarget(engine,host.profile);
@@ -235,7 +274,7 @@ public final class BattleView extends View {
     }
     private void overlayButton(Canvas c,float y,String title,boolean primary) {
         box(c,56,y,288,screen.buttonHeight,primary?MainActivity.CYAN:MainActivity.CARD);
-        text(c,title,200,y+screen.buttonHeight/2+screen.font(16)/3,16,primary?Color.WHITE:WHITE);
+        textIn(c,title,200,y+screen.buttonHeight/2+screen.font(16)/3,16,primary?Color.WHITE:WHITE,264);
     }
     private String resultTitle(int result) {
         if(result==0) return "전투 일시정지";
@@ -258,6 +297,7 @@ public final class BattleView extends View {
         return x>=a && x<=a+w && y>=b && y<=b+h;
     }
     private int buttonAt(float x,float y,boolean overlay) {
+        if(inspecting()) return inspectionButtonAt(x,y);
         if(overlay) return overlayButtonAt(x,y);
         if(inside(x,y,294,screen.pauseTop(),88,screen.buttonHeight)) return 0;
         if(inside(x,y,18,screen.commandTop,174,screen.buttonHeight)) return 1;
@@ -266,7 +306,16 @@ public final class BattleView extends View {
         if(inside(x,y,screen.zoomLeft(),screen.zoomTop(),screen.buttonHeight,screen.buttonHeight)) return 9;
         return -1;
     }
+    private int inspectionButtonAt(float x,float y) {
+        if(inside(x,y,294,screen.pauseTop(),88,screen.buttonHeight)) return 10;
+        if(inside(x,y,18,screen.commandTop,364,screen.buttonHeight)) return 3;
+        if(inside(x,y,screen.zoomLeft(),screen.zoomTop(),screen.buttonHeight,screen.buttonHeight)) return 9;
+        return -1;
+    }
     private int overlayButtonAt(float x,float y) {
+        if(paused && engine.result()==0) {
+            int index=pauseMenu.buttonAt(x,y);return index<0?-1:PAUSE_ACTIONS[index];
+        }
         if(inside(x,y,56,screen.overlayPrimaryTop,288,screen.buttonHeight)) return 3;
         if(inside(x,y,56,screen.overlayRetryTop,288,screen.buttonHeight)) return 4;
         if(inside(x,y,56,screen.overlayMenuTop,288,screen.buttonHeight)) return 5;
@@ -288,20 +337,28 @@ public final class BattleView extends View {
         invalidate();
     }
     private int hitWorld(float x,float y) {
-        if(!inside(x,y,screen.boardLeft,screen.boardTop,screen.boardRight-screen.boardLeft,screen.boardBottom-screen.boardTop)) return -1;
+        if(!insideMap(x,y)) return -1;
         if(inside(x,y,screen.zoomLeft(),screen.zoomTop(),screen.buttonHeight,screen.buttonHeight)) return -1;
         float radius=24*screen.pixelDensity/(screen.scale*camera.zoom);
         return BattleControls.hitTouch(engine,camera.worldX(x),camera.worldY(y),radius);
     }
+    private boolean insideMap(float x,float y) {
+        return inside(x,y,screen.boardLeft,screen.boardTop,screen.boardRight-screen.boardLeft,screen.boardBottom-screen.boardTop);
+    }
     private void touchDown(float x,float y,boolean overlay) {
         pressedButton=buttonAt(x,y,overlay);panCandidate=false;mapPanning=false;dragging=false;
+        if(inspecting()) {inspectDown(x,y);return;}
         if(overlay || pressedButton>=0) return;
-        if(!inside(x,y,screen.boardLeft,screen.boardTop,screen.boardRight-screen.boardLeft,screen.boardBottom-screen.boardTop)) return;
+        if(!insideMap(x,y)) return;
         int target=hitWorld(x,y);downTarget=target;panCandidate=target<0;downX=x;downY=y;lastX=x;lastY=y;
         if(panCandidate) return;
         int previous=controls.selected;
         controls.press(target);dragX=camera.worldX(x);dragY=camera.worldY(y);dragging=true;previewTarget=target;
         if(previous!=controls.selected && host.haptics) performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+    }
+    private void inspectDown(float x,float y) {
+        if(pressedButton>=0 || !insideMap(x,y)) return;
+        panCandidate=true;downX=x;downY=y;lastX=x;lastY=y;
     }
     private void touchMove(float x,float y) {
         if(panCandidate) {
@@ -322,7 +379,7 @@ public final class BattleView extends View {
             if(buttonAt(x,y,overlay)==action) activate(action);
             return;
         }
-        if(overlay) return;
+        if(overlay) {panCandidate=false;mapPanning=false;return;}
         if(panCandidate) {
             if(!mapPanning) controls.cancel();panCandidate=false;mapPanning=false;return;
         }
@@ -334,6 +391,7 @@ public final class BattleView extends View {
     @Override public boolean performClick() {super.performClick();return true;}
     private void activate(int action) {
         if(action>=6 && action<=8) {useSkill(action-6);return;}
+        if(action>=9) {mapAction(action);return;}
         switch(action) {
             case 0: pause();break;
             case 1: toggleDispatch();break;
@@ -341,9 +399,12 @@ public final class BattleView extends View {
             case 3: primaryAction();break;
             case 4: host.retry();break;
             case 5: host.showMenu();break;
-            case 9: zoomMap();break;
             default: break;
         }
+    }
+    private void mapAction(int action) {
+        if(action==9) zoomMap();
+        else if(action==10) toggleInspection();
     }
     private void zoomMap() {
         int focus=controls.selected;
@@ -369,7 +430,7 @@ public final class BattleView extends View {
     private void primaryAction() {
         int result=engine.result();
         if(result==0) {
-            paused=false;last=0;setContentDescription("타워 프론트 전장 · 작전 "+engine.level);return;
+            paused=false;inspectPaused=false;last=0;setContentDescription("타워 프론트 전장 · 작전 "+engine.level);return;
         }
         if(result==1) host.next();else host.restartBattle();
     }

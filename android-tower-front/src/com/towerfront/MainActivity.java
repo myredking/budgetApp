@@ -110,6 +110,7 @@ public final class MainActivity extends Activity {
     }
     private TextView label(String text,int size,int color) {
         TextView view=new TextView(this);view.setText(text);view.setTextSize(size);view.setTextColor(color);
+        view.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_BALANCED);
         view.setPadding(0,dp(8),0,dp(8));view.setGravity(Gravity.CENTER);
         return view;
     }
@@ -127,6 +128,7 @@ public final class MainActivity extends Activity {
     }
     private Button button(LinearLayout parent,String title,boolean primary,Runnable action) {
         Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextSize(16);
+        button.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_BALANCED);
         button.setTextColor(primary?0xffffffff:SceneStyle.INK);
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22334455),surface(primary?CYAN:CARD),null));
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -149,7 +151,7 @@ public final class MainActivity extends Activity {
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v7.0 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v7.1 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();
@@ -325,7 +327,9 @@ public final class MainActivity extends Activity {
                 +"⑧ 아군 선택 후 하단 스킬을 사용하세요. 증원은 35에너지로20명, 보호막은30에너지로6초 피해절반, 가속은25에너지로6초 이동1.75배입니다.\n\n"
                 +"⑨ 보급 거점을 가진 진영은 전체 생산+35%입니다. 플레이어는 에너지 회복도3→5/초가 됩니다. 미션은 전멸·30초사수·시간생존·3거점12초유지로 나뉩니다. 생존 별점은 종료 시 3거점 이상3개, 2거점2개, 1거점1개입니다.\n\n"
                 +"⑩ 작은 화면에서는 전장 오른쪽 +로 확대하고 빈 땅을 드래그해 이동하세요. 전체 버튼으로 전체 지도로 돌아옵니다. 빈 땅을 가볍게 누르면 선택이 해제됩니다.\n\n"
-                +"⑪ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.")
+                +"⑪ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.\n\n"
+                +"⑫ 일시정지의 전장 확인에서는 전투를 멈춘 채 확대·이동할 수 있습니다. 출병·스킬은 전투 계속을 누른 뒤 사용합니다.\n\n"
+                +"⑬ 작전 기록실에서 난이도별 별·구역 진행과 다음 도전을 확인하세요. 미션 승리의 최단 시간은 별도 저장되며 더 느린 재도전으로 사라지지 않습니다.")
             .setPositiveButton("알겠습니다",null).show();
     }
 }
