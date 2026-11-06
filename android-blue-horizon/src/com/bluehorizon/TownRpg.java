@@ -13,7 +13,8 @@ public final class TownRpg {
     public static int style(int port) { return port<2?1:World.region(port); }
     public static int experience(Engine e) {
         long value=(e.visitedCount()-1)*10L+e.adventure.resolved*8L+e.adventure.battles*12L
-            +e.adventure.deliveries*16L+e.chapter*20L+Long.bitCount(e.town.rumors)*6L;
+            +e.adventure.deliveries*16L+e.chapter*20L+Long.bitCount(e.town.rumors)*6L
+            +Long.bitCount(e.expedition.clues)*8L+Integer.bitCount(e.expedition.treasures)*30L+Integer.bitCount(e.expedition.talks)*12L;
         return (int)Math.min(100000000,value);
     }
     public static int rank(Engine e) { return Math.min(20,1+experience(e)/80); }

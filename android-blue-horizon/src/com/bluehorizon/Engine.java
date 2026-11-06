@@ -18,6 +18,7 @@ public final class Engine {
     public RefitState refits=new RefitState();
     public RivalState rivals=new RivalState();
     public TownState town=new TownState();
+    public ExpeditionState expedition=new ExpeditionState();
     public String message = "서린 선장, 세비야에 목재 5개를 전해 주세요.";
 
     public Engine() { note("리스본에서 첫 출항 준비. 일곱 바다의 공동 해도를 만들기 위한 항해가 시작된다."); }
@@ -141,7 +142,7 @@ public final class Engine {
         while (log.size() > 12) log.remove(0);
     }
     private boolean fail(String text) { message = text; return false; }
-    public boolean actionBlocked() { return adventure.pending>=0 || town.moving(); }
+    public boolean actionBlocked() { return adventure.pending>=0 || town.moving() || expedition.active(); }
     private boolean busy() { return actionBlocked(); }
     public String encode() { return SaveCodec.encode(this); }
     public static Engine decode(String text) { return SaveCodec.decode(text); }

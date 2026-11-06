@@ -27,7 +27,8 @@ public final class MainActivity extends Activity {
     static final int INK=0xffecede5, MUTED=0xff9eb7bd, TEAL=0xff65c9b5;
     private Engine game;
     private AudioController audio;
-    private AlertDialog eventDialog;
+    private AlertDialog eventDialog,dialogueDialog;
+    private Toast notice;
     private int tab=7, quantity=5, mapRegion=-1, selectedGood=0;
     private SailingView sailing;
     private TownView townView;
@@ -55,12 +56,13 @@ public final class MainActivity extends Activity {
         if(fresh) dialog("푸른 수평선", Story.introduction());
         if(recovered) dialog("저장 복원", "최근 저장을 읽을 수 없어 이전 자동 저장을 복원했습니다.");
         if(game.message.startsWith("세계 확장 버전")) dialog("세계 항해 버전으로 이전",game.message);
-        if(game.adventure.pending>=0) root.post(()->showEvent());
+        if(game.expedition.active()) root.post(()->showBoss());
+        else if(game.adventure.pending>=0) root.post(()->showEvent());
     }
     @Override protected void onResume() { super.onResume();if(audio!=null) audio.resume();if(sailing!=null) sailing.resume(); }
     @Override protected void onPause() { if(townView!=null) townView.cancelWalk();if(sailing!=null) sailing.pause();if(audio!=null) audio.pause();super.onPause();if(game!=null) save(); }
     @Override protected void onDestroy() {
-        if(sailing!=null) sailing.stop();if(eventDialog!=null) eventDialog.dismiss();if(audio!=null) audio.release();super.onDestroy();
+        if(sailing!=null) sailing.stop();if(dialogueDialog!=null) dialogueDialog.dismiss();if(eventDialog!=null) eventDialog.dismiss();if(audio!=null) audio.release();super.onDestroy();
     }
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out); out.putInt("tab",tab); out.putInt("quantity",quantity);
@@ -82,9 +84,13 @@ public final class MainActivity extends Activity {
         String sound=success?effect:"error";
         if(game.chapter>previousChapter) sound="chapter";
         audio.play(sound);
-        Toast.makeText(this,game.message,Toast.LENGTH_LONG).show();
+        announce(game.message);
         if(success && game.chapter>previousChapter) storyReveal(previousChapter);
+        else if(game.expedition.active()) showBoss();
         else if(game.adventure.pending>=0) showEvent();
+    }
+    private void announce(String message) {
+        if(notice!=null) notice.cancel();notice=Toast.makeText(this,message,Toast.LENGTH_LONG);notice.show();
     }
     private void render() {
         shownChapter=game.chapter;
@@ -108,6 +114,7 @@ public final class MainActivity extends Activity {
             case 5: adventurePage();break;
             case 6: rivalPage();break;
             case 8: tavern();break;
+            case 9: expeditionPage();break;
             default: town();break;
         }
     }
@@ -129,6 +136,7 @@ public final class MainActivity extends Activity {
         LinearLayout progress=card(content);label(progress,"선장 등급 "+TownRpg.rank(game)+" · 사기 "+game.town.morale+" / 100",16,TEAL);
         growthBar(progress);
         label(progress,"방문 "+game.visitedCount()+" / 56 · 이야기 "+game.chapter+" / 8 · 의뢰 "+game.adventure.deliveries+"회",13,INK);
+        fullAction(progress,"보물지도 · 동료의 인연 · 해역 강적",()->{tab=9;render();},true);
         fullAction(progress,"항구 의뢰 · 세 가지 제안 살펴보기",()->{tab=5;render();},true);
         fullAction(progress,"출항 지도",()->{tab=0;render();},false);
     }
@@ -139,6 +147,10 @@ public final class MainActivity extends Activity {
         label(parent,rank==20?"최고 등급 · 숙련 포격 +3":"다음 등급까지 "+(80-xp%80)+" 경험 · 숙련 포격 +"+TownRpg.rankBonus(game),12,GOLD);
         label(parent,"항구 방문·의뢰·사건 해결로 성장 · 등급 5/10/15에서 포격 +1씩",12,MUTED);
     }
+    private void continueEncounter() {
+        if(game.town.moving()) showSailing();
+        else if(game.expedition.active()) showBoss();else showEvent();
+    }
     private void planCard() {
         CaptainPlan plan=CaptainPlan.next(game);LinearLayout box=card(content);
         label(box,"선장의 다음 한 걸음",11,TEAL);label(box,plan.body,12,MUTED);
@@ -146,7 +158,7 @@ public final class MainActivity extends Activity {
     }
     private void actPlan(CaptainPlan plan) {
         if(plan.continueStory) { game.advanceStory();changed(true,"chapter");return; }
-        if(plan.event) { if(game.town.moving()) showSailing();else showEvent();return; }
+        if(plan.event) { continueEncounter();return; }
         if(plan.achievement>=0) { changed(Achievements.claim(game,plan.achievement),"discovery");return; }
         if(plan.deliver) { changed(Contracts.deliver(game),"discovery");return; }
         if(plan.good>=0) {
@@ -254,6 +266,7 @@ public final class MainActivity extends Activity {
         label(info,joined,12,aboard?TEAL:MUTED);label(box,Crew.BIO[person],14,INK);
         label(box,(CrewAbilities.active(game,person)?"◆ 적용 중 · ":"능력 · ")+CrewAbilities.EFFECTS[person],13,TEAL);
         crewStory(box,person);
+        if(person>0 && aboard) conversationCard(box,person);
     }
     private void assignCrew(int slot) {
         java.util.ArrayList<String> names=new java.util.ArrayList<String>();java.util.ArrayList<Integer> people=new java.util.ArrayList<Integer>();
@@ -290,6 +303,109 @@ public final class MainActivity extends Activity {
             .setCancelable(game.adventure.pending<0)
             .setView(scroll).setPositiveButton("계속 항해하기",(dialog,which)->{if(game.adventure.pending>=0) showEvent();}).show();
     }
+    private void expeditionPage() {
+        int region=World.region(game.port);
+        label(content,"잊힌 항로의 기록",26,GOLD);
+        label(content,World.REGIONS[region]+" · 지도 조각 → 보물 → 해역 강적",13,TEAL);
+        content.addView(new TreasureMapView(this,game),new LinearLayout.LayoutParams(-1,dp(220)));
+        treasureCard(region);bossCard(region);
+        LinearLayout links=card(content);label(links,"동료와 만드는 항해",19,GOLD);
+        label(links,"선택형 대화에서 신뢰를 쌓으세요. 신뢰 4마다 강적전 포격 +1, 최대 +3. 현재 +"+CrewConversations.support(game),13,INK);
+        fullAction(links,"동료와 이야기하기",()->{tab=3;render();},true);
+        for(int r=0;r<7;r++) expeditionRecord(links,r);
+    }
+    private void treasureCard(int region) {
+        LinearLayout box=card(content);int count=Expeditions.fragments(game,region),site=Expeditions.site(region);
+        boolean found=(game.expedition.treasures & (1<<region))!=0,clue=(game.expedition.clues & (1L<<game.port))!=0;
+        label(box,Expeditions.TREASURES[region]+(found?" · 발견 완료":" · 지도 "+Math.min(3,count)+" / 3"),20,GOLD);
+        label(box,"서로 다른 항구 세 곳을 조사하면 "+World.PORTS[site]+"의 탐사 지점이 드러납니다.",13,INK);
+        Button collect=button(clue?"이 항구의 단서 기록 완료":"항구의 오래된 기록 조사 · 40 G / 하루",!clue);
+        collect.setEnabled(!clue);collect.setOnClickListener(v->changed(Expeditions.clue(game),"discovery"));box.addView(collect,buttonParams());
+        if(count>=3 && !found) {
+            fullAction(box,"보물 탐사 · 80 G / 하루 / 보상 "+(900+region*150)+" G",()->changed(Expeditions.dig(game),"discovery"),true);
+            if(game.port!=site) fullAction(box,World.PORTS[site]+" 탐사 항구로",()->voyage(site),false);
+        }
+        if(count<3) clueRoutes(box,region);
+    }
+    private void clueRoutes(LinearLayout box,int region) {
+        java.util.ArrayList<Integer> ports=new java.util.ArrayList<Integer>();java.util.ArrayList<String> names=new java.util.ArrayList<String>();
+        int nearest=-1,cost=Integer.MAX_VALUE;
+        for(int port:World.portsIn(region)) {
+            if((game.expedition.clues & (1L<<port))!=0 || port==game.port) continue;
+            ports.add(port);names.add(World.PORTS[port]+" · 약 "+game.travelDays(port)+"일");
+            int price=game.travelCost(port,1);if(price<cost) { cost=price;nearest=port; }
+        }
+        if(nearest<0) return;
+        final int target=nearest;
+        fullAction(box,"가까운 미조사 항구 · "+World.PORTS[target],()->voyage(target),true);
+        fullAction(box,"다른 단서 항구 선택",()->new AlertDialog.Builder(this).setTitle("직접 입항한 뒤 기록 조사")
+            .setItems(names.toArray(new String[0]),(d,which)->voyage(ports.get(which))).setNegativeButton("닫기",null).show(),false);
+    }
+    private void expeditionRecord(LinearLayout box,int region) {
+        String map=(game.expedition.treasures & (1<<region))!=0?"보물 발견":"지도 "+Math.min(3,Expeditions.fragments(game,region))+"/3";
+        String boss=(game.expedition.trophies & (1<<region))!=0?" · 훈장 획득":"";
+        label(box,World.REGIONS[region]+" · "+map+boss,12,MUTED);
+    }
+    private void conversationCard(LinearLayout box,int person) {
+        label(box,"인연 · 신뢰 "+game.expedition.trust[person-1]+" / 4",14,TEAL);
+        int stage=CrewConversations.chosen(game,person,0)?1:0;
+        boolean finished=CrewConversations.chosen(game,person,stage);
+        if(finished) { label(box,"두 번의 선택을 모두 기록했습니다.",12,MUTED);return; }
+        Button talk=button("선택형 대화 "+(stage+1)+" · 마음과 계획",true);
+        talk.setEnabled(CrewConversations.unlocked(game,person,stage));
+        talk.setOnClickListener(v->talkChoice(person,stage));box.addView(talk,buttonParams());
+        if(stage==1) label(box,"보물 하나 발견 + 합류 이후 이야기 한 장 진행 시 다음 대화가 열립니다.",12,MUTED);
+    }
+    private void talkChoice(int person,int stage) {
+        LinearLayout box=column();box.setPadding(dp(18),dp(12),dp(18),dp(12));box.setBackgroundColor(NAVY);
+        box.addView(new PortraitView(this,person),new LinearLayout.LayoutParams(dp(110),dp(110)));
+        label(box,CrewConversations.TOPICS[person-1][stage],16,INK);
+        fullAction(box,"함께 마음을 나눈다 · 신뢰 +2 / 사기 +10",()->finishTalk(person,stage,0),true);
+        fullAction(box,"실행 계획을 세운다 · 신뢰 +1 / 명성 +1",()->finishTalk(person,stage,1),false);
+        ScrollView scroll=new ScrollView(this);scroll.addView(box);
+        dialogueDialog=new AlertDialog.Builder(this).setTitle(Crew.NAMES[person]+" · 남겨질 선택").setView(scroll)
+            .setNegativeButton("나중에",null).create();dialogueDialog.show();
+    }
+    private void finishTalk(int person,int stage,int choice) {
+        if(dialogueDialog!=null) { dialogueDialog.dismiss();dialogueDialog=null; }
+        changed(CrewConversations.choose(game,person,stage,choice),"chapter");
+    }
+    private void bossCard(int region) {
+        LinearLayout box=card(content);boolean cleared=(game.expedition.trophies & (1<<region))!=0;
+        label(box,RegionBoss.NAMES[region],20,GOLD);
+        label(box,cleared?"해역 훈장 획득 · 항구 사람들이 승리를 기억합니다.":"보물을 찾으면 도전 가능 · 선체 40 / 선박 등급 "+(1+region/3)+" 이상",13,INK);
+        label(box,"승리: "+(1200+region*300)+" G + 명성 5 + 고유 훈장\n적 선체 "+RegionBoss.maxHP(region)+" · 적의 다음 행동이 공개됩니다. 후퇴할 수 있습니다.",13,TEAL);
+        Button start=button(cleared?"강적 격파 완료":"해역 강적 도전",true);start.setEnabled(!cleared);
+        start.setOnClickListener(v->changed(RegionBoss.begin(game),"cannon"));box.addView(start,buttonParams());
+    }
+    private void showBoss() {
+        if(isFinishing() || isDestroyed() || !game.expedition.active()) return;
+        if(eventDialog!=null && eventDialog.isShowing()) return;
+        if(notice!=null) { notice.cancel();notice=null; }
+        int region=game.expedition.bossRegion,turn=game.expedition.bossTurn;
+        LinearLayout box=column();box.setPadding(dp(14),dp(10),dp(14),dp(12));box.setBackgroundColor(NAVY);
+        box.addView(new BattleSceneView(this,game.level),new LinearLayout.LayoutParams(-1,dp(165)));
+        label(box,"우리 선체 "+game.hull+" / "+game.maxHull()+"   적 선체 "+game.expedition.bossHP+" / "+RegionBoss.maxHP(region),16,GOLD);
+        label(box,RegionBoss.INTENTS[RegionBoss.intent(game)],14,TEAL);
+        label(box,"동료 지원 +"+CrewConversations.support(game)+" · 숙련 +"+TownRpg.rankBonus(game)+" · "+game.expedition.bossTurn+"턴 경과",12,MUTED);
+        if(turn>0) label(box,game.message,12,MUTED);
+        fullAction(box,"집중 포격 · 높은 피해",()->chooseBossTurn(0,turn),true);
+        fullAction(box,"방어 사격 · 주는 피해 감소 / 받는 피해 ⅓",()->chooseBossTurn(1,turn),false);
+        fullAction(box,"후퇴 · 선체 −4 / 사기 −5 / 하루",()->chooseBossTurn(2,turn),false);
+        box.getChildAt(box.getChildCount()-1).setTag("boss-retreat");
+        ScrollView scroll=new ScrollView(this);scroll.setTag("boss-scroll");scroll.addView(box);
+        eventDialog=new AlertDialog.Builder(this).setTitle(RegionBoss.NAMES[region]).setView(scroll).setCancelable(false).create();eventDialog.show();
+    }
+    private void chooseBoss(int choice) {
+        if(eventDialog!=null) { eventDialog.dismiss();eventDialog=null; }
+        int chapter=game.chapter;
+        boolean success=RegionBoss.choose(game,choice);changed(success,"cannon");
+        if(success && !game.expedition.active() && game.chapter==chapter) dialog("해역 전투 결과",game.message);
+    }
+    private void chooseBossTurn(int choice,int expected) {
+        if(!game.expedition.active() || game.expedition.bossTurn!=expected) return;
+        chooseBoss(choice);
+    }
     private void audioSettings() {
         LinearLayout box=card(content);label(box,"음악과 효과음",18,GOLD);
         label(box,"항해 지도와 항구 화면에서 서로 다른 창작 연주곡이 재생됩니다. 앱을 벗어나면 소리가 멈춥니다.",13,INK);
@@ -309,6 +425,7 @@ public final class MainActivity extends Activity {
         label(box,"현재 시세·담당·개조 반영 / 도착 시 시세 변동 가능\n"+quantity+"개·일반항로 편도 기준 / 수리·귀환비 별도\n매입+보급 필요 "+hint.cost+" G",11,MUTED);
     }
     private void adventureShortcut(LinearLayout parent) {
+        fullAction(parent,"잊힌 항로 · 보물지도와 해역 강적",()->{tab=9;render();},true);
         fullAction(parent,"의뢰 · 탐험 · 달성 기록",()->{tab=5;render();},false);
         fullAction(parent,"라이벌 상단 · 동맹과 경주",()->{tab=6;render();},false);
     }
@@ -644,6 +761,7 @@ public final class MainActivity extends Activity {
         if(restored==null) { dialog("불러오기 실패","올바른 푸른 수평선 저장 파일이 아닙니다. 현재 진행은 유지됩니다.");return; }
           game=restored;tab=7;mapRegion=-1;save();render();
           if(game.town.moving()) { showSailing();return; }
+        if(game.expedition.active()) { showBoss();return; }
         String summary=game.day+"일째 항해를 복원했습니다.";
         if(game.message.startsWith("세계 확장 버전")) summary+="\n\n"+game.message;
         dialog("불러오기 완료",summary);

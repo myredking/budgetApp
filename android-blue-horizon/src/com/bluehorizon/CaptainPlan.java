@@ -20,6 +20,7 @@ public final class CaptainPlan {
             "주문서를 열어 수량과 총액을 확인하세요.",1,-1,good,amount,sale?1:0);
     }
     public static CaptainPlan next(Engine e) {
+        if(e.expedition.active()) return new CaptainPlan("해역 강적 전투 이어가기","적의 다음 행동을 확인하고 전술을 선택하세요.",9,-1,-1,0,3);
         if(e.actionBlocked()) return new CaptainPlan("항해 사건 이어가기","먼저 선장의 결정을 마무리하세요.",0,-1,-1,0,3);
         CaptainPlan contract=delivery(e);if(contract!=null) return contract;
         for(int i=0;i<8;i++) {

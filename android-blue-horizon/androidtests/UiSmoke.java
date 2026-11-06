@@ -23,7 +23,8 @@ public final class UiSmoke extends Instrumentation {
             TradeUiChecks.run(activity,this);
             purchaseScreenshot(activity);
             checkAnimation(activity);
-            result.putString("result","PASS: in-transit import, automatic arrival, town walk/cancel, budget/quantity/max/sale UI; original progress restored");
+            ExpeditionUiChecks.run(activity,this);
+            result.putString("result","PASS: in-transit import, automatic arrival, town walk/cancel, orders, expedition/conversation/boss import UI; original progress restored");
         } catch(Throwable error) { status=Activity.RESULT_CANCELED;result.putString("error",error.toString()); }
         finish(status,result);
     }
@@ -77,7 +78,7 @@ public final class UiSmoke extends Instrumentation {
         }
         finally { runOnMainSync(()->sample[0].dismiss()); }
     }
-    private void screenshot(MainActivity activity,String name) throws IOException {
+    void screenshot(MainActivity activity,String name) throws IOException {
         Bitmap bitmap=getUiAutomation().takeScreenshot();
         try(FileOutputStream out=new FileOutputStream(new File(activity.getExternalFilesDir(null),name))) {
             if(!bitmap.compress(Bitmap.CompressFormat.PNG,100,out)) throw new IOException("Screenshot failed");
