@@ -140,7 +140,7 @@ public final class MainActivity extends Activity {
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v6.5 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v6.6 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();

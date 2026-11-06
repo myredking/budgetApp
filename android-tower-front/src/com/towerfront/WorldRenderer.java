@@ -7,6 +7,7 @@ public final class WorldRenderer {
     private final Bitmap terrain;
     private final BuildingPainter buildings=new BuildingPainter();
     private final FactionPainter factions=new FactionPainter();
+    private final DashPathEffect routeDash=new DashPathEffect(new float[]{3,5},0);
     public WorldRenderer(Context context) {
         int id=context.getResources().getIdentifier("battlefield","drawable",context.getPackageName());
         BitmapFactory.Options options=new BitmapFactory.Options();options.inScaled=false;
@@ -35,7 +36,7 @@ public final class WorldRenderer {
     public void fleet(Canvas c,Engine e,Engine.Fleet f) {
         Engine.Tower a=e.towers.get(f.from),b=e.towers.get(f.to);
         float ax=BattleControls.x(a),ay=BattleControls.y(a),bx=BattleControls.x(b),by=BattleControls.y(b);
-        p.setColor(0x33515133);p.setStrokeWidth(2);p.setPathEffect(new DashPathEffect(new float[]{3,5},0));
+        p.setColor(0x33515133);p.setStrokeWidth(2);p.setPathEffect(routeDash);
         c.drawLine(ax,ay,bx,by,p);p.setPathEffect(null);
         double angle=Math.atan2(by-ay,bx-ax);
         for(int i=0;i<SceneStyle.squadSize(f.units);i++) {

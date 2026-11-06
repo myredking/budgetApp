@@ -3,6 +3,7 @@ import android.graphics.*;
 
 public final class TacticsPainter {
     private final Paint p=new Paint(3);
+    private static final int[] ACCENTS={SceneStyle.BLUE,0xff278359,0xffb56c32};
     private void text(Canvas c,String text,float x,float y,float size,int color) {
         p.setColor(color);p.setTextSize(size);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);
         c.drawText(text,x,y,p);
@@ -58,7 +59,7 @@ public final class TacticsPainter {
     }
     private void skillButton(Canvas c,Engine e,int selected,int type,ScreenLayout screen) {
         float x=18+type*124;boolean ready=e.rules.ready(type,selected);
-        int accent=new int[]{SceneStyle.BLUE,0xff278359,0xffb56c32}[type];
+        int accent=ACCENTS[type];
         box(c,x,screen.skillTop,116,screen.buttonHeight,ready?0xffedf2ed:0xfff0eee4);
         p.setColor(ready?accent:0xffb9bbae);p.setStrokeWidth(2);
         c.drawLine(x+14,screen.skillTop+7,x+102,screen.skillTop+7,p);

@@ -16,6 +16,7 @@ public final class BattleView extends View {
     private final FactionPainter factions=new FactionPainter();
     private final WorldRenderer world;
     private final int[] depth;
+    private final int[] teamStrength=new int[12];
     private float scale=1,left,top,dragX,dragY,downX,downY,lastX,lastY;
     private ScreenLayout screen=new ScreenLayout(400,820,1,1);
     private BattleCamera camera=new BattleCamera(screen);
@@ -75,7 +76,7 @@ public final class BattleView extends View {
         real.save();real.translate(left,top);real.scale(scale,scale);
         drawWorld(real);header(real);footer(real);drawMapZoom(real);
         drawOverlay(real);
-        real.restore();if(running) postInvalidateDelayed(paused?100:16);
+        real.restore();if(effects.needsFrame(running,paused,engine.result())) postInvalidateDelayed(16);
     }
     private void drawWorld(Canvas c) {
         box(c,screen.boardLeft,screen.boardTop,screen.boardRight-screen.boardLeft,screen.boardBottom-screen.boardTop,MainActivity.CARD);
@@ -137,7 +138,7 @@ public final class BattleView extends View {
     }
     private void strength(Canvas c,float baseline) {
         statusCards(c);
-        int[] strength=new int[12];
+        int[] strength=teamStrength;java.util.Arrays.fill(strength,0);
         for(Engine.Tower t:engine.towers) strength[t.owner]+=t.units;
         for(Engine.Fleet f:engine.fleets) strength[f.owner]+=f.units;
         text(c,(screen.compact?"나 ":"아군 ")+strength[1],screen.compact?48:65,baseline,14,color(1));
@@ -268,10 +269,12 @@ public final class BattleView extends View {
         if(action==MotionEvent.ACTION_DOWN) touchDown(x,y,overlay);
         if(action==MotionEvent.ACTION_MOVE) touchMove(x,y);
         if(action==MotionEvent.ACTION_UP) touchUp(x,y,overlay);
+        invalidate();
         return true;
     }
     private void cancelTouch() {
         controls.cancel();dragging=false;pressedButton=-1;downTarget=-1;previewTarget=-1;panCandidate=false;mapPanning=false;
+        invalidate();
     }
     private int hitWorld(float x,float y) {
         if(!inside(x,y,screen.boardLeft,screen.boardTop,screen.boardRight-screen.boardLeft,screen.boardBottom-screen.boardTop)) return -1;

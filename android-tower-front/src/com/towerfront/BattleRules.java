@@ -5,6 +5,7 @@ public final class BattleRules {
     public static final int CONQUEST=0,HOLD=1,SURVIVE=2,CONTROL=3;
     public static final int REINFORCE=0,SHIELD=1,HASTE=2;
     private static final int[] COSTS={35,30,25},COOLDOWNS={18,20,16};
+    private static final String[] SKILL_NAMES={"긴급 증원","보호막","이동 가속"};
     private final Engine engine;
     public int objective=CONQUEST,supplyIndex=-1;
     public double progress,goalSeconds=30,energy=60;
@@ -57,7 +58,7 @@ public final class BattleRules {
         b.owner=owner;b.units=units;b.kind=kind;b.rank=rank;b.growth=growth;
     }
     public static int cost(int type) {return COSTS[type];}
-    public static String skillName(int type) {return new String[]{"긴급 증원","보호막","이동 가속"}[type];}
+    public static String skillName(int type) {return SKILL_NAMES[type];}
     public boolean ready(int type,int target) {
         if(type<0 || type>2 || target<0 || target>=engine.towers.size()) return false;
         if(engine.towers.get(target).owner!=1 || engine.result()!=0) return false;

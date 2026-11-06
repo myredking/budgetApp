@@ -5,7 +5,7 @@ public final class EffectsTest {
         if(!ok) throw new AssertionError(text);
     }
     public static void main(String[] args) {
-        arrivalChecks();animationChecks();queueChecks();reinforcementCapChecks();
+        arrivalChecks();animationChecks();queueChecks();reinforcementCapChecks();frameChecks();
         System.out.println("Impact, capture, reinforcement and finite animation checks passed");
     }
     private static void arrivalChecks() {
@@ -49,5 +49,18 @@ public final class EffectsTest {
         check(e.drainImpacts().get(0).amount==1,"show actual received troops at cap");
         e.fleets.add(new Engine.Fleet(0,2,1,10,.4));e.update(.5);
         check(e.drainImpacts().isEmpty(),"no false reinforcement at full tower");
+    }
+    private static void frameChecks() {
+        BattleEffects fx=new BattleEffects();
+        check(fx.needsFrame(true,false,0),"active battle keeps animating");
+        check(!fx.needsFrame(true,true,0),"paused battle does not redraw continuously");
+        check(!fx.needsFrame(false,false,0),"background battle stops frames");
+        check(!fx.needsFrame(true,false,2),"idle result screen stops frames");
+        fx.celebrate();check(fx.needsFrame(true,false,1),"victory animation can finish");
+        check(!fx.needsFrame(true,true,1),"pause also freezes celebration");
+        fx.update(4);check(!fx.needsFrame(true,false,1),"completed celebration stops frames");
+        fx.impact(new Engine.Impact(2,1,4,Engine.HIT),100,200);
+        check(fx.needsFrame(true,false,2),"last hit effect can finish");
+        fx.update(2);check(!fx.needsFrame(true,false,2),"completed last hit stops frames");
     }
 }

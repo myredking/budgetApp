@@ -5,6 +5,7 @@ import android.graphics.*;
 public final class BuildingPainter {
     private final Paint p=new Paint(3);
     private final FactionPainter factions=new FactionPainter();
+    private final Typeface bold=Typeface.create("sans-serif",Typeface.BOLD);
     private void polygon(Canvas c,int color,float... points) {
         Path path=new Path();path.moveTo(points[0],points[1]);
         for(int i=2;i<points.length;i+=2) path.lineTo(points[i],points[i+1]);
@@ -96,7 +97,7 @@ public final class BuildingPainter {
         p.setColor(0x33344330);c.drawRoundRect(-21,18,23,41,10,10,p);
         p.setColor(0xff24394b);c.drawRoundRect(-23,16,21,39,9,9,p);
         factions.draw(c,t.owner,-16,27,5);
-        p.setColor(Color.WHITE);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        p.setColor(Color.WHITE);p.setTypeface(bold);
         p.setTextSize(17);p.setTextAlign(Paint.Align.CENTER);c.drawText(String.valueOf(t.units),3,33,p);
         p.setTextSize(detail<.8f?11:9);p.setColor(SceneStyle.INK);
         String tag=t.owner==1?"나":t.owner==0?"중립":"AI "+(t.owner-1);

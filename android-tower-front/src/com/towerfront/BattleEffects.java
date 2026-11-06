@@ -57,4 +57,7 @@ public final class BattleEffects {
         return 1+(float)(Math.sin(age/.6*Math.PI)*.2);
     }
     public void clear() {bursts.clear();confetti.clear();}
+    public boolean needsFrame(boolean running,boolean paused,int result) {
+        return running && !paused && (result==0 || !bursts.isEmpty() || !confetti.isEmpty());
+    }
 }
