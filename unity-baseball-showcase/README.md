@@ -119,3 +119,13 @@ Python 검사 15건과 Unity EditMode 검사 2건(텍스처/모션, 릴리스/�
 정교(+6 컨택), 거포(+8 파워), 해결사(득점권 컨택+10), 정밀 제구(+8 제구), 아우라(능력치+3)는 실제 선수의 공식 평가가 아닌 게임용 선택 항목입니다. 보너스 적용 상한은110입니다. 컨택은 타격 허용 시간, 파워는 타구 속도, 제구는 한 이닝 모드의 볼 발생 확률에 반영합니다. 실측 물리 모델이 아닌 균형 조정용 환산입니다.
 
 선수 카드의 3D 그림과 경기 모델은 공용 원형입니다. 선택 선수의 얼굴·체형·좌우 타격/투구폼·유니폼을 재현하지 않습니다. 기존 모델 원본의 자세를 데이터 선택 선수의 고유 동작으로 간주하지 마세요. 스카우팅/구단 예산은 아직 Unity 화면에 연결하지 않았습니다.
+
+## Unity Android 설치 파일 0.5.0
+
+실제 Unity ARM64 빌드가 성공했습니다. 로컬 설치 파일은 `Builds/DeckBallUnity2026.apk`(37,877,795바이트)이며 패키지는 `com.deckball.unity2026`입니다. 기존 네이티브 APK와 별도 앱이므로 기존 구단 저장 파일은 자동 이전하지 않습니다. API26 이상·대상API36이며 OpenGL ES3.1 이상이 필요합니다. 개발용 서명 APK이고 스토어 배포판은 아닙니다.
+
+APK v2 서명, 16KB ZIP 정렬, 포함된 네이티브 라이브러리 6개의 ARM64 ELF 구조와 16KB LOAD 정렬을 확인했습니다. `Reports/android-apk-validation.json`에 해시와 검사 결과가 있습니다. **실제 S26 실행·터치 지연·프레임률과 Android 에뮬레이터 실행은 아직 확인하지 못했습니다.** Unity 검사27건과 에디터 화면 검증을 기기 실행 검증으로 간주하지 않습니다.
+
+Windows 빌드는 영문 경로의 사본(`C:/Users/Public/DeckBallBuild/UnityProject`)에서 수행합니다. 원본 한글 경로는 Android 도구가 거부했습니다. GameActivity의 Windows Prefab 명령 파일이 실패해 공식 지원 Activity 진입점을 선택했습니다. 빌드 메서드는 `DeckBall.Showcase.Editor.DiamondAndroidBuild.Build`입니다. ARM64/IL2CPP 설정은 [Unity 문서](https://docs.unity.com/en-us/engine/6000.6/script-reference/unityeditor/playersettings/android/targetarchitectures), 진입점은 [공식 API](https://docs.unity.com/en-us/engine/6000.6/script-reference/unityeditor/playersettings/android/applicationentry)를 따릅니다.
+
+이 절이 앞선 'Android Build Support 미설치·Unity APK 미생성' 기록보다 최신입니다. APK와 원본 아트는 Git 제외 대상이므로 로컬에 보관합니다.

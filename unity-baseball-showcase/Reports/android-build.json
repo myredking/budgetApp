@@ -1,0 +1,8 @@
+{
+  "result": "Succeeded",
+  "output": "C:\\Users\\Public\\DeckBallBuild\\Output\\DeckBallUnity2026.apk",
+  "errors": 0,
+  "reportedBuildBytes": 597689703,
+  "apkBytes": 37877795,
+  "note": "Unity summary includes build artifacts; apkBytes is the measured APK file size."
+}
