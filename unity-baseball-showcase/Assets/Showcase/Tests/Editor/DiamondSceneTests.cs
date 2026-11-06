@@ -98,6 +98,31 @@ public sealed class DiamondSceneTests
     }
 
     [Test]
+    public void InningModeEndsOnThreeStrikeoutsInsteadOfTenPitches()
+    {
+        var builder = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("DeckBall.Showcase.Editor.DiamondStudySetup")).First(t => t != null);
+        builder.GetMethod("Build").Invoke(null, null);
+        var game = GameObject.Find("BattingTrial").GetComponent("BattingTrialGame");
+        var type = game.GetType();
+        var start = type.GetMethod("StartInning");
+        Assert.That(start, Is.Not.Null);
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        type.GetMethod("Awake", flags).Invoke(game, null);
+        start.Invoke(game, new object[] { 0 });
+        for (var index = 0; index < 9; index++)
+        {
+            type.GetMethod("Advance").Invoke(game, new object[] { 2f });
+            Assert.That(type.GetMethod("TrySwing").Invoke(game, null), Is.EqualTo(true));
+            type.GetMethod("Advance").Invoke(game, new object[] { 10f });
+        }
+        var inning = type.GetProperty("Inning").GetValue(game);
+        Assert.That(inning.GetType().GetProperty("Outs").GetValue(inning), Is.EqualTo(3));
+        Assert.That(type.GetProperty("Finished").GetValue(game), Is.EqualTo(true));
+        type.GetMethod("StartChallenge").Invoke(game, new object[] { 1 });
+        Assert.That(type.GetProperty("Inning").GetValue(game), Is.Null);
+    }
+
+    [Test]
     public void DiamondPlacesPitcherAndCameraTowardHome()
     {
         var type = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("DeckBall.Showcase.Editor.DiamondStudySetup"))

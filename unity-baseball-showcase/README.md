@@ -103,3 +103,11 @@ Python 검사 15건과 Unity EditMode 검사 2건(텍스처/모션, 릴리스/�
 `Reports/diamond-unity-tests.json`에 최신 엔진 검사 결과, `Reports/swing-style-validation.json`에 97프레임 손잡이 연결 검사 결과가 있습니다. 이전 선수 스틸/GIF는 당시 검토 기록입니다. 새 타격 장면 캡처와 혼동하지 마세요. 참고 사진 수준의 실사 표현과 선수 닮은꼴 검토는 통과하지 않았습니다.
 
 폰트는 Noto Sans KR의 정적 파생본 DeckBallKorean이며 OFL 고지문을 StreamingAssets에 포함합니다. Art/SourceArt 본체는 Git 제외 대상이므로 이 저장소만 복제하면 곧바로 실행되지는 않습니다. Android Build Support 미설치로 이번 Unity APK는 만들지 않았고, 기존 `android-baseball/DeckBall.apk`도 이번 변경을 포함하지 않습니다.
+
+## 한 이닝 승부 시제품 (진행 중)
+
+메뉴에서 한 이닝 승부/10구 챌린지를 선택합니다. 한 이닝은 공격만 진행하며 3아웃에 종료됩니다. 볼·스트라이크, 삼진, 볼넷의 강제 진루, 안타·장타의 보수적인 진루 및 득점을 연결했습니다. 10구 제한과 최고 기록은 별도 모드로 유지합니다.
+
+수비는 연습 수비수 7명과 투수의 도착 시간, 포구 가능 높이, 송구 시간과 주루 시간을 비교하는 초기 모델입니다. 주자와 수비수는 현재 같은 원형 모델을 재사용하는 위치 이동 초안이며 정식 달리기/송구/슬라이딩 모션이 아닙니다. 모든 주자가 안타의 루타 수만큼 진루하는 단순화가 있으며 병살·야수 선택·태그업·실책·도루·희생타·자동 투구 제한은 미구현입니다. 파울 규칙 단위 검사는 있으나 플레이 중 파울 타구는 아직 연결하지 않았습니다. 실제 KBO 수비 기록으로 보정한 결과도 아닙니다.
+
+기본 규칙 참고: https://www.mlb.com/glossary/standard-stats/strikeout , https://www.mlb.com/glossary/standard-stats/walk . KBO 2026 전체 규칙 적합성 승인을 뜻하지 않습니다.

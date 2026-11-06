@@ -6,6 +6,13 @@ namespace DeckBall.Showcase.Editor
 {
     internal static class DiamondPreview
     {
+        [MenuItem("DeckBall/Diamond Challenge/Start Inning Preview")]
+        public static void StartInning()
+        {
+            if (!EditorApplication.isPlaying) throw new System.InvalidOperationException("Enter Play mode first.");
+            Object.FindFirstObjectByType<BattingTrialGame>().StartInning(0);
+        }
+
         [MenuItem("DeckBall/Diamond Challenge/Start Preview")]
         public static void Start()
         {

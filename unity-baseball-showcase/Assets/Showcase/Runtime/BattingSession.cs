@@ -52,6 +52,7 @@ namespace DeckBall.Showcase
     public sealed class BattingSession
     {
         public int Level { get; }
+        private readonly int limit;
         public int Score { get; private set; }
         public int Pitches { get; private set; }
         public int Combo { get; private set; }
@@ -60,12 +61,16 @@ namespace DeckBall.Showcase
         public int LastGrade { get; private set; }
         public bool LastPower { get; private set; }
         public bool Resolved { get; private set; }
-        public bool Complete => Pitches >= 10;
+        public bool Complete => Pitches >= limit;
 
-        public BattingSession(int level)
+        public BattingSession(int level) : this(level, 10) { }
+
+        public BattingSession(int level, int pitchLimit)
         {
             TrialRules.Window(level, false);
             Level = level;
+            if (pitchLimit < 1) throw new ArgumentOutOfRangeException(nameof(pitchLimit));
+            limit = pitchLimit;
         }
 
         public void BeginPitch()

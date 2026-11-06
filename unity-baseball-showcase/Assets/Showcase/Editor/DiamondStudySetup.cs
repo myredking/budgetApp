@@ -35,6 +35,7 @@ namespace DeckBall.Showcase.Editor
             controller.gameObject.AddComponent<TrialSound>();
             controller.batter = batter; controller.pitcher = pitcher; controller.gameCamera = camera;
             controller.swingClips = SwingClips(batter);
+            controller.field = DiamondFielders.Build(batter, pitcher);
             var hud = controller.gameObject.AddComponent<TrialHud>();
             hud.game = controller;
             hud.font = AssetDatabase.LoadAssetAtPath<Font>(Art + "Fonts/NotoSansKR.ttf");

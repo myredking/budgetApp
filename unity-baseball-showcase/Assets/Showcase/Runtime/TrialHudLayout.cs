@@ -30,7 +30,7 @@ namespace DeckBall.Showcase
                 Card = new Rect(area.x + pad, area.y + area.height * .27f, 184 * scale, 310 * scale),
                 PitcherCard = new Rect(area.xMax - pad - 184 * scale, area.y + area.height * .27f, 184 * scale, 310 * scale),
                 Feedback = new Rect(area.center.x - 235 * scale, area.y + 112 * scale, 470 * scale, 94 * scale),
-                Panel = new Rect(area.center.x - 310 * scale, area.center.y - 210 * scale, 620 * scale, 420 * scale)
+                Panel = new Rect(area.center.x - 310 * scale, area.center.y - 245 * scale, 620 * scale, 490 * scale)
             };
         }
 

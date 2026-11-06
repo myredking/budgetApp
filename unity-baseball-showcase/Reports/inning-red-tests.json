@@ -1,0 +1,183 @@
+{
+  "success": true,
+  "command": "command test",
+  "data": {
+    "command": "test",
+    "parameters": {
+      "mode": "EditMode",
+      "filter": "DeckBall.Showcase.Tests",
+      "filter-type": "assembly"
+    },
+    "result": {
+      "Summary": {
+        "Total": 21,
+        "Passed": 19,
+        "Failed": 2,
+        "Skipped": 0,
+        "Inconclusive": 0
+      },
+      "Results": [
+        {
+          "FullName": "BattingTrialTests.HomeRunUsesCurvedFenceAndExcludesFoulAndLowBalls",
+          "Status": "Passed",
+          "Duration": 0.0367066,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.ImpactSoundHasFiniteAudibleSamplesAndQuietEnds",
+          "Status": "Passed",
+          "Duration": 0.016694,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(2340,1080,120,56,2220,1024)",
+          "Status": "Passed",
+          "Duration": 0.0086387,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(2340,1080,0,56,2220,1024)",
+          "Status": "Passed",
+          "Duration": 0.0010234,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.LandscapeButtonsStayInsideSafeAreaAndDoNotOverlap(1920,1080,0,0,1920,1080)",
+          "Status": "Passed",
+          "Duration": 0.0012171,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.OnePitchCannotScoreTwiceAndTenPitchesEndChallenge",
+          "Status": "Passed",
+          "Duration": 0.0101579,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.SwingReachesContactWithinOneTenthSecond",
+          "Status": "Passed",
+          "Duration": 0.002076,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TimingDifficultyAndPowerHaveClearTradeoffs",
+          "Status": "Passed",
+          "Duration": 0.0022531,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TouchSwingStylesChangeDirectionAndGroundBallAngle",
+          "Status": "Passed",
+          "Duration": 0.0045751,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "BattingTrialTests.TouchUsesBottomLeftScreenCoordinatesAndIgnoresCutout",
+          "Status": "Passed",
+          "Duration": 0.0026269,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.ChallengeRunsTenPitchesPausesAndRestarts",
+          "Status": "Passed",
+          "Duration": 27.6856756,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.DiamondPlacesPitcherAndCameraTowardHome",
+          "Status": "Passed",
+          "Duration": 13.5132712,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "DiamondSceneTests.SuccessfulHitScoresTracksBallAndRestoresBest",
+          "Status": "Passed",
+          "Duration": 8.6201133,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "FieldPlayTests.FieldersHaveLegalIndexAndFiniteResolutionTime",
+          "Status": "Failed",
+          "Duration": 0.011392,
+          "Message": "  FieldPlay is missing\r\n  Expected: not null\r\n  But was:  null\r\n",
+          "StackTrace": "at FieldPlayTests.Resolve (UnityEngine.Vector3 velocity) [0x00052] in C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase\\Assets\\Showcase\\Tests\\Editor\\FieldPlayTests.cs:11\r\nat FieldPlayTests.FieldersHaveLegalIndexAndFiniteResolutionTime () [0x00066] in C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase\\Assets\\Showcase\\Tests\\Editor\\FieldPlayTests.cs:31\r\n"
+        },
+        {
+          "FullName": "FieldPlayTests.ShortGroundBallCanBeThrownOutButOverFenceIsHomeRun",
+          "Status": "Failed",
+          "Duration": 0.0020987,
+          "Message": "  FieldPlay is missing\r\n  Expected: not null\r\n  But was:  null\r\n",
+          "StackTrace": "at FieldPlayTests.Resolve (UnityEngine.Vector3 velocity) [0x00052] in C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase\\Assets\\Showcase\\Tests\\Editor\\FieldPlayTests.cs:11\r\nat FieldPlayTests.ShortGroundBallCanBeThrownOutButOverFenceIsHomeRun () [0x00000] in C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase\\Assets\\Showcase\\Tests\\Editor\\FieldPlayTests.cs:20\r\n"
+        },
+        {
+          "FullName": "InningRulesTests.HomeRunScoresAllRunnersAndClearsBases",
+          "Status": "Passed",
+          "Duration": 0.0041981,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "InningRulesTests.ThirdOutEndsInningAndRejectsFurtherActions",
+          "Status": "Passed",
+          "Duration": 0.0024921,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "InningRulesTests.TwoStrikeFoulsDoNotStrikeOutButThirdMissDoes",
+          "Status": "Passed",
+          "Duration": 0.0018258,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "InningRulesTests.WalkOnlyMovesForcedRunnersAndLoadedWalkScoresOne",
+          "Status": "Passed",
+          "Duration": 0.001622,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "PlayerStudyTests.ImportedPlayersHaveSkinningAndMovingAnimation",
+          "Status": "Passed",
+          "Duration": 5.2256396,
+          "Message": null,
+          "StackTrace": null
+        },
+        {
+          "FullName": "PlayerStudyTests.PitchBallLeavesLeftHandAtReleaseWithoutChangingSize",
+          "Status": "Passed",
+          "Duration": 10.4098265,
+          "Message": null,
+          "StackTrace": null
+        }
+      ],
+      "Duration": 72.93,
+      "StatusPath": null,
+      "Mode": "EditMode",
+      "FilterApplied": "assembly: DeckBall.Showcase.Tests",
+      "success": true,
+      "result": null
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\김재섭\\OneDrive\\문서\\budgetapp\\unity-baseball-showcase"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}
