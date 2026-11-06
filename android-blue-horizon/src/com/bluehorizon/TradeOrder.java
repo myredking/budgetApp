@@ -2,13 +2,13 @@ package com.bluehorizon;
 
 /** Immutable receipt; confirmation rejects changes rather than silently repricing. */
 public final class TradeOrder {
-    public final int good,quantity,unit,total,goldAfter,cargoAfter,maximum,bonusGold;
+    public final int good,quantity,unit,total,goldAfter,cargoAfter,maximum,bonusGold,reserved;
     public final boolean selling;
     public final String error;
     private final String snapshot;
     private boolean used;
-    private TradeOrder(Engine e,int item,boolean sale,int amount,int limit,String problem) {
-        good=item;selling=sale;quantity=amount;maximum=limit;error=problem;
+    private TradeOrder(Engine e,int item,boolean sale,int amount,int limit,String problem,int protectedCount) {
+        good=item;selling=sale;quantity=amount;maximum=limit;error=problem;reserved=protectedCount;
         unit=item<0?0:(sale?e.sellPrice(item):e.buyPrice(item));total=unit*amount;
         snapshot=e.encode();
         Engine projected=project(e);
@@ -31,12 +31,17 @@ public final class TradeOrder {
         catch(NumberFormatException error) { return -1; }
     }
     public static TradeOrder quote(Engine e,int good,boolean sale,int mode,int value,int reserve) {
-        if(good<0 || good>=6) return new TradeOrder(e,-1,sale,0,0,"상품을 선택하세요.");
-        int maximum=maximum(e,good,sale,reserve);
+        return quote(e,good,sale,mode,value,reserve,false);
+    }
+    public static TradeOrder quote(Engine e,int good,boolean sale,int mode,int value,int reserve,boolean protect) {
+        if(good<0 || good>=6) return new TradeOrder(e,-1,sale,0,0,"상품을 선택하세요.",0);
+        int held=sale && protect?MissionCargo.held(e,good):0;
+        int maximum=Math.max(0,maximum(e,good,sale,reserve)-held);
         String error=problem(e,sale,mode,value,reserve);
         int amount=amount(e,good,sale,mode,value,maximum);
         if(error.isEmpty()) error=amountProblem(sale,amount,maximum);
-        return new TradeOrder(e,good,sale,Math.max(0,Math.min(amount,e.capacity())),maximum,error);
+        if(!error.isEmpty() && held>0) error+="\n목표용 "+held+"개는 보관 중입니다. 원하면 보호 체크를 해제하세요.";
+        return new TradeOrder(e,good,sale,Math.max(0,Math.min(amount,e.capacity())),maximum,error,held);
     }
     private static int maximum(Engine e,int good,boolean sale,int reserve) {
         if(sale) return e.inventory[good];

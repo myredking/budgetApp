@@ -25,9 +25,11 @@ public final class TradeDialog {
     private Button confirm;
     private SeekBar slider;
     private CheckBox reserve;
+    private CheckBox protect;
     private TradeOrder quote;
     private int mode,initial;
     private boolean keepReserve=true;
+    private boolean keepProtected=true;
     public TradeDialog(Activity owner,Engine state,int item,boolean sale,int quantity,Consumer<Boolean> callback) {
         activity=owner;game=state;good=item;selling=sale;initial=quantity;complete=callback;
         body=column();body.setPadding(dp(18),dp(12),dp(18),dp(12));body.setBackgroundColor(MainActivity.NAVY);
@@ -58,6 +60,7 @@ public final class TradeDialog {
         if(mode==0) quantityControls();
         if(mode==1) budgetControls();
         if(!selling) reserveControl();
+        if(selling) protectionControl();
         receipt=text(body,"",17,0xff382d21);receipt.setPadding(dp(16),dp(14),dp(16),dp(14));
         receipt.setBackground(shape(0xffefe0bb));
         hint=text(body,"",13,MainActivity.TEAL);
@@ -104,9 +107,14 @@ public final class TradeDialog {
         reserve.setMinHeight(dp(48));reserve.setChecked(keepReserve);body.addView(reserve);
         reserve.setOnCheckedChangeListener((v,checked)->{keepReserve=checked;refresh();});
     }
+    private void protectionControl() {
+        protect=new CheckBox(activity);protect.setText("이야기·의뢰·경주용 화물 남기기");protect.setTextColor(MainActivity.INK);
+        protect.setMinHeight(dp(48));protect.setChecked(keepProtected);body.addView(protect);
+        protect.setOnCheckedChangeListener((v,checked)->{keepProtected=checked;refresh();});
+    }
     private void refresh() {
         int value=TradeOrder.number(input.getText().toString());
-        quote=TradeOrder.quote(game,good,selling,mode,value,selling?0:(keepReserve?200:0));
+        quote=TradeOrder.quote(game,good,selling,mode,value,selling?0:(keepReserve?200:0),selling && keepProtected);
         updateControls(value);
         receipt.setText(receiptText());
         hint.setText(quote.valid()?detail(value):quote.error);
@@ -120,7 +128,7 @@ public final class TradeDialog {
         }
     }
     private String receiptText() {
-        return "수량                  "+quote.quantity+"개\n단가                  "+money(quote.unit)
+        return (quote.reserved>0?"목표용 보관        "+quote.reserved+"개\n":"")+"수량                  "+quote.quantity+"개\n단가                  "+money(quote.unit)
             +"\n────────────────\n"+(selling?"받는 금액          ":"결제 금액          ")+money(quote.total)
             +(quote.bonusGold>0?"\n이야기 완료 보상   +"+money(quote.bonusGold):"")
             +"\n거래 후 금화       "+money(quote.goldAfter)+"\n화물 공간            "+quote.cargoAfter+" / "+game.capacity();

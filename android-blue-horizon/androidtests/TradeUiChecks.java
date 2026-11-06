@@ -45,7 +45,9 @@ public final class TradeUiChecks {
         } finally { ((AlertDialog)field(popup,"dialog")).dismiss(); }
         popup=new TradeDialog(activity,game,0,true,1,success->{});popup.show();
         try {
-            click(popup,"전량 판매");check(((TradeOrder)field(popup,"quote")).quantity==game.inventory[0],"sale all uses held goods");
+            click(popup,"전량 판매");check(((TradeOrder)field(popup,"quote")).quantity==game.inventory[0]-5,"sale all keeps story cargo by default");
+            ((CheckBox)field(popup,"protect")).setChecked(false);
+            check(((TradeOrder)field(popup,"quote")).quantity==game.inventory[0],"explicit protection opt out allows full sale");
         } finally { ((AlertDialog)field(popup,"dialog")).dismiss(); }
     }
     private static void click(TradeDialog popup,String title) throws Exception {
