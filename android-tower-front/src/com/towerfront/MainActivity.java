@@ -28,6 +28,7 @@ public final class MainActivity extends Activity {
     private int missionChapter,customMap,customEnemies=3,customDifficulty=1;
     Engine engine;
     Profile profile;
+    BattleRecords records;
     int mode=1;
     boolean sound=true,haptics=true,visuals=true,guidance=true,musicEnabled=true;
 
@@ -37,6 +38,7 @@ public final class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         preferences=getPreferences(0);
         profile=Profile.decode(preferences.getString("profile",""));
+        records=BattleRecords.decode(preferences.getString("records",""));
         mode=preferences.getInt("mode",1);mode=Math.max(0,Math.min(2,mode));
         sound=preferences.getBoolean("sound",true);haptics=preferences.getBoolean("haptics",true);
         visuals=preferences.getBoolean("visuals",true);
@@ -86,8 +88,8 @@ public final class MainActivity extends Activity {
         super.onBackPressed();
     }
     void saveBattle(boolean immediate) {
-        if(engine!=null) profile.recordBattle(engine);
-        SharedPreferences.Editor edit=preferences.edit().putString("profile",profile.encode());
+        if(engine!=null) {profile.recordBattle(engine);records.recordBattle(engine);}
+        SharedPreferences.Editor edit=preferences.edit().putString("profile",profile.encode()).putString("records",records.encode());
         if(engine!=null) edit.putString("battle",SaveCodec.encode(engine));
         if(immediate) edit.commit();else edit.apply();
     }
@@ -143,13 +145,44 @@ public final class MainActivity extends Activity {
         MenuCards cards=new MenuCards(this);
         cards.add(panel,"미션 모드 · 100스테이지","목표를 달성하며 100개 작전에 도전하세요","01",CYAN,()->openMissions());
         cards.add(panel,"자유전 · 무작위 게임","맵과 적 진영 수를 골라 나만의 전투를 만드세요","02",0xffb56c32,()->showSkirmish());
+        button(panel,"작전 기록실",false,()->showRecords());
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v6.8 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v7.0 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();
+    }
+    private void showRecords() {
+        campaignPage=true;saveBattle(false);
+        LinearLayout panel=page("작전 기록실","난이도별 개인 기록 · 다음 목표를 골라보세요");
+        recordDifficulties(panel);
+        panel.addView(label(CampaignProgress.rank(profile,mode),23,CYAN));
+        panel.addView(label("완료 "+CampaignProgress.completed(profile,mode)+" / 100 · 별3개 "+CampaignProgress.perfect(profile,mode)+"개",15,SceneStyle.INK));
+        panel.addView(label("별 "+profile.total(mode)+" / 300 · 칭호는 전투 능력에 영향을 주지 않습니다",12,MUTED));
+        ProgressBar progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
+        progress.setMax(300);progress.setProgress(profile.total(mode));progress.setProgressTintList(ColorStateList.valueOf(CYAN));
+        panel.addView(progress,new LinearLayout.LayoutParams(-1,dp(8)));
+        int next=CampaignProgress.next(profile,mode);
+        button(panel,"다음 도전 · 미션 "+next,true,()->chooseStage(next));
+        for(int chapter=0;chapter<10;chapter++) recordChapter(panel,chapter);
+        button(panel,"시작 화면",false,()->showMenu());
+    }
+    private void recordDifficulties(LinearLayout panel) {
+        LinearLayout row=new LinearLayout(this);panel.addView(row);
+        for(int i=0;i<3;i++) {
+            final int choice=i;Button b=button(row,Campaign.difficultyName(i),i==mode,()->{
+                mode=choice;preferences.edit().putInt("mode",mode).apply();showRecords();
+            });
+            LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,-2,1);params.setMargins(dp(3),dp(8),dp(3),dp(12));
+            b.setLayoutParams(params);b.setTextSize(14);b.setMinHeight(dp(52));
+        }
+    }
+    private void recordChapter(LinearLayout panel,int chapter) {
+        String summary=String.format(java.util.Locale.ROOT,"%02d구역 · %d/10 완료 · ★ %d/30",chapter+1,
+            CampaignProgress.chapterCompleted(profile,mode,chapter),CampaignProgress.chapterStars(profile,mode,chapter));
+        Button b=button(panel,summary,false,()->{missionChapter=chapter;showCampaign();});b.setTextSize(14);
     }
     void showCampaign() {
         campaignPage=true;saveBattle(false);
@@ -232,6 +265,7 @@ public final class MainActivity extends Activity {
         boolean open=profile.available(stage,mode);int score=profile.stars(stage,mode);
         String stars="★★★".substring(0,score)+"☆☆☆".substring(score);
         String title=String.format("%02d  %s\n%s · %s",stage,Campaign.name(stage),BattleRules.missionLabel(stage),open?stars:"잠김");
+        long best=records.bestMillis(stage,mode);if(best>=0) title+="\n최단 "+BattleDebrief.clock(best);
         Button b=button(panel,title,false,()->chooseStage(stage));b.setTextSize(14);
         b.setMinHeight(dp(72));
         b.setEnabled(open);b.setAlpha(open?1:.38f);

@@ -17,6 +17,7 @@ public final class BattleView extends View {
     private final WorldRenderer world;
     private final int[] depth;
     private final int[] teamStrength=new int[12];
+    private final long bestBefore;
     private float scale=1,left,top,dragX,dragY,downX,downY,lastX,lastY;
     private ScreenLayout screen=new ScreenLayout(400,820,1,1);
     private BattleCamera camera=new BattleCamera(screen);
@@ -32,6 +33,7 @@ public final class BattleView extends View {
     private static final int WHITE=SceneStyle.INK,GRAY=0xff657469;
     public BattleView(MainActivity activity,Engine state) {
         super(activity);host=activity;engine=state;controls=new BattleControls(engine);
+        bestBefore=host.records.bestMillis(engine.level,engine.difficulty);
         if(host.guidance) {notice=BattleCoach.tip(engine,-1);if(!engine.skirmish && engine.level<=3) noticeTime=0;}
         world=new WorldRenderer(activity);depth=SceneStyle.towerOrder(engine);
         setFocusable(true);setContentDescription("타워 프론트 전장. 아군 선택 후 목표 터치 또는 드래그.");
@@ -96,7 +98,6 @@ public final class BattleView extends View {
     }
     private void drawOverlay(Canvas c) {
         if(paused || engine.result()!=0) overlay(c);
-        if(engine.result()==1 && !paused) renderer.drawConfetti(c,effects,screen.overlayPrimaryTop-12);
     }
     private void tick(double dt) {
         engine.update(dt);controls.validate();noticeTime=Math.max(0,noticeTime-dt);
@@ -211,16 +212,26 @@ public final class BattleView extends View {
     private void overlay(Canvas c) {
         paint.setColor(Color.argb(245,245,239,223));c.drawRect(0,0,400,screen.height,paint);
         int result=engine.result();boolean win=result==1;float y=screen.overlayTitle;
+        if(win && !paused) renderer.drawConfetti(c,effects,screen.overlayPrimaryTop-12);
         text(c,resultTitle(result),200,y,32,WHITE);
         if(!screen.panel.hideSubtitle) text(c,(engine.skirmish?Skirmish.name(engine.mapId):Campaign.name(engine.level))+" · "+Campaign.difficultyName(engine.difficulty),200,screen.panel.subtitle,15,GRAY);
         if(win && !engine.skirmish) text(c,"★★★".substring(0,engine.medals())+"☆☆☆".substring(engine.medals()),200,screen.panel.stars,34,0xffb17b15);
         else text(c,overlayMessage(win),200,screen.panel.stars,13,GRAY);
         text(c,"시간 "+clock(engine.elapsed)+"   점령 "+engine.captures+"   출병 "+engine.dispatched,200,screen.panel.stats,13,WHITE);
-        text(c,engine.rules.objectiveText(),200,screen.panel.goal,10,GRAY);
+        text(c,resultDetail(win),200,screen.panel.goal,10,GRAY);
         overlayButton(c,screen.overlayPrimaryTop,primaryLabel(result),true);
         overlayButton(c,screen.overlayRetryTop,"현재 작전 다시 시작",false);
         overlayButton(c,screen.overlayMenuTop,"시작 화면 · 자동 저장",false);
-        if(screen.panel.footerVisible) text(c,engine.skirmish?"자유전은 미션 기록에 영향을 주지 않습니다":"별은 난이도별 최고 기록으로 저장됩니다",200,screen.panel.footer,12,GRAY);
+        if(screen.panel.footerVisible) text(c,resultFooter(win),200,screen.panel.footer,12,GRAY);
+    }
+    private String resultDetail(boolean win) {
+        if(!win || engine.skirmish) return engine.rules.objectiveText();
+        if(!screen.panel.footerVisible) return BattleDebrief.nextTarget(engine,host.profile);
+        return BattleDebrief.recordText(engine,host.records,bestBefore);
+    }
+    private String resultFooter(boolean win) {
+        if(engine.skirmish) return "자유전은 미션 기록에 영향을 주지 않습니다";
+        return win?BattleDebrief.nextTarget(engine,host.profile):"별은 난이도별 최고 기록으로 저장됩니다";
     }
     private void overlayButton(Canvas c,float y,String title,boolean primary) {
         box(c,56,y,288,screen.buttonHeight,primary?MainActivity.CYAN:MainActivity.CARD);
