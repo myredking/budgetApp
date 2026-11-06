@@ -22,7 +22,7 @@ def test() -> None:
     target = BUILD / "test"
     target.mkdir(parents=True, exist_ok=True)
     names = ["Engine", "Story", "SaveCodec", "World", "WorldRoutes", "Route", "MapProjection", "MapLabels", "SeaPaths", "AudioSession", "Crew", "TradeHint",
-             "AdventureState", "Adventure", "VoyageEvents", "SeaBattle", "EventCatalog", "Contract", "Contracts", "Achievements", "CrewState", "CrewAbilities", "RefitState", "Refits", "RivalState", "Rivals", "TradeRace", "TownState", "TravelFlow", "TownLayout", "TownRpg", "ShipMotion", "TradeOrder", "CaptainPlan", "TownWalk", "ExpeditionState", "Expeditions", "CrewConversations", "RegionBoss", "ShipPerformance", "MissionCargo"]
+             "AdventureState", "Adventure", "VoyageEvents", "SeaBattle", "EventCatalog", "Contract", "Contracts", "Achievements", "CrewState", "CrewAbilities", "RefitState", "Refits", "RivalState", "Rivals", "TradeRace", "TownState", "TravelFlow", "TownLayout", "TownRpg", "ShipMotion", "TradeOrder", "CaptainPlan", "TownWalk", "ExpeditionState", "Expeditions", "CrewConversations", "RegionBoss", "ShipPerformance", "MissionCargo", "VoyageTimeline"]
     sources = [PROJECT / f"src/com/bluehorizon/{name}.java" for name in names]
     run([JAVA / "javac.exe", "-encoding", "UTF-8", "-d", target,
          *sources, *list((PROJECT / "tests").glob("*.java"))])
@@ -41,6 +41,7 @@ def test() -> None:
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.ExpeditionTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.ShipPerformanceTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.MissionCargoTest"])
+    run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.VoyageTimelineTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.CampaignAudit"])
 
 

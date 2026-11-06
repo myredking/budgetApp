@@ -204,8 +204,23 @@ public final class MainActivity extends Activity {
         label(root,World.PORTS[game.town.from]+" → "+World.PORTS[game.port],24,GOLD);
         label(root,"항해 중 · "+Engine.SHIPS[game.level-1]+" · 파도를 넘어 새로운 항구로",14,INK);
         sailing=new SailingView(this,game.level,game.town.from,game.port,()->finishSailing());
+        voyageSpeedChoices();
         root.addView(sailing,new LinearLayout.LayoutParams(-1,0,1));
         fullAction(root,"항해 연출 건너뛰기 · 입항",()->finishSailing(),false);audio.scene("sea");
+    }
+    private void voyageSpeedChoices() {
+        label(root,"연출 속도 · 비용·항해 일수·사건 결과는 동일",11,MUTED);
+        LinearLayout choices=row();choices.setTag("voyage-speed-choices");root.addView(choices);
+        int stored=prefs.getInt("voyage_speed",1);if(stored!=2 && stored!=4) stored=1;sailing.speed(stored);
+        for(int speed:new int[]{1,2,4}) action(choices,speed+"×",()->setVoyageSpeed(choices,speed),stored==speed);
+    }
+    private void setVoyageSpeed(LinearLayout choices,int speed) {
+        if(sailing==null) return;
+        sailing.speed(speed);prefs.edit().putInt("voyage_speed",speed).apply();
+        for(int i=0;i<choices.getChildCount();i++) {
+            Button choice=(Button)choices.getChildAt(i);boolean selected=(1<<i)==speed;
+            choice.setTextColor(selected?NAVY:INK);choice.setBackground(background(selected?GOLD:0xff234151,selected?GOLD:0xff3c5b68));
+        }
     }
     private void finishSailing() {
         if(!game.town.moving()) return;

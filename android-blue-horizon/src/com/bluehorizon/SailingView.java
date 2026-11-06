@@ -11,9 +11,10 @@ public final class SailingView extends View {
     private final Runnable done;
     private final ShipMotion motion;
     private final RouteInset inset;
+    private final VoyageTimeline timeline=new VoyageTimeline();
     private float bearing;
     private long previous,elapsed;
-    private boolean paused,finished;
+    private boolean finished;
     public SailingView(Context context,int level,int from,int to,Runnable callback) {
         super(context);tier=level-1;done=callback;
         motion=new ShipMotion(from,to);
@@ -21,18 +22,19 @@ public final class SailingView extends View {
         ships=SceneView.load(context,"sailing-ships-v1.png");previous=SystemClock.uptimeMillis();
         setContentDescription("파도를 가르며 항해하는 배");
     }
-    public void pause() { paused=true; }
-    public void resume() { paused=false;previous=SystemClock.uptimeMillis();invalidate(); }
+    public void pause() { timeline.pause(); }
+    public void resume() { timeline.resume();previous=SystemClock.uptimeMillis();invalidate(); }
+    public void speed(int value) { timeline.speed(value); }
     public void stop() { finished=true;removeCallbacks(done); }
     @Override protected void onDetachedFromWindow() { stop();super.onDetachedFromWindow(); }
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);if(finished) return;
-        long now=SystemClock.uptimeMillis();if(!paused) elapsed+=Math.min(100,now-previous);previous=now;
+        long now=SystemClock.uptimeMillis();timeline.advance(now-previous);elapsed=timeline.elapsed();previous=now;
         updateBearing();canvas.drawColor(0xff16647b);waves(canvas);ship(canvas);
         inset.draw(canvas,getWidth(),motion.position(Math.min(1,elapsed/5500.0)));
         paint.setColor(0xffe4bf7b);canvas.drawRect(24,getHeight()-30,24+(getWidth()-48)*Math.min(1f,elapsed/5500f),getHeight()-22,paint);
-        if(elapsed>=5500) { finished=true;post(done);return; }
-        if(!paused) postInvalidateOnAnimation();
+        if(timeline.done()) { finished=true;post(done);return; }
+        if(!timeline.paused()) postInvalidateOnAnimation();
     }
     private void updateBearing() {
         float target=motion.heading(Math.min(1,elapsed/5500.0)),difference=(target-bearing+540)%360-180;
