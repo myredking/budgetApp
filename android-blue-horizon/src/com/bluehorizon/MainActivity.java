@@ -27,7 +27,8 @@ public final class MainActivity extends Activity {
     static final int INK=0xffecede5, MUTED=0xff9eb7bd, TEAL=0xff65c9b5;
     private Engine game;
     private AudioController audio;
-    private AlertDialog eventDialog,dialogueDialog;
+    private AlertDialog eventDialog,dialogueDialog,storyDialog;
+    private String chapterReply;
     private Toast notice;
     private int tab=7, quantity=5, mapRegion=-1, selectedGood=0;
     private SailingView sailing;
@@ -63,7 +64,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() { super.onResume();if(audio!=null) audio.resume();if(sailing!=null) sailing.resume(); }
     @Override protected void onPause() { if(townView!=null) townView.cancelWalk();if(sailing!=null) sailing.pause();if(audio!=null) audio.pause();super.onPause();if(game!=null) save(); }
     @Override protected void onDestroy() {
-        if(sailing!=null) sailing.stop();if(dialogueDialog!=null) dialogueDialog.dismiss();if(eventDialog!=null) eventDialog.dismiss();if(audio!=null) audio.release();super.onDestroy();
+        if(sailing!=null) sailing.stop();if(storyDialog!=null) storyDialog.dismiss();if(dialogueDialog!=null) dialogueDialog.dismiss();if(eventDialog!=null) eventDialog.dismiss();if(audio!=null) audio.release();super.onDestroy();
     }
     @Override protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out); out.putInt("tab",tab); out.putInt("quantity",quantity);
@@ -136,7 +137,7 @@ public final class MainActivity extends Activity {
                 LinearLayout.LayoutParams params=buttonParams();params.width=0;params.weight=1;buildings.addView(entry,params);
             }
         }
-        planCard();
+        planCard();localLifeCard();
         LinearLayout progress=card(content);label(progress,"선장 등급 "+TownRpg.rank(game)+" · 사기 "+game.town.morale+" / 100",16,TEAL);
         growthBar(progress);
         label(progress,"방문 "+game.visitedCount()+" / 56 · 이야기 "+game.chapter+" / 8 · 의뢰 "+game.adventure.deliveries+"회",13,INK);
@@ -181,6 +182,32 @@ public final class MainActivity extends Activity {
             .setMessage("먼 바다에서 왔군요, 선장님. 의뢰를 수행하고 상단과 인연을 쌓아 보세요.\n\n현재 목표: "+Story.GOALS[game.chapter])
             .setPositiveButton("의뢰 게시판",(d,w)->{tab=5;render();})
             .setNeutralButton("상단 만나기",(d,w)->{tab=6;render();}).setNegativeButton("돌아가기",null).show();
+    }
+    private void localLifeCard() {
+        LinearLayout box=card(content);label(box,"항구의 일상 · "+Long.bitCount(game.life.events)+" / 56",16,GOLD);
+        label(box,PortLife.title(game),13,INK);
+        if(PortLife.done(game)) label(box,(game.life.generous & (1L<<game.port))!=0?"함께 손을 보탠 하루가 기억에 남아 있습니다.":"약속한 일을 마친 선장을 사람들이 기억합니다.",12,TEAL);
+        else fullAction(box,"항구의 작은 이야기",()->localStory(),true);
+    }
+    private void localStory() {
+        int port=game.port;
+        lifeDialog(PortLife.title(game),PortLife.story(game)+"\n\n두 선택 모두 하루가 흐릅니다. 의뢰·경주 기한도 진행됩니다. 항구마다 한 번만 보상받습니다.",
+            "무상으로 돕기 · 40 G / 명성 +2 / 사기 +8",()->finishLocalStory(port,0),
+            "품삯 받고 돕기 · +90 G / 명성 +1 / 사기 +2",()->finishLocalStory(port,1));
+    }
+    private void lifeDialog(String title,String words,String first,Runnable left,String second,Runnable right) {
+        LinearLayout box=column();box.setPadding(dp(14),dp(12),dp(14),dp(12));box.setBackgroundColor(NAVY);
+        label(box,words,15,INK);fullAction(box,first,()->lifeChoice(left),true);fullAction(box,second,()->lifeChoice(right),false);
+        ScrollView scroll=new ScrollView(this);scroll.setTag("port-life-scroll");scroll.addView(box);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle(title).setView(scroll).setNegativeButton("다음에",null).create();
+        dialogueDialog=dialog;dialog.setOnDismissListener(d->{if(dialogueDialog==dialog) dialogueDialog=null;});dialog.show();
+    }
+    private void lifeChoice(Runnable action) {
+        AlertDialog previous=dialogueDialog;dialogueDialog=null;if(previous!=null) previous.dismiss();action.run();
+    }
+    private void finishLocalStory(int port,int choice) {
+        if(port!=game.port) return;
+        changed(PortLife.choose(game,choice),"discovery");
     }
     private void tavern() {
         label(content,World.PORTS[game.port]+" · 바람의 주점",25,GOLD);
@@ -298,7 +325,29 @@ public final class MainActivity extends Activity {
         label(info,joined,12,aboard?TEAL:MUTED);label(box,Crew.BIO[person],14,INK);
         label(box,(CrewAbilities.active(game,person)?"◆ 적용 중 · ":"능력 · ")+CrewAbilities.EFFECTS[person],13,TEAL);
         crewStory(box,person);
-        if(person>0 && aboard) conversationCard(box,person);
+        if(person>0 && aboard) { conversationCard(box,person);regionalTalkCard(box,person); }
+    }
+    private void regionalTalkCard(LinearLayout parent,int person) {
+        label(parent,World.REGIONS[World.region(game.port)]+"에서 나누는 이야기",14,GOLD);
+        fullAction(parent,PortLife.talked(game,person)?"이 해역의 대화 다시 읽기":"동료와 항구 산책",()->regionalTalk(person),false);
+    }
+    private void regionalTalk(int person) {
+        String words=PortLife.topic(game,person);
+        if(PortLife.talked(game,person)) { regionalResponse(person,words+"\n\n“"+PortLife.reply(person,PortLife.recorded(game,person)?1:0)+"”");return; }
+        int port=game.port;
+        lifeDialog(Crew.NAMES[person]+" · "+World.PORTS[port],words+"\n\n동료마다 해역당 한 번 선택합니다. 시간은 흐르지 않습니다.",
+            "이야기 듣기 · 사기 +5",()->finishRegionalTalk(port,person,0),"함께 기록하기 · 명성 +1",()->finishRegionalTalk(port,person,1));
+    }
+    private void finishRegionalTalk(int port,int person,int choice) {
+        if(port!=game.port) return;
+        int chapter=game.chapter;boolean success=PortLife.talk(game,person,choice);
+        String answer=Crew.NAMES[person]+": “"+PortLife.reply(person,choice)+"”";
+        if(success) chapterReply=answer;changed(success,"rest");chapterReply=null;
+        if(success && game.chapter==chapter) regionalResponse(person,answer+"\n\n"+game.message);
+    }
+    private void regionalResponse(int person,String words) {
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle(Crew.NAMES[person]).setMessage(words).setPositiveButton("확인",null).create();
+        dialogueDialog=dialog;dialog.setOnDismissListener(d->{if(dialogueDialog==dialog) dialogueDialog=null;});dialog.show();
     }
     private void assignCrew(int slot) {
         java.util.ArrayList<String> names=new java.util.ArrayList<String>();java.util.ArrayList<Integer> people=new java.util.ArrayList<Integer>();
@@ -328,12 +377,14 @@ public final class MainActivity extends Activity {
         panel.setBackgroundColor(NAVY);int person=Crew.guidePerson(game.chapter);
         panel.addView(new PortraitView(this,person),new LinearLayout.LayoutParams(dp(144),dp(144)));
         label(panel,Crew.NAMES[person]+" · "+Crew.ROLES[person],16,GOLD);
+        if(chapterReply!=null) label(panel,chapterReply,15,GOLD);
         for(int index=previous;index<game.chapter;index++) label(panel,Story.REVEALS[index],15,INK);
         label(panel,"다음 목표: "+Story.GOALS[game.chapter],14,TEAL);
         ScrollView scroll=new ScrollView(this);scroll.addView(panel);
-        new AlertDialog.Builder(this).setTitle(game.chapter==Story.REVEALS.length?"세계 해도의 완성":"새로운 항해 기록")
+        storyDialog=new AlertDialog.Builder(this).setTitle(game.chapter==Story.REVEALS.length?"세계 해도의 완성":"새로운 항해 기록")
             .setCancelable(game.adventure.pending<0)
-            .setView(scroll).setPositiveButton("계속 항해하기",(dialog,which)->{if(game.adventure.pending>=0) showEvent();}).show();
+            .setView(scroll).setPositiveButton("계속 항해하기",(dialog,which)->{if(game.adventure.pending>=0) showEvent();}).create();
+        storyDialog.setOnDismissListener(d->storyDialog=null);storyDialog.show();
     }
     private void expeditionPage() {
         int region=World.region(game.port);

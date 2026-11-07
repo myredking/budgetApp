@@ -88,7 +88,9 @@ public final class EngineTest {
         check(Engine.decode(e.encode())==null,"invalid hull rejected");
         String good=new Engine().encode();
         check(Engine.decode(good.replace(SaveCodec.PREFIX, "BLUE99:"))==null,"unknown save version rejected");
-        check(Engine.decode(good.substring(0,good.length()-1)+"A")==null,"checksum corruption rejected");
+        String[] parts=good.split(":",3);String payload=parts[2];
+        parts[2]=(payload.charAt(0)=='A'?"B":"A")+payload.substring(1);
+        check(Engine.decode(String.join(":",parts))==null,"checksum corruption rejected");
     }
     private static void tradingCircuit(Engine e) {
         if(e.port!=0) check(e.sail(0,1),"return to wood supplier");
