@@ -46,7 +46,7 @@ public final class RegionBoss {
         e.note(NAMES[region]+" 격파! 해역 훈장, +"+reward+" G, 명성 +5.");return true;
     }
     private static boolean retreat(Engine e,String message) {
-        Adventure.damage(e,4);e.town.morale=Math.max(0,e.town.morale-5);e.day++;e.expedition.clearBattle();
+        Adventure.damage(e,4);e.town.morale=Math.max(0,e.town.morale-5);GameClock.advance(e,1);e.expedition.clearBattle();
         Rivals.advance(e);e.note(message);return true;
     }
 }

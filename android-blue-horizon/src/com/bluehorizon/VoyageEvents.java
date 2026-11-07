@@ -16,13 +16,13 @@ public final class VoyageEvents {
     }
     private static boolean validChoice(Engine e,int choice) { return choice>=0 && choice<=2 && e.adventure.pending>=0 && !e.town.moving(); }
     private static boolean storm(Engine e,int choice) {
-        if(choice==0) { Adventure.damage(e,4);e.day++;return Adventure.finish(e,"돛을 줄여 폭풍을 견뎠다. 선체 −4, 하루 경과."); }
+        if(choice==0) { Adventure.damage(e,4);GameClock.advance(e,1);return Adventure.finish(e,"돛을 줄여 폭풍을 견뎠다. 선체 −4, 하루 경과."); }
         if(choice==1) {
             if(e.adventure.roll<65) { Adventure.damage(e,1);e.fame+=2;return Adventure.finish(e,"파도 사이의 길을 찾았다! 선체 −1, 명성 +2."); }
             Adventure.damage(e,16);Adventure.takeCargo(e);return Adventure.finish(e,"높은 파도가 갑판을 덮었다. 선체 −16, 보유 화물 1개 유실.");
         }
         if(!Adventure.spend(e,40)) return false;
-        e.day+=2;return Adventure.finish(e,"안전한 만에서 바람을 기다렸다. 보급 −40 G, 이틀 경과.");
+        GameClock.advance(e,2);return Adventure.finish(e,"안전한 만에서 바람을 기다렸다. 보급 −40 G, 이틀 경과.");
     }
     private static boolean pirates(Engine e,int choice) {
         if(e.adventure.battleHP>0) return SeaBattle.choose(e,choice);
@@ -38,7 +38,7 @@ public final class VoyageEvents {
     }
     private static boolean wreck(Engine e,int choice) {
         if(choice==0) {
-            e.gold+=120;e.day+=2;Adventure.damage(e,3);return Adventure.finish(e,"난파선 갑판에서 물자를 건졌다. +120 G, 선체 −3, 이틀 경과.");
+            e.gold+=120;GameClock.advance(e,2);Adventure.damage(e,3);return Adventure.finish(e,"난파선 갑판에서 물자를 건졌다. +120 G, 선체 −3, 이틀 경과.");
         }
         if(choice==1) {
             if(e.adventure.roll<CrewAbilities.explorationChance(e,60)) {
@@ -55,7 +55,7 @@ public final class VoyageEvents {
             e.fame+=6;e.adventure.rescues++;return Adventure.finish(e,"조난자를 구조하고 보급을 나눴다. −50 G, 명성 +6.");
         }
         if(choice==1) {
-            e.day+=2;Adventure.damage(e,4);e.fame+=4;e.adventure.rescues++;
+            GameClock.advance(e,2);Adventure.damage(e,4);e.fame+=4;e.adventure.rescues++;
             return Adventure.finish(e,"조난선을 항구까지 예인했다. 이틀 경과, 선체 −4, 명성 +4.");
         }
         e.fame++;return Adventure.finish(e,"근처 구조선에 위치를 전했다. 명성 +1.");
@@ -65,7 +65,7 @@ public final class VoyageEvents {
             if(!Adventure.takeCargo(e)) return Adventure.fail(e,"기증할 화물이 없습니다. 다른 방식으로 축제에 참여할 수 있어요.");
             e.fame+=5;e.gold+=100;return Adventure.finish(e,"화물 1개를 축제에 기증했다. 감사 선물 +100 G, 명성 +5.");
         }
-        if(choice==1) { e.day++;e.fame+=2;return Adventure.finish(e,"광장에서 항해 이야기를 나눴다. 하루 경과, 명성 +2."); }
+        if(choice==1) { GameClock.advance(e,1);e.fame+=2;return Adventure.finish(e,"광장에서 항해 이야기를 나눴다. 하루 경과, 명성 +2."); }
         e.gold+=60;return Adventure.finish(e,"항구의 환영 선물을 받았다. +60 G.");
     }
     private static boolean deal(Engine e,int choice) {
@@ -74,21 +74,21 @@ public final class VoyageEvents {
             int value=e.adventure.roll<60?300:20;e.gold+=value;
             return Adventure.finish(e,"밀봉 상자를 열었다. 구입 −120 G, 발견한 물건의 가치 +"+value+" G.");
         }
-        if(choice==1) { e.day+=2;e.gold+=80;e.fame+=2;return Adventure.finish(e,"서류를 확인해 정식 거래를 도왔다. 이틀 경과, +80 G, 명성 +2."); }
+        if(choice==1) { GameClock.advance(e,2);e.gold+=80;e.fame+=2;return Adventure.finish(e,"서류를 확인해 정식 거래를 도왔다. 이틀 경과, +80 G, 명성 +2."); }
         e.fame++;return Adventure.finish(e,"수상한 제안을 정중히 거절했다. 명성 +1.");
     }
     private static boolean winds(Engine e,int choice) {
-        if(choice==0) { e.day++;e.fame+=3;e.adventure.surveys++;return Adventure.finish(e,"돌고래를 따라 해류를 기록했다. 하루 경과, 명성 +3."); }
+        if(choice==0) { GameClock.advance(e,1);e.fame+=3;e.adventure.surveys++;return Adventure.finish(e,"돌고래를 따라 해류를 기록했다. 하루 경과, 명성 +3."); }
         if(choice==1) { e.gold+=90;return Adventure.finish(e,"순풍을 이용해 보급을 절약했다. +90 G."); }
         e.hull=Math.min(e.maxHull(),e.hull+8);e.fame++;return Adventure.finish(e,"잔잔한 바다에서 갑판을 정비했다. 선체 +8(최대치까지), 명성 +1.");
     }
     private static boolean island(Engine e,int choice) {
         if(choice==0) {
-            e.day++;Adventure.souvenir(e);e.gold+=100;e.fame+=2;
+            GameClock.advance(e,1);Adventure.souvenir(e);e.gold+=100;e.fame+=2;
             return Adventure.finish(e,"섬의 해변에서 해역 기념품을 찾았다. 하루 경과, +100 G, 명성 +2.");
         }
         if(choice==1) {
-            e.day+=3;
+            GameClock.advance(e,3);
             if(e.adventure.roll<CrewAbilities.explorationChance(e,65)) {
                 Adventure.souvenir(e);e.gold+=220;e.fame+=5;
                 return Adventure.finish(e,"오래된 관측소의 흔적을 발견했다! 사흘 경과, 기념품, +220 G, 명성 +5.");

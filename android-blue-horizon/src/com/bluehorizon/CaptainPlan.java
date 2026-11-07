@@ -32,7 +32,7 @@ public final class CaptainPlan {
         if(active(e)) return contractTrip(e);
         return story(e);
     }
-    private static boolean active(Engine e) { return e.adventure.target>=0 && e.day<=e.adventure.deadline; }
+    private static boolean active(Engine e) { return e.adventure.target>=0 && !GameClock.pastDeadline(e,e.adventure.deadline); }
     private static CaptainPlan delivery(Engine e) {
         AdventureState a=e.adventure;
         if(!active(e) || e.port!=a.target || e.inventory[a.good]<a.amount) return null;

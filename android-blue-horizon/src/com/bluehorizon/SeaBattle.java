@@ -27,7 +27,7 @@ public final class SeaBattle {
     }
     private static boolean retreat(Engine e) {
         boolean cargo=Adventure.takeCargo(e);if(!cargo) e.gold-=Math.min(40,e.gold);
-        e.day++;Adventure.damage(e,3);
+        GameClock.advance(e,1);Adventure.damage(e,3);
         return Adventure.finish(e,"짐을 줄이고 전장을 벗어났다. "+(cargo?"화물 1개 유실":"최대 40 G 소모")+", 선체 −3, 하루 경과.");
     }
 }

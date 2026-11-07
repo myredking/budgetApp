@@ -39,7 +39,7 @@ public final class PortLife {
         e.life.events|=1L<<e.port;
         if(choice==0) { e.life.generous|=1L<<e.port;e.fame+=2;e.town.morale=Math.min(100,e.town.morale+8); }
         else { e.gold+=90;e.fame++;e.town.morale=Math.min(100,e.town.morale+2); }
-        e.day++;Rivals.advance(e);
+        GameClock.advance(e,1);Rivals.advance(e);
         e.note(title(e)+(choice==0?" — 선원들과 무상으로 도왔다. 식사비 −40 G, 명성 +2, 사기 +8.":" — 약속한 일을 마쳤다. 품삯 +90 G, 명성 +1, 사기 +2.")+" 하루 경과.");
         e.advanceStory();return true;
     }

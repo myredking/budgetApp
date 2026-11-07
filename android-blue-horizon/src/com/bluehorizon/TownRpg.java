@@ -28,7 +28,7 @@ public final class TownRpg {
         if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 마친 뒤 쉬세요.");
         if(e.town.morale==100) return Adventure.fail(e,"일행의 사기가 충분합니다.");
         if(!Adventure.spend(e,60)) return false;
-        e.town.morale=Math.min(100,e.town.morale+25);e.day++;Rivals.advance(e);
+        e.town.morale=Math.min(100,e.town.morale+25);GameClock.advance(e,1);Rivals.advance(e);
         e.note("주점에서 식사하고 쉬었다. −60 G, 하루 경과, 사기 +25(최대 100).");e.advanceStory();return true;
     }
     private static TradeHint localHint(Engine e) {

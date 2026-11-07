@@ -27,7 +27,7 @@ def goods_source() -> Path:
 def test() -> None:
     target = BUILD / "test"
     target.mkdir(parents=True, exist_ok=True)
-    names = ["Engine", "Story", "SaveCodec", "World", "WorldRoutes", "Route", "MapProjection", "MapLabels", "SeaPaths", "AudioSession", "AudioMix", "PortLife", "PortLifeState", "BattleFrame", "GameFeedback", "Crew", "TradeHint",
+    names = ["Engine", "GameClock", "Story", "SaveCodec", "World", "WorldRoutes", "Route", "MapProjection", "MapLabels", "SeaPaths", "AudioSession", "AudioMix", "PortLife", "PortLifeState", "BattleFrame", "GameFeedback", "Crew", "TradeHint",
              "AdventureState", "Adventure", "VoyageEvents", "SeaBattle", "EventCatalog", "Contract", "Contracts", "Achievements", "CrewState", "CrewAbilities", "RefitState", "Refits", "RivalState", "Rivals", "TradeRace", "TownState", "TravelFlow", "TownLayout", "TownRpg", "ShipMotion", "TradeOrder", "CaptainPlan", "TownWalk", "ExpeditionState", "Expeditions", "CrewConversations", "RegionBoss", "ShipPerformance", "MissionCargo", "VoyageTimeline", "FundingPlan"]
     sources = [PROJECT / f"src/com/bluehorizon/{name}.java" for name in names]
     run([JAVA / "javac.exe", "-encoding", "UTF-8", "-d", target,
@@ -55,6 +55,7 @@ def test() -> None:
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.BattleFrameTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.PortLifeTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.GoodsCatalogTest"])
+    run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.GameClockTest"])
 
 
 def link_resources() -> tuple[Path, Path]:

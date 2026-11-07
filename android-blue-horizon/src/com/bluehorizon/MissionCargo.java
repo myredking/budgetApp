@@ -5,8 +5,8 @@ public final class MissionCargo {
     public static int held(Engine e,int good) {
         if(good<0 || good>=6) return 0;
         int count=story(e,good);AdventureState a=e.adventure;RivalState r=e.rivals;
-        if(a.target>=0 && a.good==good && e.day<=a.deadline) count+=a.amount;
-        if(r.raceTarget>=0 && r.raceGood==good && e.day<=r.raceDeadline) count+=r.raceAmount;
+        if(a.target>=0 && a.good==good && !GameClock.pastDeadline(e,a.deadline)) count+=a.amount;
+        if(r.raceTarget>=0 && r.raceGood==good && !GameClock.pastDeadline(e,r.raceDeadline)) count+=r.raceAmount;
         return Math.min(e.inventory[good],count);
     }
     private static int story(Engine e,int good) {

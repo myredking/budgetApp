@@ -89,7 +89,7 @@ public final class Engine {
         if (gold < cost) return fail("보급비가 부족합니다. 항구 일거리로 금화를 모으세요.");
         int damage=travelDamage(target,mode);
         if(!hasVisited(target)) fame++;
-        gold -= cost; day += days; port = target; visited |= 1L << target;
+        gold -= cost; GameClock.advance(this,days); port = target; visited |= 1L << target;
         hull = Math.max(1, hull - damage);
         Rivals.advance(this);
         note(PORTS[port] + " 도착 · " + days + "일 항해 · 보급 −" + cost + " G");
@@ -129,7 +129,7 @@ public final class Engine {
     }
     public boolean work() {
         if(busy()) return fail("항해 사건을 먼저 처리하세요.");
-        gold += 120; day++;Rivals.advance(this); note("부두 운송을 도왔다. 하루 경과 · +120 G");
+        gold += 120; GameClock.advance(this,1);Rivals.advance(this); note("부두 운송을 도왔다. 하루 경과 · +120 G");
         advanceStory(); return true;
     }
     public void advanceStory() {

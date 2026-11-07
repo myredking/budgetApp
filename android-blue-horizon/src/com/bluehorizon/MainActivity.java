@@ -594,7 +594,7 @@ public final class MainActivity extends Activity {
         }
         label(box,Rivals.NAMES[s.raceRival]+"와 경쟁\n"+World.PORTS[s.raceFrom]+" → "+World.PORTS[s.raceTarget],16,INK);
         label(box,Engine.GOODS[s.raceGood]+" "+s.raceAmount+"개 · 보유 "+game.inventory[s.raceGood]+"개\n보상 "+s.raceReward+" G · 명성 +3",14,TEAL);
-        label(box,game.day>s.raceDeadline?"상대가 먼저 납품했습니다. 결과를 확인하세요.":"기한 "+s.raceDeadline+"일째 (당일 납품 인정) · 남은 기간 "+(s.raceDeadline-game.day)+"일",13,GOLD);
+        label(box,GameClock.pastDeadline(game,s.raceDeadline)?"상대가 먼저 납품했습니다. 결과를 확인하세요.":"기한 "+s.raceDeadline+"일째 (당일 납품 인정) · 남은 기간 "+(s.raceDeadline-game.day)+"일",13,GOLD);
         fullAction(box,"납품 / 경주 결과 확인",()->changed(TradeRace.complete(game)),true);
         fullAction(box,"경주 목적지 항로 보기",()->voyage(s.raceTarget),false);
         fullAction(box,"경주 포기 · 참가비 반환 없음",()->new AlertDialog.Builder(this).setTitle(getString(R.string.ui_abandon_race_title))
@@ -664,7 +664,7 @@ public final class MainActivity extends Activity {
         }
         label(box,World.PORTS[a.origin]+" → "+World.PORTS[a.target],17,INK);
         label(box,Engine.GOODS[a.good]+" "+a.amount+"개 납품 · 보유 "+game.inventory[a.good]+"개\n보상 "+a.reward+" G + 명성 3",14,TEAL);
-        label(box,game.day>a.deadline?"납품 기한이 지났습니다. 위약금 없이 취소할 수 있습니다.":"납기 "+a.deadline+"일째 · 남은 기간 "+(a.deadline-game.day)+"일",13,GOLD);
+        label(box,GameClock.pastDeadline(game,a.deadline)?"납품 기한이 지났습니다. 위약금 없이 취소할 수 있습니다.":"납기 "+a.deadline+"일째 · 남은 기간 "+(a.deadline-game.day)+"일",13,GOLD);
         fullAction(box,"목적지에서 납품하기",()->changed(Contracts.deliver(game)),true);
         fullAction(box,"의뢰 목적지 항로 보기",()->voyage(a.target),false);
         fullAction(box,"의뢰 취소 · 위약금 없음",()->new AlertDialog.Builder(this).setTitle(getString(R.string.ui_cancel_contract_title))

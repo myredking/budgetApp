@@ -34,7 +34,7 @@ public final class Contracts {
         if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 먼저 마치세요.");
         AdventureState a=e.adventure;
         if(a.target<0) return Adventure.fail(e,"납품할 의뢰가 없습니다.");
-        if(e.day>a.deadline) return Adventure.fail(e,"납품 기한이 지났습니다. 의뢰를 취소하고 다시 받을 수 있습니다.");
+        if(GameClock.pastDeadline(e,a.deadline)) return Adventure.fail(e,"납품 기한이 지났습니다. 의뢰를 취소하고 다시 받을 수 있습니다.");
         if(e.port!=a.target) return Adventure.fail(e,"납품 항구에 직접 정박하세요.");
         if(e.inventory[a.good]<a.amount) return Adventure.fail(e,"납품할 화물이 부족합니다.");
         e.inventory[a.good]-=a.amount;e.gold+=a.reward;e.fame+=3;a.deliveries++;

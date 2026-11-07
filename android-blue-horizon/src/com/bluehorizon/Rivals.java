@@ -50,7 +50,7 @@ public final class Rivals {
         else if(choice==1) success=letter(e,rival);
         else success=challenge(e,rival);
         if(!success) return false;
-        e.day++;e.rivals.lastNegotiation[rival]=e.day;advance(e);e.advanceStory();return true;
+        GameClock.advance(e,1);e.rivals.lastNegotiation[rival]=e.day;advance(e);e.advanceStory();return true;
     }
     private static boolean gift(Engine e,int rival) {
         if(e.rivals.relations[rival]>=100) return Adventure.fail(e,"이미 충분한 신뢰를 얻었습니다.");
@@ -74,13 +74,13 @@ public final class Rivals {
         if(allied(e,rival)) return Adventure.fail(e,"이미 동맹인 상단입니다.");
         if(e.rivals.relations[rival]<40 || e.fame<15) return Adventure.fail(e,"관계 40과 명성 15가 필요합니다.");
         if(!Adventure.spend(e,500)) return false;
-        e.rivals.allies|=1<<rival;relation(e,rival,10);e.day++;advance(e);
+        e.rivals.allies|=1<<rival;relation(e,rival,10);GameClock.advance(e,1);advance(e);
         e.note(NAMES[rival]+"와 교역 동맹을 맺었다. −500 G, 관계 +10, 하루 경과.");return true;
     }
     public static boolean endAlliance(Engine e,int rival) {
         if(!mayAct(e,rival)) return false;
         if(!allied(e,rival)) return Adventure.fail(e,"동맹 상태가 아닙니다.");
-        e.rivals.allies&=~(1<<rival);relation(e,rival,-20);e.day++;advance(e);
+        e.rivals.allies&=~(1<<rival);relation(e,rival,-20);GameClock.advance(e,1);advance(e);
         e.note(NAMES[rival]+"와의 동맹을 종료했다. 관계 −20, 하루 경과.");return true;
     }
     public static boolean mayAct(Engine e,int rival) {

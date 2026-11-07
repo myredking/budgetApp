@@ -9,7 +9,7 @@ public final class Expeditions {
         long bit=1L<<e.port;
         if((e.expedition.clues & bit)!=0) return Adventure.fail(e,"이 항구의 단서는 이미 기록했습니다.");
         if(!Adventure.spend(e,40)) return false;
-        e.expedition.clues|=bit;e.day++;Rivals.advance(e);
+        e.expedition.clues|=bit;GameClock.advance(e,1);Rivals.advance(e);
         e.note(World.PORTS[e.port]+"의 오래된 기록에서 보물지도 조각을 찾았다. −40 G, 하루 경과.");return true;
     }
     public static boolean dig(Engine e) {
@@ -19,7 +19,7 @@ public final class Expeditions {
         if(fragments(e,region)<3) return Adventure.fail(e,"이 해역의 서로 다른 항구에서 지도 조각 3개가 필요합니다.");
         if(e.port!=site(region)) return Adventure.fail(e,World.PORTS[site(region)]+"의 탐사 지점으로 가세요.");
         if(!Adventure.spend(e,80)) return false;
-        int reward=900+region*150;e.gold+=reward;e.fame+=3;e.day++;e.town.morale=Math.min(100,e.town.morale+10);
+        int reward=900+region*150;e.gold+=reward;e.fame+=3;GameClock.advance(e,1);e.town.morale=Math.min(100,e.town.morale+10);
         e.expedition.treasures|=bit;Rivals.advance(e);e.advanceStory();
         e.note(TREASURES[region]+" 발견! +"+reward+" G (탐사비 80 G 별도), 명성 +3, 사기 +10. 해역 강적의 항로를 알아냈다.");return true;
     }

@@ -21,7 +21,7 @@ public final class TradeRace {
     public static boolean complete(Engine e) {
         if(e.actionBlocked()) return Adventure.fail(e,"항해와 사건을 먼저 마치세요.");
         RivalState s=e.rivals;if(s.raceTarget<0) return Adventure.fail(e,"참가 중인 경주가 없습니다.");
-        if(e.day>s.raceDeadline) return lose(e,"상대 상단이 먼저 납품했다.");
+        if(GameClock.pastDeadline(e,s.raceDeadline)) return lose(e,"상대 상단이 먼저 납품했다.");
         if(e.port!=s.raceTarget) return Adventure.fail(e,"경주 목적지에 직접 정박하세요.");
         if(e.inventory[s.raceGood]<s.raceAmount) return Adventure.fail(e,"경주 납품 화물이 부족합니다.");
         e.inventory[s.raceGood]-=s.raceAmount;e.gold+=s.raceReward;e.fame+=3;s.wins[s.raceRival]++;
