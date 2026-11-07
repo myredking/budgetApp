@@ -777,7 +777,7 @@ public final class MainActivity extends Activity {
         label(box,GoodsCatalog.description(good),14,INK);
         label(box,"오늘의 단가  ·  매입 "+game.buyPrice(good)+" G  /  판매 "+game.sellPrice(good)+" G",15,GOLD);
         if(MarketPressure.applies(game.port,good)) label(box,getString(R.string.ui_market_pilot,
-            MarketPressure.discount(game,game.port,good),GoodsCatalog.MARKET_RECOVERY),12,TEAL);
+            MarketPressure.discount(game,game.port,good),MarketPressure.recoveryDays(game.port,good)),12,TEAL);
         label(box,"주문서에서 수량·예산·최대 수량을 선택하고 결제 내역을 확인하세요.",12,MUTED);
         tradeHint(box,good);
         LinearLayout buttons=row(); box.addView(buttons);

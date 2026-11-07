@@ -9,7 +9,7 @@ import java.util.Base64;
 import java.util.zip.CRC32;
 
 public final class SaveCodec {
-    public static final int VERSION=11;
+    public static final int VERSION=12;
     public static final String PREFIX="BLUE"+VERSION+":";
     public static String encode(Engine e) {
         try {
@@ -58,6 +58,7 @@ public final class SaveCodec {
     }
     private static int version(String header) {
         if(header.equals(PREFIX.substring(0,PREFIX.length()-1))) return VERSION;
+        if(header.equals("BLUE11")) return 11;
         for(int version=1;version<=9;version++) if(header.equals("BLUE"+version)) return version;
         return 0;
     }
@@ -86,7 +87,8 @@ public final class SaveCodec {
         if(version>=7) e.town=TownState.read(in);
         if(version>=8) e.expedition=ExpeditionState.read(in);
         if(version>=9) e.life=PortLifeState.read(in);
-        if(version>=11) e.market.read(in);
+        if(version==11) e.market.readPilot(in);
+        if(version>=12) e.market.read(in);
     }
     private static boolean valid(Engine e) {
         if (!World.validPort(e.port) || !range(e.level,1,3) || !range(e.chapter,0,Story.REVEALS.length)) return false;

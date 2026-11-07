@@ -4,54 +4,87 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-/** Sale pressure for the first data-configured market. */
+/** Independent sale pressure per port and commodity. */
 public final class MarketPressure {
-    private int units, lastSaleDay, port=-1, good=-1;
+    private static final int GOODS=GoodsCatalog.names().length;
+    private static final int SIZE=World.COUNT*GOODS;
+    private static final Rule[] RULES=loadRules();
+    private final int[] units=new int[SIZE], lastSaleDay=new int[SIZE];
 
-    public static boolean applies(int port,int good) {
-        return port==GoodsCatalog.MARKET_PORT && good==GoodsCatalog.MARKET_GOOD;
+    private static final class Rule {
+        final int unitsPerStep, discount, recovery, maximum;
+        Rule(int[] row) {
+            unitsPerStep=row[2];discount=row[3];recovery=row[4];
+            maximum=unitsPerStep*row[5];
+        }
     }
 
+    private static Rule[] loadRules() {
+        Rule[] rules=new Rule[SIZE];
+        for(int[] row:GoodsCatalog.MARKET_RULES) rules[key(row[0],row[1])]=new Rule(row);
+        return rules;
+    }
+
+    private static int key(int port,int good) { return port*GOODS+good; }
+
+    public static boolean applies(int port,int good) { return RULES[key(port,good)]!=null; }
+
+    public static int recoveryDays(int port,int good) { return RULES[key(port,good)].recovery; }
+
     public static int discount(Engine game,int port,int good) {
-        if(!applies(port,good) || !game.market.matches(port,good)) return 0;
-        return game.market.remaining(game.day)/GoodsCatalog.MARKET_UNITS*GoodsCatalog.MARKET_DISCOUNT;
+        int key=key(port,good);
+        Rule rule=RULES[key];
+        if(rule==null) return 0;
+        return game.market.remaining(key,game.day,rule)/rule.unitsPerStep*rule.discount;
     }
 
     public void recordSale(Engine game,int good,int quantity) {
-        if(!applies(game.port,good)) return;
-        int previous=matches(game.port,good)?remaining(game.day):0;
-        units=Math.min(maximumUnits(),previous+quantity);
-        lastSaleDay=game.day;
-        port=game.port;
-        this.good=good;
+        int key=key(game.port,good);
+        Rule rule=RULES[key];
+        if(rule==null) return;
+        units[key]=Math.min(rule.maximum,remaining(key,game.day,rule)+quantity);
+        lastSaleDay[key]=game.day;
     }
 
-    private boolean matches(int port,int good) { return this.port==port && this.good==good; }
-
-    private int remaining(int day) {
-        int steps=Math.max(0,day-lastSaleDay)/GoodsCatalog.MARKET_RECOVERY;
-        return Math.max(0,Math.min(units,maximumUnits())-steps*GoodsCatalog.MARKET_UNITS);
+    private int remaining(int key,int day,Rule rule) {
+        int steps=Math.max(0,day-lastSaleDay[key])/rule.recovery;
+        return Math.max(0,Math.min(units[key],rule.maximum)-steps*rule.unitsPerStep);
     }
-
-    private static int maximumUnits() { return GoodsCatalog.MARKET_UNITS*GoodsCatalog.MARKET_MAX_STEPS; }
 
     public void write(DataOutputStream out) throws IOException {
-        out.writeInt(units);
-        out.writeInt(lastSaleDay);
-        out.writeInt(port);
-        out.writeInt(good);
+        int count=0;
+        for(int value:units) if(value>0) count++;
+        out.writeInt(count);
+        for(int key=0;key<SIZE;key++) {
+            if(units[key]==0) continue;
+            out.writeInt(units[key]);out.writeInt(lastSaleDay[key]);
+            out.writeInt(key/GOODS);out.writeInt(key%GOODS);
+        }
     }
 
     public void read(DataInputStream in) throws IOException {
-        units=in.readInt();
-        lastSaleDay=in.readInt();
-        port=in.readInt();
-        good=in.readInt();
+        int count=in.readInt();
+        if(count<0 || count>SIZE) throw new IOException("Invalid market count");
+        for(int row=0;row<count;row++) readEntry(in,false);
+    }
+
+    public void readPilot(DataInputStream in) throws IOException { readEntry(in,true); }
+
+    private void readEntry(DataInputStream in,boolean pilot) throws IOException {
+        int quantity=in.readInt(), day=in.readInt(), port=in.readInt(), good=in.readInt();
+        if(pilot && emptyPilot(quantity,day,port,good)) return;
+        if(!World.validPort(port) || good<0 || good>=GOODS) throw new IOException("Invalid market key");
+        int key=key(port,good);
+        if(quantity<1 || quantity>2000 || day<1 || units[key]!=0) throw new IOException("Invalid market state");
+        units[key]=quantity;lastSaleDay[key]=day;
+    }
+
+    private static boolean emptyPilot(int quantity,int day,int port,int good) {
+        return quantity==0 && day==0 && port==-1 && good==-1;
     }
 
     public boolean valid(int day) {
-        if(units==0) return lastSaleDay==0 && port==-1 && good==-1;
-        return units>0 && units<=2000 && lastSaleDay>0 && lastSaleDay<=day
-            && World.validPort(port) && good>=0 && good<Engine.GOODS.length;
+        for(int last:lastSaleDay) if(last>day) return false;
+        return true;
     }
 }

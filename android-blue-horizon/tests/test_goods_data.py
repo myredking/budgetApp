@@ -8,6 +8,13 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_duplicate_market_rule_is_rejected() -> None:
+    tool, data = load()
+    data["marketRules"].append(data["marketRules"][0])
+    with pytest.raises(ValueError, match="Duplicate market rule"):
+        tool["market_rows"](data)
+
+
 def load() -> tuple[dict, dict]:
     tool = runpy.run_path(str(ROOT / "tools" / "generate_goods.py"))
     return tool, json.loads((ROOT / "data" / "goods.json").read_text(encoding="utf-8"))

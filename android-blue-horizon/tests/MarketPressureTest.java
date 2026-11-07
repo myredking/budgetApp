@@ -1,13 +1,30 @@
 package com.bluehorizon;
 
 import java.io.*;
+import java.nio.file.*;
 
 public final class MarketPressureTest {
     public static void main(String[] args) throws Exception {
         trading();
         cap();
         previousRule();
+        independentMarkets();
         System.out.println("PASS: market price impact, recovery, scope and save");
+    }
+
+    private static void independentMarkets() throws IOException {
+        Engine game=Engine.decode(Files.readString(Paths.get("tests/fixtures/v11-market-save.txt")));
+        if(game==null || MarketPressure.discount(game,2,2)!=5) throw new AssertionError("pilot save lost pressure");
+        game.port=44;game.visited|=1L<<44;game.gold=10000;
+        if(!game.buy(2,10) || !game.sell(2,10)) throw new AssertionError("second market trade failed");
+        Engine loaded=Engine.decode(game.encode());
+        if(loaded==null || MarketPressure.discount(loaded,44,2)!=4 || MarketPressure.discount(loaded,2,2)!=5) {
+            throw new AssertionError("markets must store independent pressure");
+        }
+        GameClock.advance(loaded,2);
+        if(MarketPressure.discount(loaded,2,2)!=0 || MarketPressure.discount(loaded,44,2)!=4) {
+            throw new AssertionError("recovery must use each market rule");
+        }
     }
 
     private static void cap() {
@@ -44,7 +61,7 @@ public final class MarketPressureTest {
         ByteArrayOutputStream bytes=new ByteArrayOutputStream();
         DataOutputStream out=new DataOutputStream(bytes);
         for(int value:new int[]{2000,1,1,2}) out.writeInt(value);
-        game.market.read(new DataInputStream(new ByteArrayInputStream(bytes.toByteArray())));
+        game.market.readPilot(new DataInputStream(new ByteArrayInputStream(bytes.toByteArray())));
         Engine restored=Engine.decode(game.encode());
         if(restored==null || MarketPressure.discount(restored,2,2)!=0) {
             throw new AssertionError("changing the pilot market must preserve saves without carrying over pressure");

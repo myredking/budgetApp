@@ -77,8 +77,7 @@ def java_list(values: list[str] | list[int] | tuple[str, ...]) -> str:
     return "{" + ", ".join(json.dumps(value, ensure_ascii=False) for value in values) + "}"
 
 
-def market_values(data: dict[str, Any]) -> list[int]:
-    rule = data.get("marketPilot")
+def market_values(rule: Any) -> list[int]:
     if not isinstance(rule, dict) or rule.get("good") not in LEGACY_IDS:
         raise ValueError("Invalid market pilot good")
     keys = ("port", "unitsPerStep", "discountPerStep", "recoveryDays", "maxSteps")
@@ -93,11 +92,21 @@ def market_values(data: dict[str, Any]) -> list[int]:
     return [port, LEGACY_IDS.index(rule["good"]), units, discount, recovery, maximum]
 
 
+def market_rows(data: dict[str, Any]) -> list[list[int]]:
+    rules = data.get("marketRules")
+    if not isinstance(rules, list) or not rules:
+        raise ValueError("Expected market rules")
+    rows = [market_values(rule) for rule in rules]
+    if len({(row[0], row[1]) for row in rows}) != len(rows):
+        raise ValueError("Duplicate market rule")
+    return rows
+
+
 def generate(project: Path, output: Path) -> Path:
     source = (project / "data/goods.json").read_text(encoding="utf-8")
     data = json.loads(source, object_pairs_hook=unique_fields)
     prices = validated_prices(data)
-    market = market_values(data)
+    market = ",\n        ".join(java_list(row) for row in market_rows(data))
     names, descriptions = localized_values(project / "res/values/strings.xml")
     rows = ",\n        ".join(java_list(row) for row in prices)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -105,9 +114,9 @@ def generate(project: Path, output: Path) -> Path:
 package com.bluehorizon;
 
 public final class GoodsCatalog {{
-    public static final int MARKET_PORT={market[0]}, MARKET_GOOD={market[1]};
-    public static final int MARKET_UNITS={market[2]}, MARKET_DISCOUNT={market[3]};
-    public static final int MARKET_RECOVERY={market[4]}, MARKET_MAX_STEPS={market[5]};
+    static final int[][] MARKET_RULES={{
+        {market}
+    }};
     private static final String[] IDS={java_list(LEGACY_IDS)};
     private static final String[] NAMES={java_list(names)};
     private static final String[] DESCRIPTIONS={java_list(descriptions)};
