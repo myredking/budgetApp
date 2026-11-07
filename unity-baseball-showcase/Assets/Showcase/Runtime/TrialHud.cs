@@ -109,7 +109,7 @@ namespace DeckBall.Showcase
             if (roster == null || game.Roster == null) return;
             GUI.enabled = !game.Paused;
             var s = layout.Scale;
-            if (GUI.Button(new Rect(layout.Safe.x + 18*s,layout.Safe.yMax-102*s,330*s,84*s),"선수 선택 · 능력치 편집")) roster.Open();
+            if (GUI.Button(new Rect(layout.Safe.x + 18*s,layout.Safe.yMax-108*s,330*s,90*s),"선수 · 능력치 · 스카우트")) roster.Open();
             GUI.enabled = true;
         }
 
@@ -233,8 +233,9 @@ namespace DeckBall.Showcase
 
         private string MenuDescription()
         {
-            if (game.Finished && game.Inning != null) return "3아웃 종료 · 득점 " + game.Inning.Runs + " · 안타 " + game.Inning.Hits;
-            if (game.Finished) return "점수 " + game.Session.Score + " · 정타 " + game.Session.Perfects;
+            var reward = game.CareerReward > 0 ? "\n운영 보상 +" + game.CareerReward + "만원" : "";
+            if (game.Finished && game.Inning != null) return "3아웃 종료 · 득점 " + game.Inning.Runs + " · 안타 " + game.Inning.Hits + reward;
+            if (game.Finished) return "점수 " + game.Session.Score + " · 정타 " + game.Session.Perfects + reward;
             return "좋은 공은 스윙, 볼은 기다리세요. 안타와 장타로 주자를 홈에 불러들이세요.";
         }
 

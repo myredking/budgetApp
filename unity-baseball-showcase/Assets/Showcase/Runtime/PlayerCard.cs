@@ -23,6 +23,8 @@ namespace DeckBall.Showcase
         public bool Legend { get; }
         public bool Pitcher => Position == "P";
         public int OriginalContact { get; }
+        public int OriginalPower { get; }
+        public int OriginalControl { get; }
         public int Contact { get; private set; }
         public int Power { get; private set; }
         public int Control { get; private set; }
@@ -35,6 +37,7 @@ namespace DeckBall.Showcase
             Id = record.id; Name = record.name; Team = record.team; Position = record.position;
             Record = record.record; Source = record.source; Year = record.year; Legend = record.legend;
             OriginalContact = record.contact;
+            OriginalPower = record.power; OriginalControl = record.control;
             Edit(record.contact, record.power, record.control);
         }
 

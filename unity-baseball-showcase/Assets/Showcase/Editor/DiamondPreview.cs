@@ -6,6 +6,12 @@ namespace DeckBall.Showcase.Editor
 {
     internal static class DiamondPreview
     {
+        [MenuItem("DeckBall/Diamond Challenge/Use Desktop Editor")]
+        public static void UseDesktopEditor()
+        {
+            EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Standalone,BuildTarget.StandaloneWindows64);
+        }
+
         [MenuItem("DeckBall/Diamond Challenge/Open Roster Preview")]
         public static void OpenRoster()
         {

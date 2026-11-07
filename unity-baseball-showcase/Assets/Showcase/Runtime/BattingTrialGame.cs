@@ -11,6 +11,8 @@ namespace DeckBall.Showcase
         public BattingSession Session { get; private set; }
         public InningSession Inning { get; private set; }
         public RosterBook Roster { get; private set; }
+        public ScoutingCareer Career { get; private set; }
+        public int CareerReward { get; private set; }
         public FieldPresentation field;
         public bool Started { get; private set; }
         public bool Paused { get; private set; }
@@ -31,6 +33,7 @@ namespace DeckBall.Showcase
         private bool impactPlayed;
         private bool swung, pitchInZone, playRecorded;
         private FieldResult fieldResult;
+        private int careerMatch;
         private const float Gravity = 9.81f;
         private string BestKey => (Inning == null ? "DeckBall.Trial.v1." : "DeckBall.Inning.v1.") + Session.Level;
 
@@ -59,13 +62,21 @@ namespace DeckBall.Showcase
             if (source == null) return;
             Roster = RosterBook.Load(source.text);
             Roster.Restore(PlayerPrefs.GetString("DeckBall.Roster.v1", ""));
+            Career = new ScoutingCareer(Roster);
+            Career.Restore(PlayerPrefs.GetString("DeckBall.Career.v1", ""));
         }
 
         public void SaveRoster()
         {
             if (Roster == null) return;
             PlayerPrefs.SetString("DeckBall.Roster.v1", Roster.Save());
+            SaveCareer();
             PlayerPrefs.Save();
+        }
+
+        private void SaveCareer()
+        {
+            if (Career != null) PlayerPrefs.SetString("DeckBall.Career.v1",Career.Save());
         }
 
         public void StartChallenge(int level)
@@ -86,6 +97,9 @@ namespace DeckBall.Showcase
             Best = PlayerPrefs.GetInt(BestKey, 0);
             Started = true;
             Finished = Paused = Power = false;
+            CareerReward = 0;
+            careerMatch = Career != null ? Career.StartMatch() : 0;
+            SaveCareer();
             NewPitch();
         }
 
@@ -185,7 +199,17 @@ namespace DeckBall.Showcase
             var complete = Inning != null ? Inning.Complete : Session.Complete;
             if (!complete) { NewPitch(); return; }
             Finished = true;
+            AwardCareer();
             PlayerPrefs.Save();
+        }
+
+        private void AwardCareer()
+        {
+            if (Career == null) return;
+            var before = Career.Funds;
+            if (!Career.ClaimReward(careerMatch,Inning != null ? Inning.Runs : 0)) return;
+            CareerReward = Career.Funds-before;
+            SaveCareer();
         }
 
         private void RecordPlay()

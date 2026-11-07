@@ -1,0 +1,22 @@
+{
+  "verified_on": "2026-11-07",
+  "surface": "Unity Editor GameView",
+  "resolution": [
+    2340,
+    1080
+  ],
+  "input": "CUA native mouse clicks",
+  "physical_device": false,
+  "initial_funds": 25000,
+  "research_fee": 500,
+  "days_advanced": 2,
+  "recruitment_fee": 6584,
+  "final_funds": 17916,
+  "recruited_card_id": 1,
+  "selected_batter_card_id": 1,
+  "editor_play_restart_restored": true,
+  "restored_day": 3,
+  "restored_funds": 17916,
+  "restored_owned_player": true,
+  "android_apk_0_5_includes_scouting": false
+}

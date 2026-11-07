@@ -8,6 +8,8 @@ namespace DeckBall.Showcase
         public BattingTrialGame game;
         public bool Opened { get; private set; }
         private int page, selected;
+        private bool scoutView;
+        private readonly ScoutingPanel scouting = new ScoutingPanel();
         private float scale;
         private GUIStyle text, title;
         private string status = "능력치는 게임용 환산 수치입니다. 선수 외형은 공용 모델을 사용합니다.";
@@ -39,7 +41,7 @@ namespace DeckBall.Showcase
 
         private void DrawList()
         {
-            GUI.Label(R(205,20,200,60), "2026 · 역대 카드", text);
+            if (GUI.Button(R(205,10,195,90),scoutView ? "능력치 보기" : "스카우트 보기")) scoutView = !scoutView;
             var cards = game.Roster.Cards;
             for (var row = 0; row < 5; row++)
             {
@@ -60,6 +62,7 @@ namespace DeckBall.Showcase
             GUI.Label(R(420,14,600,65), card.Name + " · " + card.Team + " " + card.Year, title);
             if (GUI.Button(R(1040,10,210,90), card.Pitcher ? "투수로 선택" : "타자로 선택")) Select(card);
             GUI.Label(R(420,92,830,58), card.Record + "\n원본 기록 보존 · 공용 3D 모델", text);
+            if (scoutView) { scouting.Draw(game,card,R,text,value => status = value); return; }
             var contact = Stat("컨택", card.Contact, 150);
             var power = Stat("파워", card.Power, 246);
             var control = Stat("제구", card.Control, 342);
@@ -98,6 +101,7 @@ namespace DeckBall.Showcase
 
         private void Select(PlayerCard card)
         {
+            if (game.Career != null && !game.Career.CanSelect(card.Id)) { status = "보유하지 않은 선수입니다. 조사·영입 후 선택하세요."; return; }
             if (card.Pitcher) game.Roster.SelectPitcher(card.Id);
             else game.Roster.SelectBatter(card.Id);
             game.SaveRoster();

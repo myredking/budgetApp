@@ -8,20 +8,32 @@ using UnityEngine.SceneManagement;
 public sealed class DiamondSceneTests
 {
     private SceneSetup[] previous;
+    private bool careerBackup, careerExisted;
+    private string careerSaved;
 
     [SetUp]
     public void ProtectUserScenes()
     {
         previous = null;
+        careerBackup = false;
         for (var index = 0; index < SceneManager.sceneCount; index++)
             if (SceneManager.GetSceneAt(index).isDirty) Assert.Ignore("Save existing scenes first.");
         if (!System.IO.File.Exists("Assets/Showcase/Art/Players/kim_doyoung.fbx")) Assert.Ignore("Local art required.");
         previous = EditorSceneManager.GetSceneManagerSetup();
+        careerExisted = PlayerPrefs.HasKey("DeckBall.Career.v1");
+        careerSaved = PlayerPrefs.GetString("DeckBall.Career.v1");
+        careerBackup = true;
     }
 
     [TearDown]
     public void RestoreUserScenes()
     {
+        if (careerBackup)
+        {
+            if (careerExisted) PlayerPrefs.SetString("DeckBall.Career.v1",careerSaved);
+            else PlayerPrefs.DeleteKey("DeckBall.Career.v1");
+            PlayerPrefs.Save();
+        }
         if (previous != null && previous.Any(s => s.isLoaded && s.isActive && !string.IsNullOrEmpty(s.path)))
             EditorSceneManager.RestoreSceneManagerSetup(previous);
     }
@@ -120,6 +132,46 @@ public sealed class DiamondSceneTests
         Assert.That(type.GetProperty("Finished").GetValue(game), Is.EqualTo(true));
         type.GetMethod("StartChallenge").Invoke(game, new object[] { 1 });
         Assert.That(type.GetProperty("Inning").GetValue(game), Is.Null);
+    }
+
+    [Test]
+    public void CompletedCareerChallengePaysOneRewardAndSavesIt()
+    {
+        const string key = "DeckBall.Career.v1";
+        var existed = PlayerPrefs.HasKey(key);
+        var saved = PlayerPrefs.GetString(key);
+        try
+        {
+            PlayerPrefs.DeleteKey(key);
+            var builder = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("DeckBall.Showcase.Editor.DiamondStudySetup")).First(t => t != null);
+            builder.GetMethod("Build").Invoke(null,null);
+            var game = GameObject.Find("BattingTrial").GetComponent("BattingTrialGame");
+            var type = game.GetType();
+            Assert.That(type.GetProperty("Career"),Is.Not.Null);
+            type.GetMethod("Awake",System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(game,null);
+            var career = type.GetProperty("Career").GetValue(game);
+            var careerType = career.GetType();
+            careerType.GetMethod("SetEnabled").Invoke(career,new object[] { true });
+            var before = (int)careerType.GetProperty("Funds").GetValue(career);
+            type.GetMethod("StartChallenge").Invoke(game,new object[] { 0 });
+            for (var index = 0; index < 10; index++)
+            {
+                type.GetMethod("Advance").Invoke(game,new object[] { 2f });
+                type.GetMethod("TrySwing").Invoke(game,null);
+                type.GetMethod("Advance").Invoke(game,new object[] { 10f });
+            }
+            var after = (int)careerType.GetProperty("Funds").GetValue(career);
+            Assert.That(after,Is.GreaterThan(before));
+            type.GetMethod("Advance").Invoke(game,new object[] { 100f });
+            Assert.That(careerType.GetProperty("Funds").GetValue(career),Is.EqualTo(after));
+            Assert.That(PlayerPrefs.HasKey(key),Is.True);
+        }
+        finally
+        {
+            if (existed) PlayerPrefs.SetString(key,saved);
+            else PlayerPrefs.DeleteKey(key);
+            PlayerPrefs.Save();
+        }
     }
 
     [Test]
