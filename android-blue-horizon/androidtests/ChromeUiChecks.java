@@ -13,11 +13,11 @@ public final class ChromeUiChecks {
     private static void verify(MainActivity activity) {
             townLabels(activity);
             View root=activity.getWindow().getDecorView();
-            for(String name:new String[]{"마을","항해","교역","동료","일지"}) {
-                TextView item=root.findViewWithTag("nav-"+name);
-                if(item==null || item.getCompoundDrawables()[1]==null) throw new AssertionError("illustrated navigation missing: "+name);
+            for(int page:new int[]{7,0,1,3,4}) {
+                TextView item=root.findViewWithTag("nav-"+page);
+                if(item==null || item.getCompoundDrawables()[1]==null) throw new AssertionError("illustrated navigation missing: "+page);
                 Rect bounds=new Rect();
-                if(!item.getGlobalVisibleRect(bounds) || bounds.height()<item.getHeight()*.95) throw new AssertionError("navigation clipped: "+name);
+                if(!item.getGlobalVisibleRect(bounds) || bounds.height()<item.getHeight()*.95) throw new AssertionError("navigation clipped: "+page);
                 if(item.getHeight()<48*activity.getResources().getDisplayMetrics().density) throw new AssertionError("navigation touch target too small");
             }
             for(String name:new String[]{"gold","cargo","fame"}) {

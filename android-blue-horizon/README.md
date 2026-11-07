@@ -3,6 +3,16 @@
 혼자 즐기는 세로 화면 항해·무역 게임. Android 8.0 이상, 인터넷·로그인·광고 없이 실행합니다.
 원작의 코드·인물·대사·음원·이미지를 사용하지 않은 독립 창작입니다.
 
+## Phase 1 · 화면 문구
+
+앱 이름, 하단 메뉴, 주요 확인 창과 거래 조작 문구는 `res/values/strings.xml`에서 관리합니다. 앱 빌드가 리소스 ID를 먼저 생성하며 Java 화면은 `getString`으로 읽습니다. 하단 메뉴의 내부 태그는 페이지 번호를 사용합니다.
+
+1. `python tools/extract_ui_strings.py MainActivity --output build/ui-candidates.json`으로 후보를 확인합니다. 거래 화면은 `TradeDialog`를 지정합니다.
+2. 검토한 후보의 `literal`을 키로, 원하는 리소스 이름을 값으로 하는 JSON 객체를 만듭니다. 예를 들어 Java 리터럴 `"확인"`은 JSON에서 `{"\"확인\"":"ui_ok"}`로 적습니다.
+3. `python tools/extract_ui_strings.py MainActivity --selection selected.json --output build/ui-strings.patch`로 변경안을 만들고 검토합니다. 패치 경로는 Android 프로젝트 폴더 기준입니다.
+
+스크립트는 지원된 화면의 지정된 UI 메서드에서 직접 전달되는 한국어 리터럴을 찾습니다. 주석·태그·이어 붙인 문구·대사는 별도 검토 대상으로 둡니다. 선택한 원문이 바뀌었거나 리소스 이름이 충돌하면 패치 생성이 실패합니다.
+
 ## Phase 1 · 상품 데이터
 
 - `data/goods.json`에서 항구별 기준가를 수정합니다. 항구 행 번호는 `World.PORTS`의 순서이고 상품은 ID로 참조합니다.

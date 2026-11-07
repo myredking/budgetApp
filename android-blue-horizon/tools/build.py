@@ -57,20 +57,27 @@ def test() -> None:
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.GoodsCatalogTest"])
 
 
+def link_resources() -> tuple[Path, Path]:
+    resources = BUILD / "resources.zip"
+    run([SDK / "aapt2.exe", "compile", "--dir", "res", "-o", "build/resources.zip"])
+    unsigned = BUILD / "unsigned.apk"
+    generated = BUILD / "resource-java"
+    generated.mkdir(parents=True, exist_ok=True)
+    run([SDK / "aapt2.exe", "link", "--java", generated, "-I", ANDROID, "--manifest",
+         "AndroidManifest.xml", "-o", "build/unsigned.apk", "build/resources.zip"])
+    return unsigned, generated / "com/bluehorizon/R.java"
+
+
 def compile_app() -> Path:
     classes, dex = BUILD / "classes", BUILD / "dex"
     classes.mkdir(parents=True, exist_ok=True)
     dex.mkdir(parents=True, exist_ok=True)
-    sources = [goods_source(), *list((PROJECT / "src").rglob("*.java"))]
+    unsigned, resource_ids = link_resources()
+    sources = [goods_source(), resource_ids, *list((PROJECT / "src").rglob("*.java"))]
     run([JAVA / "javac.exe", "-encoding", "UTF-8", "-source", "8", "-target", "8",
          "-classpath", ANDROID, "-d", classes, *sources])
     run([JAVA / "java.exe", "-cp", SDK / "lib/d8.jar", "com.android.tools.r8.D8",
          "--lib", ANDROID, "--min-api", "26", "--output", dex, *classes.rglob("*.class")])
-    resources = BUILD / "resources.zip"
-    run([SDK / "aapt2.exe", "compile", "--dir", "res", "-o", "build/resources.zip"])
-    unsigned = BUILD / "unsigned.apk"
-    run([SDK / "aapt2.exe", "link", "-I", ANDROID, "--manifest",
-         "AndroidManifest.xml", "-o", "build/unsigned.apk", "build/resources.zip"])
     with zipfile.ZipFile(unsigned, "a", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.write(dex / "classes.dex", "classes.dex")
         for asset in (PROJECT / "assets").glob("*"):

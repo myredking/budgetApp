@@ -180,8 +180,8 @@ public final class MainActivity extends Activity {
     private void townSquare() {
         new AlertDialog.Builder(this).setTitle(World.PORTS[game.port]+" · 항구 관리인")
             .setMessage("먼 바다에서 왔군요, 선장님. 의뢰를 수행하고 상단과 인연을 쌓아 보세요.\n\n현재 목표: "+Story.GOALS[game.chapter])
-            .setPositiveButton("의뢰 게시판",(d,w)->{tab=5;render();})
-            .setNeutralButton("상단 만나기",(d,w)->{tab=6;render();}).setNegativeButton("돌아가기",null).show();
+            .setPositiveButton(getString(R.string.ui_contract_board),(d,w)->{tab=5;render();})
+            .setNeutralButton(getString(R.string.ui_meet_guild),(d,w)->{tab=6;render();}).setNegativeButton(getString(R.string.ui_go_back),null).show();
     }
     private void localLifeCard() {
         LinearLayout box=card(content);label(box,"항구의 일상 · "+Long.bitCount(game.life.events)+" / 56",16,GOLD);
@@ -199,7 +199,7 @@ public final class MainActivity extends Activity {
         LinearLayout box=column();box.setPadding(dp(14),dp(12),dp(14),dp(12));box.setBackgroundColor(NAVY);
         label(box,words,15,INK);fullAction(box,first,()->lifeChoice(left),true);fullAction(box,second,()->lifeChoice(right),false);
         ScrollView scroll=new ScrollView(this);scroll.setTag("port-life-scroll");scroll.addView(box);
-        AlertDialog dialog=new AlertDialog.Builder(this).setTitle(title).setView(scroll).setNegativeButton("다음에",null).create();
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle(title).setView(scroll).setNegativeButton(getString(R.string.ui_another_time),null).create();
         dialogueDialog=dialog;dialog.setOnDismissListener(d->{if(dialogueDialog==dialog) dialogueDialog=null;});dialog.show();
     }
     private void lifeChoice(Runnable action) {
@@ -346,7 +346,7 @@ public final class MainActivity extends Activity {
         if(success && game.chapter==chapter) regionalResponse(person,answer+"\n\n"+game.message);
     }
     private void regionalResponse(int person,String words) {
-        AlertDialog dialog=new AlertDialog.Builder(this).setTitle(Crew.NAMES[person]).setMessage(words).setPositiveButton("확인",null).create();
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle(Crew.NAMES[person]).setMessage(words).setPositiveButton(getString(R.string.ui_ok),null).create();
         dialogueDialog=dialog;dialog.setOnDismissListener(d->{if(dialogueDialog==dialog) dialogueDialog=null;});dialog.show();
     }
     private void assignCrew(int slot) {
@@ -358,7 +358,7 @@ public final class MainActivity extends Activity {
         }
         new AlertDialog.Builder(this).setTitle("전문 담당 "+(slot+1)+" 선택")
             .setItems(names.toArray(new String[0]),(d,index)->changed(CrewAbilities.assign(game,slot,people.get(index))))
-            .setNegativeButton("닫기",null).show();
+            .setNegativeButton(getString(R.string.ui_close),null).show();
     }
     private void crewStory(LinearLayout box,int person) {
         label(box,"개인 기록: "+CrewAbilities.GOALS[person],12,MUTED);
@@ -383,7 +383,7 @@ public final class MainActivity extends Activity {
         ScrollView scroll=new ScrollView(this);scroll.addView(panel);
         storyDialog=new AlertDialog.Builder(this).setTitle(game.chapter==Story.REVEALS.length?"세계 해도의 완성":"새로운 항해 기록")
             .setCancelable(game.adventure.pending<0)
-            .setView(scroll).setPositiveButton("계속 항해하기",(dialog,which)->{if(game.adventure.pending>=0) showEvent();}).create();
+            .setView(scroll).setPositiveButton(getString(R.string.ui_continue_voyage),(dialog,which)->{if(game.adventure.pending>=0) showEvent();}).create();
         storyDialog.setOnDismissListener(d->storyDialog=null);storyDialog.show();
     }
     private void expeditionPage() {
@@ -421,8 +421,8 @@ public final class MainActivity extends Activity {
         if(nearest<0) return;
         final int target=nearest;
         fullAction(box,"가까운 미조사 항구 · "+World.PORTS[target],()->voyage(target),true);
-        fullAction(box,"다른 단서 항구 선택",()->new AlertDialog.Builder(this).setTitle("직접 입항한 뒤 기록 조사")
-            .setItems(names.toArray(new String[0]),(d,which)->voyage(ports.get(which))).setNegativeButton("닫기",null).show(),false);
+        fullAction(box,"다른 단서 항구 선택",()->new AlertDialog.Builder(this).setTitle(getString(R.string.ui_clue_dock_first))
+            .setItems(names.toArray(new String[0]),(d,which)->voyage(ports.get(which))).setNegativeButton(getString(R.string.ui_close),null).show(),false);
     }
     private void expeditionRecord(LinearLayout box,int region) {
         String map=(game.expedition.treasures & (1<<region))!=0?"보물 발견":"지도 "+Math.min(3,Expeditions.fragments(game,region))+"/3";
@@ -447,7 +447,7 @@ public final class MainActivity extends Activity {
         fullAction(box,"실행 계획을 세운다 · 신뢰 +1 / 명성 +1",()->finishTalk(person,stage,1),false);
         ScrollView scroll=new ScrollView(this);scroll.addView(box);
         dialogueDialog=new AlertDialog.Builder(this).setTitle(Crew.NAMES[person]+" · 남겨질 선택").setView(scroll)
-            .setNegativeButton("나중에",null).create();dialogueDialog.show();
+            .setNegativeButton(getString(R.string.ui_later),null).create();dialogueDialog.show();
     }
     private void finishTalk(int person,int stage,int choice) {
         if(dialogueDialog!=null) { dialogueDialog.dismiss();dialogueDialog=null; }
@@ -499,7 +499,7 @@ public final class MainActivity extends Activity {
         LinearLayout box=column();box.setPadding(dp(14),dp(10),dp(14),dp(12));box.setBackgroundColor(NAVY);
         battleScene(box,0,1);label(box,game.message,15,INK);
         ScrollView scroll=new ScrollView(this);scroll.addView(box);
-        eventDialog=new AlertDialog.Builder(this).setTitle(title).setView(scroll).setPositiveButton("항해 계속",(d,w)->eventDialog=null).create();
+        eventDialog=new AlertDialog.Builder(this).setTitle(title).setView(scroll).setPositiveButton(getString(R.string.ui_resume_voyage),(d,w)->eventDialog=null).create();
         eventDialog.setOnDismissListener(d->eventDialog=null);eventDialog.getWindow().setWindowAnimations(0);eventDialog.show();
     }
     private void chooseBossTurn(int choice,int expected) {
@@ -573,15 +573,15 @@ public final class MainActivity extends Activity {
         label(box,wait==0?"서신 교류 가능 · 성공 시 하루 경과":"다음 서신 교류까지 "+wait+"일",12,MUTED);
         fullAction(box,"서신 교류 · 선물 / 실적 / 경쟁",()->negotiateGuild(rival),false);
         if(allied) fullAction(box,"동맹 종료 · 관계 −20, 하루",()->new AlertDialog.Builder(this)
-            .setTitle("동맹을 종료할까요?").setMessage("이 상단의 교역 혜택이 사라집니다.")
-            .setPositiveButton("종료",(d,w)->changed(Rivals.endAlliance(game,rival))).setNegativeButton("유지",null).show(),false);
+            .setTitle(getString(R.string.ui_end_alliance_title)).setMessage(getString(R.string.ui_end_alliance_warning))
+            .setPositiveButton(getString(R.string.ui_end),(d,w)->changed(Rivals.endAlliance(game,rival))).setNegativeButton(getString(R.string.ui_keep),null).show(),false);
         else fullAction(box,"동맹 제안 · 500 G / 관계 40·명성 15 필요",()->changed(Rivals.formAlliance(game,rival)),true);
     }
     private void negotiateGuild(int rival) {
         String[] options={"교역 선물 · 150 G / 관계 +12","새 납품 실적 공유 · 관계 +10 / 실적 1회당 상단별 한 번","현지 공개 경쟁 · 명성 20 필요 / 압력 −8·관계 −8"};
         new AlertDialog.Builder(this).setTitle(Rivals.LEADERS[rival]+"에게 보낼 서신")
             .setItems(options,(d,choice)->changed(Rivals.negotiate(game,rival,choice)))
-            .setNegativeButton("닫기",null).show();
+            .setNegativeButton(getString(R.string.ui_close),null).show();
     }
     private void raceCard() {
         LinearLayout box=card(content);label(box,"상단 납품 경주",18,GOLD);RivalState s=game.rivals;
@@ -597,9 +597,9 @@ public final class MainActivity extends Activity {
         label(box,game.day>s.raceDeadline?"상대가 먼저 납품했습니다. 결과를 확인하세요.":"기한 "+s.raceDeadline+"일째 (당일 납품 인정) · 남은 기간 "+(s.raceDeadline-game.day)+"일",13,GOLD);
         fullAction(box,"납품 / 경주 결과 확인",()->changed(TradeRace.complete(game)),true);
         fullAction(box,"경주 목적지 항로 보기",()->voyage(s.raceTarget),false);
-        fullAction(box,"경주 포기 · 참가비 반환 없음",()->new AlertDialog.Builder(this).setTitle("경주를 포기할까요?")
-            .setMessage("화물은 유지되며 경쟁 압력 +5, 관계 −3이 적용됩니다.")
-            .setPositiveButton("포기",(d,w)->changed(TradeRace.abandon(game))).setNegativeButton("계속",null).show(),false);
+        fullAction(box,"경주 포기 · 참가비 반환 없음",()->new AlertDialog.Builder(this).setTitle(getString(R.string.ui_abandon_race_title))
+            .setMessage(getString(R.string.ui_abandon_race_warning))
+            .setPositiveButton(getString(R.string.ui_abandon),(d,w)->changed(TradeRace.abandon(game))).setNegativeButton(getString(R.string.ui_continue),null).show(),false);
     }
     private void showEvent() {
         if(isFinishing() || isDestroyed()) return;
@@ -667,8 +667,8 @@ public final class MainActivity extends Activity {
         label(box,game.day>a.deadline?"납품 기한이 지났습니다. 위약금 없이 취소할 수 있습니다.":"납기 "+a.deadline+"일째 · 남은 기간 "+(a.deadline-game.day)+"일",13,GOLD);
         fullAction(box,"목적지에서 납품하기",()->changed(Contracts.deliver(game)),true);
         fullAction(box,"의뢰 목적지 항로 보기",()->voyage(a.target),false);
-        fullAction(box,"의뢰 취소 · 위약금 없음",()->new AlertDialog.Builder(this).setTitle("의뢰를 취소할까요?")
-            .setMessage("준비한 화물은 그대로 남습니다.").setPositiveButton("취소하기",(d,w)->changed(Contracts.cancel(game))).setNegativeButton("유지",null).show(),false);
+        fullAction(box,"의뢰 취소 · 위약금 없음",()->new AlertDialog.Builder(this).setTitle(getString(R.string.ui_cancel_contract_title))
+            .setMessage(getString(R.string.ui_cancel_contract_cargo)).setPositiveButton(getString(R.string.ui_cancel_contract),(d,w)->changed(Contracts.cancel(game))).setNegativeButton(getString(R.string.ui_keep),null).show(),false);
     }
     private void contractOffer(LinearLayout parent,Contract offer,int choice) {
         LinearLayout box=card(parent);
@@ -746,10 +746,10 @@ public final class MainActivity extends Activity {
         if(target==game.port) { Toast.makeText(this,"현재 머무는 항구입니다.",Toast.LENGTH_SHORT).show(); return; }
         Route route=WorldRoutes.between(game.port,target);
         String info=route.description()+"\n\n약 "+Math.round(route.miles)+"해리 · "+game.travelDays(target)+"일 항해 (개조 반영)\n\n일반 항로: "+game.travelCost(target,0)+" G · 선체 −"+game.travelDamage(target,0)+"\n안전 항로: "+game.travelCost(target,1)+" G · 선체 −"+game.travelDamage(target,1)+"\n\n선체 25 이상이면 출항할 수 있습니다. 경유 항구는 정박하지 않으며, 방문 기록은 목적지에만 남습니다.";
-        new AlertDialog.Builder(this).setTitle("출항 준비").setMessage(info)
-            .setPositiveButton("일반 항로",(d,w)->depart(target,0))
-            .setNeutralButton("안전 항로",(d,w)->depart(target,1))
-            .setNegativeButton("취소",null).show();
+        new AlertDialog.Builder(this).setTitle(getString(R.string.ui_departure_title)).setMessage(info)
+            .setPositiveButton(getString(R.string.ui_normal_route),(d,w)->depart(target,0))
+            .setNeutralButton(getString(R.string.ui_safe_route),(d,w)->depart(target,1))
+            .setNegativeButton(getString(R.string.ui_cancel),null).show();
     }
     private void market() {
         label(content,Engine.PORTS[game.port]+" 교역소",26,GOLD);
@@ -852,22 +852,22 @@ public final class MainActivity extends Activity {
         status=text(saved?"● 기기에 자동 저장됨 · 오프라인":"저장 실패 · 백업 필요",11,saved?TEAL:GOLD);
         status.setTextSize(10);status.setPadding(0,dp(3),0,dp(2)); root.addView(status);
         LinearLayout nav=row(); root.addView(nav);
-        String[] names={"마을","항해","교역","동료","일지"};int[] pages={7,0,1,3,4};
+        String[] names={getString(R.string.ui_nav_town),getString(R.string.ui_nav_sail),getString(R.string.ui_nav_market),getString(R.string.ui_nav_crew),getString(R.string.ui_nav_journal)};int[] pages={7,0,1,3,4};
         for(int i=0;i<5;i++) navigationItem(nav,names[i],pages[i],i);
     }
     private void navigationItem(LinearLayout nav,String name,int page,int kind) {
-        Button item=button(name,tab==page);item.setTag("nav-"+name);item.setTextSize(11);
+        Button item=button(name,tab==page);item.setTag("nav-"+page);item.setTextSize(11);
         icon(item,kind,30,true);item.setPadding(dp(3),dp(5),dp(3),dp(5));
         item.setOnClickListener(v->{audio.play("click");tab=page;render();});
         LinearLayout.LayoutParams p=buttonParams();p.width=0;p.weight=1;p.setMargins(dp(2),dp(3),dp(2),0);nav.addView(item,p);
     }
     private void newGame() {
-        new AlertDialog.Builder(this).setTitle("새 항해를 시작할까요?")
-            .setMessage("현재 진행이 초기화됩니다. 필요하면 먼저 저장 파일을 내보내세요.")
-            .setPositiveButton("새로 시작",(d,w)->{
+        new AlertDialog.Builder(this).setTitle(getString(R.string.ui_new_game_title))
+            .setMessage(getString(R.string.ui_new_game_warning))
+            .setPositiveButton(getString(R.string.ui_start_new),(d,w)->{
                 game=new Engine(); tab=7;mapRegion=-1; prefs.edit().remove("backup").remove("save").remove("ending").commit();
                 save();render();dialog("새로운 항해",Story.introduction());
-            }).setNegativeButton("취소",null).show();
+            }).setNegativeButton(getString(R.string.ui_cancel),null).show();
     }
     private void exportSave() {
         Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -876,12 +876,12 @@ public final class MainActivity extends Activity {
         startActivityForResult(intent,10);
     }
     private void importSave() {
-        new AlertDialog.Builder(this).setTitle("저장 파일 불러오기")
-            .setMessage("불러오면 현재 진행을 교체합니다. 먼저 내보내기로 백업해 두세요.")
-            .setPositiveButton("파일 선택",(d,w)->{
+        new AlertDialog.Builder(this).setTitle(getString(R.string.ui_import_save_title))
+            .setMessage(getString(R.string.ui_import_save_warning))
+            .setPositiveButton(getString(R.string.ui_choose_file),(d,w)->{
                 Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);intent.setType("text/*");
                 intent.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(intent,11);
-            }).setNegativeButton("취소",null).show();
+            }).setNegativeButton(getString(R.string.ui_cancel),null).show();
     }
     @Override protected void onActivityResult(int request,int result,Intent data) {
         super.onActivityResult(request,result,data);
@@ -919,7 +919,7 @@ public final class MainActivity extends Activity {
     private void dialog(String title,String body) {
         new AlertDialog.Builder(this).setTitle(title).setMessage(body)
             .setCancelable(game.adventure.pending<0)
-            .setPositiveButton("확인",(d,w)->{if(game.adventure.pending>=0) showEvent();}).show();
+            .setPositiveButton(getString(R.string.ui_ok),(d,w)->{if(game.adventure.pending>=0) showEvent();}).show();
     }
     private LinearLayout column() { LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);return box; }
     private LinearLayout row() { LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.HORIZONTAL);return box; }

@@ -37,7 +37,7 @@ public final class TradeDialog {
         LinearLayout frame=column();frame.setBackgroundColor(MainActivity.NAVY);
         frame.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         footer=column();footer.setPadding(dp(18),dp(4),dp(18),dp(8));frame.addView(footer,new LinearLayout.LayoutParams(-1,-2));
-        dialog=new AlertDialog.Builder(activity).setView(frame).setNegativeButton("닫기",null).create();
+        dialog=new AlertDialog.Builder(activity).setView(frame).setNegativeButton(activity.getString(R.string.ui_close),null).create();
         render();
     }
     public void show() {
@@ -73,8 +73,8 @@ public final class TradeDialog {
     }
     private void modeChoices() {
         LinearLayout choices=row();body.addView(choices);
-        choice(choices,"수량 지정",0);if(!selling) choice(choices,"금액 지정",1);
-        choice(choices,selling?"전량 판매":"최대 구매",2);
+        choice(choices,activity.getString(R.string.ui_trade_quantity_mode),0);if(!selling) choice(choices,activity.getString(R.string.ui_trade_budget_mode),1);
+        choice(choices,selling?activity.getString(R.string.ui_trade_sell_all):activity.getString(R.string.ui_trade_buy_max),2);
     }
     private void choice(LinearLayout parent,String title,int value) {
         Button button=button(title,mode==value);parent.addView(button,weight());
@@ -88,7 +88,7 @@ public final class TradeDialog {
                 long next=step>1?step:(long)current+step;input.setText(String.valueOf(Math.max(1,Math.min(Integer.MAX_VALUE,next))));});
         }
         slider=new SeekBar(activity);body.addView(slider,new LinearLayout.LayoutParams(-1,dp(42)));
-        slider.setContentDescription("거래 수량 조절");
+        slider.setContentDescription(activity.getString(R.string.ui_trade_quantity_accessibility));
         slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar view,int progress,boolean user) { if(user) input.setText(String.valueOf(progress+1)); }
             public void onStartTrackingTouch(SeekBar view) { }
@@ -103,12 +103,12 @@ public final class TradeDialog {
         }
     }
     private void reserveControl() {
-        reserve=new CheckBox(activity);reserve.setText("비상금 200 G 남기기");reserve.setTextColor(MainActivity.INK);
+        reserve=new CheckBox(activity);reserve.setText(activity.getString(R.string.ui_trade_keep_reserve));reserve.setTextColor(MainActivity.INK);
         reserve.setMinHeight(dp(48));reserve.setChecked(keepReserve);body.addView(reserve);
         reserve.setOnCheckedChangeListener((v,checked)->{keepReserve=checked;refresh();});
     }
     private void protectionControl() {
-        protect=new CheckBox(activity);protect.setText("이야기·의뢰·경주용 화물 남기기");protect.setTextColor(MainActivity.INK);
+        protect=new CheckBox(activity);protect.setText(activity.getString(R.string.ui_trade_protect_cargo));protect.setTextColor(MainActivity.INK);
         protect.setMinHeight(dp(48));protect.setChecked(keepProtected);body.addView(protect);
         protect.setOnCheckedChangeListener((v,checked)->{keepProtected=checked;refresh();});
     }
