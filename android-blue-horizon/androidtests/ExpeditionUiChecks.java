@@ -55,6 +55,7 @@ public final class ExpeditionUiChecks {
             invoke(activity,"readBackup",new Class<?>[]{Intent.class},new Intent().setData(Uri.fromFile(file)));
             AlertDialog dialog=(AlertDialog)field("eventDialog").get(activity);
             if(dialog==null || !dialog.isShowing()) throw new AssertionError("boss import lacks battle controls");
+            if(frame(activity).action!=-1) throw new AssertionError("imported battle must not replay a shot");
         });
         Thread.sleep(900);runner.screenshot(activity,"v0.9-boss.png");
         checkRetreat(activity,runner);
@@ -62,7 +63,21 @@ public final class ExpeditionUiChecks {
             Engine e=(Engine)field("game").get(activity);int hp=e.expedition.bossHP;
             invoke(activity,"chooseBoss",new Class<?>[]{int.class},0);
             if(e.expedition.bossHP>=hp || Engine.decode(e.encode())==null) throw new AssertionError("battle control/save failed");
+            if(frame(activity).enemyDamage!=hp-e.expedition.bossHP || !frame(activity).firing()) throw new AssertionError("attack visual differs from real damage");
         });
+        runner.waitForIdleSync();Thread.sleep(2500);runner.screenshot(activity,"v0.13-attack.png");
+        perform(runner,()->{
+            Engine e=(Engine)field("game").get(activity);int hp=e.hull;
+            invoke(activity,"chooseBoss",new Class<?>[]{int.class},1);
+            if(!frame(activity).guarding() || frame(activity).ourDamage!=hp-e.hull) throw new AssertionError("defense visual differs from real damage");
+        });
+        runner.waitForIdleSync();Thread.sleep(2500);runner.screenshot(activity,"v0.13-defend.png");
+    }
+    private static BattleFrame frame(MainActivity activity) throws Exception {
+        Dialog dialog=(Dialog)field("eventDialog").get(activity);
+        android.view.View scene=dialog.getWindow().getDecorView().findViewWithTag("battle-scene");
+        if(scene==null) throw new AssertionError("battle scene missing");
+        Field snapshot=BattleSceneView.class.getDeclaredField("frame");snapshot.setAccessible(true);return (BattleFrame)snapshot.get(scene);
     }
     private static void checkRetreat(MainActivity activity,UiSmoke runner) throws Exception {
         perform(runner,()->{

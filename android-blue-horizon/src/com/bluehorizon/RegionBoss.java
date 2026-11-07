@@ -17,9 +17,11 @@ public final class RegionBoss {
     public static boolean choose(Engine e,int choice) {
         if(!e.expedition.active() || choice<0 || choice>2) return Adventure.fail(e,"진행 중인 강적 전투를 확인하세요.");
         if(e.town.moving() || e.adventure.pending>=0) return Adventure.fail(e,"다른 항해 사건을 먼저 마치세요.");
+        e.battleEnemyAfter=e.expedition.bossHP;
         if(choice==2) return retreat(e,"강적의 추격을 피해 후퇴했다. 선체 −4, 사기 −5, 하루 경과.");
         int region=e.expedition.bossRegion,next=intent(e),damage=attack(e,choice,next);
         e.expedition.bossHP=Math.max(0,e.expedition.bossHP-damage);e.expedition.bossTurn++;
+        e.battleEnemyAfter=e.expedition.bossHP;
         if(e.expedition.bossHP==0) return victory(e,region);
         return response(e,choice,next,damage);
     }

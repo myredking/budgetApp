@@ -5,6 +5,7 @@ import java.util.List;
 
 /** Deterministic offline simulation; Android-independent for JVM tests. */
 public final class Engine {
+    public transient int battleEnemyAfter=-1;
     public static final String[] PORTS = World.PORTS;
     public static final String[] GOODS = {"목재", "직물", "도자기", "향신료", "차", "은"};
     public static final String[] SHIPS = {"바람돛 슬루프", "새벽빛 캐러벨", "푸른별 갤리온"};

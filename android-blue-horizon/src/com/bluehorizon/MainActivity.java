@@ -32,6 +32,7 @@ public final class MainActivity extends Activity {
     private int tab=7, quantity=5, mapRegion=-1, selectedGood=0;
     private SailingView sailing;
     private TownView townView;
+    private BattleFrame battleFrame;
     private SharedPreferences prefs;
     private LinearLayout root, content;
     private TextView status;
@@ -415,7 +416,7 @@ public final class MainActivity extends Activity {
         if(notice!=null) { notice.cancel();notice=null; }
         int region=game.expedition.bossRegion,turn=game.expedition.bossTurn;
         LinearLayout box=column();box.setPadding(dp(14),dp(10),dp(14),dp(12));box.setBackgroundColor(NAVY);
-        box.addView(new BattleSceneView(this,game.level),new LinearLayout.LayoutParams(-1,dp(165)));
+        battleScene(box,game.expedition.bossHP,RegionBoss.maxHP(region));
         label(box,"우리 선체 "+game.hull+" / "+game.maxHull()+"   적 선체 "+game.expedition.bossHP+" / "+RegionBoss.maxHP(region),16,GOLD);
         label(box,RegionBoss.INTENTS[RegionBoss.intent(game)],14,TEAL);
         label(box,"동료 지원 +"+CrewConversations.support(game)+" · 숙련 +"+TownRpg.rankBonus(game)+" · "+game.expedition.bossTurn+"턴 경과",12,MUTED);
@@ -425,14 +426,30 @@ public final class MainActivity extends Activity {
         fullAction(box,"후퇴 · 선체 −4 / 사기 −5 / 하루",()->chooseBossTurn(2,turn),false);
         box.getChildAt(box.getChildCount()-1).setTag("boss-retreat");
         ScrollView scroll=new ScrollView(this);scroll.setTag("boss-scroll");scroll.addView(box);
-        eventDialog=new AlertDialog.Builder(this).setTitle(RegionBoss.NAMES[region]).setView(scroll).setCancelable(false).create();eventDialog.show();
+        eventDialog=new AlertDialog.Builder(this).setTitle(RegionBoss.NAMES[region]).setView(scroll).setCancelable(false).create();
+        eventDialog.getWindow().setWindowAnimations(0);eventDialog.show();
     }
     private void chooseBoss(int choice) {
         if(eventDialog!=null) { eventDialog.dismiss();eventDialog=null; }
-        int chapter=game.chapter,battles=game.adventure.battles;
+        int chapter=game.chapter,battles=game.adventure.battles,ourHP=game.hull,enemyHP=game.expedition.bossHP;
+        int enemyMax=RegionBoss.maxHP(game.expedition.bossRegion);
         boolean success=RegionBoss.choose(game,choice);
+        if(success) battleFrame=new BattleFrame(choice,ourHP,game.hull,game.maxHull(),enemyHP,game.battleEnemyAfter,enemyMax);
         changed(success,GameFeedback.battle(success,choice,game.expedition.active(),game.adventure.battles>battles));
-        if(success && !game.expedition.active() && game.chapter==chapter) dialog("해역 전투 결과",game.message);
+        if(success && !game.expedition.active() && game.chapter==chapter) battleResult("해역 전투 결과");
+        battleFrame=null;
+    }
+    private void battleScene(LinearLayout parent,int enemyHP,int enemyMax) {
+        BattleFrame snapshot=battleFrame;
+        if(snapshot==null) snapshot=new BattleFrame(-1,game.hull,game.hull,game.maxHull(),enemyHP,enemyHP,enemyMax);
+        battleFrame=null;parent.addView(new BattleSceneView(this,game.level,snapshot),new LinearLayout.LayoutParams(-1,dp(185)));
+    }
+    private void battleResult(String title) {
+        LinearLayout box=column();box.setPadding(dp(14),dp(10),dp(14),dp(12));box.setBackgroundColor(NAVY);
+        battleScene(box,0,1);label(box,game.message,15,INK);
+        ScrollView scroll=new ScrollView(this);scroll.addView(box);
+        eventDialog=new AlertDialog.Builder(this).setTitle(title).setView(scroll).setPositiveButton("항해 계속",(d,w)->eventDialog=null).create();
+        eventDialog.setOnDismissListener(d->eventDialog=null);eventDialog.getWindow().setWindowAnimations(0);eventDialog.show();
     }
     private void chooseBossTurn(int choice,int expected) {
         if(!game.expedition.active() || game.expedition.bossTurn!=expected) return;
@@ -538,6 +555,7 @@ public final class MainActivity extends Activity {
         if(game.adventure.pending<0 || game.town.moving()) return;
         if(eventDialog!=null && eventDialog.isShowing()) return;
         LinearLayout box=column();box.setPadding(dp(18),dp(12),dp(18),dp(12));box.setBackgroundColor(NAVY);
+        if(game.adventure.battleHP>0) battleScene(box,game.adventure.battleHP,30+game.level*8+World.region(game.port)*2);
         int person=Crew.guidePerson(game.chapter);
         box.addView(new PortraitView(this,person),new LinearLayout.LayoutParams(dp(92),dp(92)));
         label(box,Crew.NAMES[person]+"와 함께 결정하세요",14,GOLD);
@@ -550,17 +568,30 @@ public final class MainActivity extends Activity {
             final int choice=index;
             fullAction(box,EventCatalog.option(game,choice),()->{dialog.dismiss();root.post(()->resolveEvent(choice));},index==0);
         }
+        showEventWindow(dialog);
+    }
+    private void showEventWindow(AlertDialog dialog) {
+        if(game.adventure.battleHP>0) dialog.getWindow().setWindowAnimations(0);
         dialog.show();
     }
     private void resolveEvent(int choice) {
         if(isFinishing() || isDestroyed()) return;
         int chapter=game.chapter,souvenirs=game.adventure.souvenirs,battles=game.adventure.battles;
-        boolean battle=game.adventure.battleHP>0;
+        boolean battle=game.adventure.battleHP>0;int ourHP=game.hull,enemyHP=game.adventure.battleHP;
         boolean success=VoyageEvents.choose(game,choice);
+        if(battle && success) eventBattleFrame(choice,ourHP,enemyHP);
         String sound=battle?GameFeedback.battle(success,choice,game.adventure.battleHP>0,game.adventure.battles>battles):"trade";
         if(game.adventure.souvenirs!=souvenirs) sound="discovery";
         changed(success,sound);
-        if(success && game.adventure.pending<0 && game.chapter==chapter) dialog("항해 사건 결과",game.message);
+        eventResult(success,chapter,battle);
+        battleFrame=null;
+    }
+    private void eventResult(boolean success,int chapter,boolean battle) {
+        if(!success || game.adventure.pending>=0 || game.chapter!=chapter) return;
+        if(battle) battleResult("해상 전투 결과");else dialog("항해 사건 결과",game.message);
+    }
+    private void eventBattleFrame(int choice,int ourHP,int enemyHP) {
+        battleFrame=new BattleFrame(choice,ourHP,game.hull,game.maxHull(),enemyHP,game.battleEnemyAfter,30+game.level*8+World.region(game.port)*2);
     }
     private void adventurePage() {
         label(content,"ADVENTURE & COMMISSIONS",11,TEAL);label(content,"선장의 모험 수첩",25,INK);
