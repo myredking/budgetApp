@@ -15,6 +15,9 @@ CLIPS = (
     ('reinforce', .38, ((0, 67, .25), (.06, 74, .25))),
     ('win', .85, ((0, 72, .4), (.12, 76, .4), (.24, 79, .4), (.36, 84, .4))),
     ('loss', .7, ((0, 67, .3), (.14, 63, .3), (.28, 60, .3))),
+    ('skill_reinforce', .6, ((0, 76, .26), (.09, 79, .28), (.19, 84, .32))),
+    ('skill_shield', .7, ((0, 60, .5), (.05, 67, .5), (.14, 84, .45))),
+    ('skill_haste', .5, ((0, 67, .16), (.05, 72, .16), (.10, 79, .18), (.16, 86, .24))),
 )
 
 
@@ -49,7 +52,7 @@ def main() -> None:
         if name == 'hit':
             impact(buffer)
         write(name, buffer)
-    print('Generated seven original game effects')
+    print('Generated ten original game effects')
 
 
 if __name__ == '__main__':

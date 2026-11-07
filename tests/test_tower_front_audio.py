@@ -22,7 +22,9 @@ def test_music_loop() -> None:
 
 def test_sound_effects() -> None:
     root = Path(__file__).resolve().parents[1] / 'android-tower-front/res/raw'
-    names = ('action', 'error', 'hit', 'capture', 'reinforce', 'win', 'loss')
+    names = ('action', 'error', 'hit', 'capture', 'reinforce', 'win', 'loss',
+             'skill_reinforce', 'skill_shield', 'skill_haste')
+    seen: set[bytes] = set()
     for name in names:
         with wave.open(str(root / f'sfx_{name}.wav'), 'rb') as sound:
             assert sound.getnchannels() == 1 and sound.getsampwidth() == 2
@@ -31,3 +33,6 @@ def test_sound_effects() -> None:
             samples = array('h', sound.readframes(sound.getnframes()))
         assert .1 < max(abs(sample) for sample in samples) / 32768 < .9
         assert abs(samples[0]) < 100 and abs(samples[-1]) < 100
+        waveform = samples.tobytes()
+        assert waveform not in seen, 'Effects should have distinct waveforms'
+        seen.add(waveform)

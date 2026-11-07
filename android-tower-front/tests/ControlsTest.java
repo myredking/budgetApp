@@ -24,7 +24,21 @@ public final class ControlsTest {
         check(one.sendAll(0,2),"full dispatch may send final unit");
         touchTolerance();
         previewChecks();
+        toggleChecks();
         System.out.println("Touch and full dispatch checks passed");
+    }
+    private static void toggleChecks() {
+        Engine e=new Engine(1);BattleControls c=new BattleControls(e);
+        c.press(0);c.release(0);check(c.selected==0,"first tap keeps selection");
+        String before=SaveCodec.encode(e);
+        c.press(0);check(c.selected==0,"pressing selected tower still allows dragging");
+        c.release(0);check(c.selected==-1,"second tap on same tower deselects");
+        check(before.equals(SaveCodec.encode(e)),"deselect does not change troops or dispatch");
+        c.press(0);c.release(0);check(c.selected==0,"third tap can select again");
+        c.press(0);check(c.release(2)==1,"dragging selected tower to target still dispatches");
+        check(e.fleets.size()==1,"repeat press does not duplicate dispatch");
+        c.press(0);c.cancel();c.press(0);c.release(0);
+        check(c.selected==0,"cancel clears repeat-tap state");
     }
     private static void touchTolerance() {
         Engine e=new Engine(1);Engine.Tower t=e.towers.get(0);

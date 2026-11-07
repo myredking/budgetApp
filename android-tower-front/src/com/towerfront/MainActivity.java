@@ -17,7 +17,7 @@ import android.view.WindowInsets;
 import android.widget.*;
 
 public final class MainActivity extends Activity {
-    static final int BG=SceneStyle.PAPER,CARD=0xfffffcf3;
+    static final int BG=SceneStyle.PAPER,CARD=0xfffff3d7;
     static final int CYAN=SceneStyle.BLUE,MUTED=0xff657469;
     private FrameLayout root;
     private SharedPreferences preferences;
@@ -102,10 +102,15 @@ public final class MainActivity extends Activity {
     void resultSound(boolean win) {
         if(sound && effectsAudio!=null) effectsAudio.play(win?GameSound.WIN:GameSound.LOSS);
     }
+    void skillSound(int type) {
+        if(sound && effectsAudio!=null) effectsAudio.play(GameSound.SKILL_REINFORCE+type);
+    }
     void message(String text) {Toast.makeText(this,text,Toast.LENGTH_SHORT).show();}
     private int dp(int value) {return Math.round(value*getResources().getDisplayMetrics().density);}
     private GradientDrawable surface(int color) {
-        GradientDrawable shape=new GradientDrawable();shape.setColor(color);shape.setCornerRadius(dp(16));shape.setStroke(dp(1),0x183c563c);
+        GradientDrawable shape=new GradientDrawable();shape.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+        shape.setColors(color==CYAN?new int[]{0xff6ab9ee,CYAN}:new int[]{0xfffffae3,color});
+        shape.setCornerRadius(dp(24));shape.setStroke(dp(2),color==CYAN?0xff2a6394:0xffbfa078);
         return shape;
     }
     private TextView label(String text,int size,int color) {
@@ -129,12 +134,23 @@ public final class MainActivity extends Activity {
     private Button button(LinearLayout parent,String title,boolean primary,Runnable action) {
         Button button=new Button(this);button.setText(title);button.setAllCaps(false);button.setTextSize(16);
         button.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_BALANCED);
+        button.setTypeface(Typeface.create("sans-serif-rounded",Typeface.BOLD));
+        int icon=buttonIcon(title);
+        if(icon>=0) {button.setCompoundDrawablesRelativeWithIntrinsicBounds(new GameIconDrawable(icon,dp(34)),null,null,null);button.setCompoundDrawablePadding(dp(8));}
         button.setTextColor(primary?0xffffffff:SceneStyle.INK);
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22334455),surface(primary?CYAN:CARD),null));
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         button.setMinHeight(dp(58));button.setPadding(dp(12),dp(14),dp(12),dp(14));
         params.topMargin=dp(12);parent.addView(button,params);
-        button.setElevation(dp(2));button.setOnClickListener(view->action.run());return button;
+        button.setElevation(dp(4));button.setOnClickListener(view->action.run());return button;
+    }
+    private int buttonIcon(String title) {
+        if(title.equals("작전 기록실")) return GameIcons.STAR;
+        if(title.equals("플레이 방법")) return GameIcons.MAP;
+        if(title.equals("소리·진동·연출 설정")) return GameIcons.GEAR;
+        if(title.equals("시작 화면")) return GameIcons.CASTLE;
+        if(title.endsWith("이어하기") || title.equals("지난 전투 결과")) return GameIcons.PLAY;
+        return -1;
     }
     void showMenu() {
         campaignPage=false;
@@ -151,7 +167,7 @@ public final class MainActivity extends Activity {
         button(panel,"플레이 방법",false,()->showHelp());
         button(panel,"소리·진동·연출 설정",false,()->showSettings());
         panel.addView(label("별 기록  ·  "+Campaign.difficultyName(mode)+"  "+profile.total(mode)+" / 300",16,CYAN));
-        panel.addView(label("v7.1 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
+        panel.addView(label("v7.2 · 광고와 네트워크 연결 없이 플레이",12,MUTED));
     }
     private void openMissions() {
         missionChapter=(profile.unlocked(mode)-1)/10;showCampaign();
@@ -317,14 +333,14 @@ public final class MainActivity extends Activity {
     }
     void showHelp() {
         new AlertDialog.Builder(this).setTitle("지휘관 안내서")
-            .setMessage("① 아군 타워를 터치한 뒤 목표를 터치하거나 드래그해 출병하세요.\n\n"
+            .setMessage("① 아군 타워를 터치한 뒤 목표를 터치하거나 드래그해 출병하세요. 같은 타워를 한 번 더 누르면 선택이 취소됩니다.\n\n"
                 +"② 하단에서 50% / 100% 출병을 전환합니다. 아군 타워로 보내면 증원합니다.\n\n"
                 +"③ 생산 타워는 생산량 1.7배, 기동 타워는 이동 시간이 40% 짧습니다. 중립은 생산하지 않습니다.\n\n"
                 +"④ 방어 타워는 받는 공격 피해를 25% 줄입니다(소수점 올림). 아군 증원은 그대로 받습니다. 4번째 작전부터 등장합니다.\n\n"
                 +"⑤ 선택한 아군 타워는 병력 20 / 40을 사용해 강화할 수 있습니다. 생산량은 레벨마다 50% 증가합니다.\n\n"
                 +"⑥ 적 타워와 이동 병력을 모두 제거하면 승리합니다. 90초 / 180초 이내 승리로 별을 모으세요.\n\n"
                 +"⑦ 미션은 100단계입니다. 자유전에서는 맵과 AI 1~10진영을 고르며, AI끼리도 전투합니다. 자유전은 미션 기록에 영향을 주지 않습니다.\n\n"
-                +"⑧ 아군 선택 후 하단 스킬을 사용하세요. 증원은 35에너지로20명, 보호막은30에너지로6초 피해절반, 가속은25에너지로6초 이동1.75배입니다.\n\n"
+                +"⑧ 아군 선택 후 하단 스킬을 사용하세요. 증원은 35에너지로20명, 보호막은30에너지로6초 피해절반, 가속은25에너지로6초 이동1.75배입니다. 남은 쿨타임은 숫자와 원형 게이지로 표시됩니다.\n\n"
                 +"⑨ 보급 거점을 가진 진영은 전체 생산+35%입니다. 플레이어는 에너지 회복도3→5/초가 됩니다. 미션은 전멸·30초사수·시간생존·3거점12초유지로 나뉩니다. 생존 별점은 종료 시 3거점 이상3개, 2거점2개, 1거점1개입니다.\n\n"
                 +"⑩ 작은 화면에서는 전장 오른쪽 +로 확대하고 빈 땅을 드래그해 이동하세요. 전체 버튼으로 전체 지도로 돌아옵니다. 빈 땅을 가볍게 누르면 선택이 해제됩니다.\n\n"
                 +"⑪ 전투는 자동 저장됩니다. 홈으로 돌아가거나 앱을 닫아도 이어갈 수 있습니다.\n\n"

@@ -9,11 +9,13 @@ public final class BattleView extends View {
     private final Engine engine;
     private final BattleControls controls;
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Typeface bold=Typeface.create("sans-serif",Typeface.BOLD);
+    private final Typeface bold=Typeface.create("sans-serif-rounded",Typeface.BOLD);
     private final BattleEffects effects=new BattleEffects();
     private final EffectRenderer renderer=new EffectRenderer();
     private final TacticsPainter tactics=new TacticsPainter();
     private final FactionPainter factions=new FactionPainter();
+    private final GameIcons icons=new GameIcons();
+    private final SkillEffectsPainter skillPainter=new SkillEffectsPainter();
     private final WorldRenderer world;
     private final int[] depth;
     private final int[] teamStrength=new int[12];
@@ -73,10 +75,10 @@ public final class BattleView extends View {
         paint.setColor(color);c.drawText(value,x,y,paint);
     }
     private void box(Canvas c,float x,float y,float width,float height,int color) {
-        paint.setColor(0x10334455);c.drawRoundRect(x,y+2,x+width,y+height+2,12,12,paint);
-        paint.setColor(color);c.drawRoundRect(x,y,x+width,y+height,12,12,paint);
-        paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.6f);paint.setColor(0x18334455);
-        c.drawRoundRect(x,y,x+width,y+height,12,12,paint);paint.setStyle(Paint.Style.FILL);
+        paint.setColor(0x303e594f);c.drawRoundRect(x,y+3,x+width,y+height+3,17,17,paint);
+        paint.setColor(color);c.drawRoundRect(x,y,x+width,y+height,17,17,paint);
+        paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1.1f);paint.setColor(0x408a744e);
+        c.drawRoundRect(x,y,x+width,y+height,17,17,paint);paint.setStyle(Paint.Style.FILL);
     }
     private void line(Canvas c,float ax,float ay,float bx,float by,int color,float width) {
         paint.setColor(color);paint.setStrokeWidth(width);c.drawLine(ax,ay,bx,by,paint);
@@ -86,7 +88,7 @@ public final class BattleView extends View {
         if(running && !paused) tick(dt);
         real.drawColor(MainActivity.BG);
         real.save();real.translate(left,top);real.scale(scale,scale);
-        drawWorld(real);header(real);footer(real);drawMapZoom(real);
+        drawWorld(real);skillPainter.screen(real,effects,screen);header(real);footer(real);drawMapZoom(real);
         drawOverlay(real);
         real.restore();if(effects.needsFrame(running,paused,engine.result())) postInvalidateDelayed(16);
     }
@@ -98,7 +100,7 @@ public final class BattleView extends View {
         for(Engine.Fleet f:engine.fleets) world.fleet(c,engine,f);
         for(int i:depth) world.tower(c,engine.towers.get(i),controls.selected==i,effects.towerScale(i),SceneStyle.buildingScale(engine),engine.elapsed);
         for(Engine.Fleet f:engine.fleets) world.fleetBadge(c,engine,f,!camera.overview() || f.owner==1);
-        tactics.buffs(c,engine);renderer.drawBursts(c,effects);drawDrag(c);c.restore();
+        tactics.buffs(c,engine);renderer.drawBursts(c,effects);skillPainter.world(c,effects);drawDrag(c);c.restore();
     }
     private void drawMapZoom(Canvas c) {
         box(c,screen.zoomLeft(),screen.zoomTop(),screen.buttonHeight,screen.buttonHeight,MainActivity.CARD);
@@ -155,6 +157,7 @@ public final class BattleView extends View {
     }
     private void header(Canvas c) {
         boolean compact=screen.compact;
+        if(screen.fontFactor<=1.05f) icons.draw(c,GameIcons.CASTLE,31,screen.titleY()-7,13);
         text(c,"TOWER FRONT",133,screen.titleY(),compact?18:21,WHITE);
         String title=engine.skirmish?"자유전 · "+Skirmish.name(engine.mapId)+" · AI"+engine.enemyCount:String.format(Locale.KOREA,"%02d  %s",engine.level,Campaign.name(engine.level));
         text(c,title,143,screen.nameY(),12,GRAY);
@@ -216,9 +219,11 @@ public final class BattleView extends View {
         if(dragging && controls.selected>=0) hint=previewLabel();
         text(c,hint,200,screen.noticeY,12,WHITE);
         box(c,18,screen.commandTop,174,screen.buttonHeight,MainActivity.CARD);
-        text(c,"출병 "+(controls.all?"100%":"50%"),105,screen.commandTop+screen.buttonHeight/2+screen.font(16)/3,16,MainActivity.CYAN);
+        icons.draw(c,GameIcons.FLAGS,40,screen.commandTop+screen.buttonHeight/2,15);
+        textIn(c,"출병 "+(controls.all?"100%":"50%"),122,screen.commandTop+screen.buttonHeight/2+screen.font(16)/3,16,MainActivity.CYAN,126);
         box(c,208,screen.commandTop,174,screen.buttonHeight,canUpgrade()?MainActivity.CYAN:MainActivity.CARD);
-        text(c,upgradeLabel(),295,screen.commandTop+screen.buttonHeight/2+screen.font(14)/3,14,canUpgrade()?Color.WHITE:GRAY);
+        icons.draw(c,GameIcons.HAMMER,230,screen.commandTop+screen.buttonHeight/2,15);
+        textIn(c,upgradeLabel(),312,screen.commandTop+screen.buttonHeight/2+screen.font(14)/3,14,canUpgrade()?Color.WHITE:GRAY,126);
         tactics.controls(c,engine,controls.selected,screen);
     }
     private void factionLegend(Canvas c) {
@@ -236,7 +241,7 @@ public final class BattleView extends View {
     private String upgradeLabel() {
         if(controls.selected<0) return "타워 선택";
         Engine.Tower t=engine.towers.get(controls.selected);
-        return t.rank>=3?"최대 레벨":"강화 · 병력 "+20*t.rank;
+        return t.rank>=3?"최대 레벨":"강화 "+20*t.rank;
     }
     private void overlay(Canvas c) {
         if(paused && engine.result()==0) {pauseOverlay(c);return;}
@@ -384,9 +389,13 @@ public final class BattleView extends View {
             if(!mapPanning) controls.cancel();panCandidate=false;mapPanning=false;return;
         }
         int target=gestureTarget(x,y);
-        int result=controls.release(target);
+        finishOrder(target);
+    }
+    private void finishOrder(int target) {
+        int selected=controls.selected;int result=controls.release(target);
         if(result==1) {notice("병력 출발");signal(true);}
         if(result==-1) {notice("출병할 병력이 부족합니다");signal(false);}
+        if(result==0 && selected>=0 && controls.selected<0) notice("타워 선택 취소");
     }
     @Override public boolean performClick() {super.performClick();return true;}
     private void activate(int action) {
@@ -418,8 +427,16 @@ public final class BattleView extends View {
     }
     private void useSkill(int type) {
         boolean used=engine.useSkill(type,controls.selected);
-        notice(used?BattleRules.skillName(type)+" 사용!":skillFailure(type));signal(used);
-        if(used) host.saveBattle(false);
+        notice(used?BattleRules.skillName(type)+" 사용!":skillFailure(type));
+        if(used) {skillFeedback(type);host.saveBattle(false);}else signal(false);
+    }
+    private void skillFeedback(int type) {
+        host.skillSound(type);soundCooldown=.3;
+        if(host.haptics) performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        if(host.visuals) {
+            Engine.Tower t=engine.towers.get(controls.selected);
+            effects.cast(type,BattleControls.x(t),BattleControls.y(t));
+        }
     }
     private String skillFailure(int type) {
         if(controls.selected<0) return "아군 건물을 먼저 선택하세요";

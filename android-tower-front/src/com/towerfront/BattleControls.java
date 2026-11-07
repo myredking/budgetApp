@@ -5,6 +5,7 @@ public final class BattleControls {
     public int selected=-1;
     public boolean all;
     private boolean pressed;
+    private boolean repeated;
     public BattleControls(Engine battle) {engine=battle;}
     public static float x(Engine.Tower t) {return 32+(float)t.x*336;}
     public static float y(Engine.Tower t) {return 176+(float)t.y*470;}
@@ -39,6 +40,7 @@ public final class BattleControls {
     }
     public void press(int index) {
         validate();pressed=index>=0;
+        repeated=selected>=0 && selected==index;
         if(!pressed || index>=engine.towers.size()) return;
         if(selected<0 && engine.towers.get(index).owner==1) selected=index;
     }
@@ -46,7 +48,8 @@ public final class BattleControls {
         validate();
         if(!pressed) return 0;
         pressed=false;
-        if(selected<0 || target<0 || target==selected) return 0;
+        if(target==selected) {if(repeated) selected=-1;return 0;}
+        if(selected<0 || target<0) return 0;
         boolean sent=all?engine.sendAll(selected,target):engine.send(selected,target);
         selected=-1;return sent?1:-1;
     }
@@ -57,5 +60,5 @@ public final class BattleControls {
         int units=engine.towers.get(selected).units;
         return all?units:units/2;
     }
-    public void cancel() {selected=-1;pressed=false;}
+    public void cancel() {selected=-1;pressed=false;repeated=false;}
 }

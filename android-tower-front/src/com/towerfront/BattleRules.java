@@ -58,6 +58,7 @@ public final class BattleRules {
         b.owner=owner;b.units=units;b.kind=kind;b.rank=rank;b.growth=growth;
     }
     public static int cost(int type) {return COSTS[type];}
+    public static int cooldown(int type) {return COOLDOWNS[type];}
     public static String skillName(int type) {return SKILL_NAMES[type];}
     public boolean ready(int type,int target) {
         if(type<0 || type>2 || target<0 || target>=engine.towers.size()) return false;

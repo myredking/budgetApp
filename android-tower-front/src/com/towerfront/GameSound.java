@@ -8,7 +8,8 @@ import java.util.Arrays;
 /** Short, bounded polyphonic effects; never resume stale sounds after a pause. */
 public final class GameSound {
     public static final int ACTION=0,ERROR=1,HIT=2,CAPTURE=3,REINFORCE=4,WIN=5,LOSS=6;
-    private static final String[] NAMES={"action","error","hit","capture","reinforce","win","loss"};
+    public static final int SKILL_REINFORCE=7,SKILL_SHIELD=8,SKILL_HASTE=9;
+    private static final String[] NAMES={"action","error","hit","capture","reinforce","win","loss","skill_reinforce","skill_shield","skill_haste"};
     private final SoundPool pool;
     private final int[] samples=new int[NAMES.length],streams=new int[6];
     private final boolean[] ready=new boolean[NAMES.length];

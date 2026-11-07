@@ -4,6 +4,18 @@ import java.util.Iterator;
 
 /** Transient visuals: never persisted and never used to calculate battle outcomes. */
 public final class BattleEffects {
+    public static final class SkillBurst {
+        public final int type;
+        public final float x,y;
+        public double age;
+        SkillBurst(int skill,float px,float py) {type=skill;x=px;y=py;}
+    }
+    public final ArrayList<SkillBurst> casts=new ArrayList<>();
+    public void cast(int type,float x,float y) {
+        if(type<0 || type>2) return;
+        if(casts.size()>=6) casts.remove(0);
+        casts.add(new SkillBurst(type,x,y));
+    }
     public static final class Burst {
         public final Engine.Impact impact;
         public final float x,y;
@@ -39,6 +51,8 @@ public final class BattleEffects {
             if(burst.age>=1.1) it.remove();
         }
         updateConfetti(dt);
+        Iterator<SkillBurst> skills=casts.iterator();
+        while(skills.hasNext()) {SkillBurst skill=skills.next();skill.age+=dt;if(skill.age>=.85) skills.remove();}
     }
     private void updateConfetti(double dt) {
         Iterator<Confetti> it=confetti.iterator();
@@ -56,8 +70,8 @@ public final class BattleEffects {
         if(age>=.6) return 1;
         return 1+(float)(Math.sin(age/.6*Math.PI)*.2);
     }
-    public void clear() {bursts.clear();confetti.clear();}
+    public void clear() {bursts.clear();confetti.clear();casts.clear();}
     public boolean needsFrame(boolean running,boolean paused,int result) {
-        return running && !paused && (result==0 || !bursts.isEmpty() || !confetti.isEmpty());
+        return running && !paused && (result==0 || !bursts.isEmpty() || !confetti.isEmpty() || !casts.isEmpty());
     }
 }
