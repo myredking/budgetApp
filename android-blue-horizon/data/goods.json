@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "marketPilot": {"port": 2, "good": "ceramics", "unitsPerStep": 5, "discountPerStep": 5, "recoveryDays": 2, "maxSteps": 4},
   "goods": [
     {"id": "wood", "legacySlot": 0},
     {"id": "cloth", "legacySlot": 1},

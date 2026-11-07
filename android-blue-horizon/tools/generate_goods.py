@@ -77,9 +77,27 @@ def java_list(values: list[str] | list[int] | tuple[str, ...]) -> str:
     return "{" + ", ".join(json.dumps(value, ensure_ascii=False) for value in values) + "}"
 
 
+def market_values(data: dict[str, Any]) -> list[int]:
+    rule = data.get("marketPilot")
+    if not isinstance(rule, dict) or rule.get("good") not in LEGACY_IDS:
+        raise ValueError("Invalid market pilot good")
+    keys = ("port", "unitsPerStep", "discountPerStep", "recoveryDays", "maxSteps")
+    limits = ((0, PORT_COUNT - 1), (1, 100), (1, 50), (1, 100), (1, 20))
+    values = [rule.get(key) for key in keys]
+    for key, value, (low, high) in zip(keys, values, limits):
+        if type(value) is not int or not low <= value <= high:
+            raise ValueError(f"Invalid market pilot field: {key}")
+    port, units, discount, recovery, maximum = values
+    if discount * maximum > 50:
+        raise ValueError("Market pilot discount exceeds 50 percent")
+    return [port, LEGACY_IDS.index(rule["good"]), units, discount, recovery, maximum]
+
+
 def generate(project: Path, output: Path) -> Path:
     source = (project / "data/goods.json").read_text(encoding="utf-8")
-    prices = validated_prices(json.loads(source, object_pairs_hook=unique_fields))
+    data = json.loads(source, object_pairs_hook=unique_fields)
+    prices = validated_prices(data)
+    market = market_values(data)
     names, descriptions = localized_values(project / "res/values/strings.xml")
     rows = ",\n        ".join(java_list(row) for row in prices)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -87,6 +105,9 @@ def generate(project: Path, output: Path) -> Path:
 package com.bluehorizon;
 
 public final class GoodsCatalog {{
+    public static final int MARKET_PORT={market[0]}, MARKET_GOOD={market[1]};
+    public static final int MARKET_UNITS={market[2]}, MARKET_DISCOUNT={market[3]};
+    public static final int MARKET_RECOVERY={market[4]}, MARKET_MAX_STEPS={market[5]};
     private static final String[] IDS={java_list(LEGACY_IDS)};
     private static final String[] NAMES={java_list(names)};
     private static final String[] DESCRIPTIONS={java_list(descriptions)};

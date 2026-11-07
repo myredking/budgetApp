@@ -9,7 +9,7 @@ import java.util.Base64;
 import java.util.zip.CRC32;
 
 public final class SaveCodec {
-    public static final int VERSION=9;
+    public static final int VERSION=11;
     public static final String PREFIX="BLUE"+VERSION+":";
     public static String encode(Engine e) {
         try {
@@ -30,6 +30,7 @@ public final class SaveCodec {
             e.town.write(out);
             e.expedition.write(out);
             e.life.write(out);
+            e.market.write(out);
             out.flush();
             byte[] data = bytes.toByteArray(); CRC32 crc = new CRC32(); crc.update(data);
             return PREFIX + crc.getValue() + ":" + Base64.getEncoder().encodeToString(data);
@@ -56,15 +57,8 @@ public final class SaveCodec {
         return e;
     }
     private static int version(String header) {
-        if(header.equals("BLUE1")) return 1;
-        if(header.equals("BLUE2")) return 2;
-        if(header.equals("BLUE3")) return 3;
-        if(header.equals("BLUE4")) return 4;
-        if(header.equals("BLUE5")) return 5;
-        if(header.equals("BLUE6")) return 6;
-        if(header.equals("BLUE7")) return 7;
-        if(header.equals("BLUE8")) return 8;
-        if(header.equals("BLUE9")) return 9;
+        if(header.equals(PREFIX.substring(0,PREFIX.length()-1))) return VERSION;
+        for(int version=1;version<=9;version++) if(header.equals("BLUE"+version)) return version;
         return 0;
     }
     private static Engine readState(DataInputStream in,int version) throws IOException {
@@ -92,11 +86,12 @@ public final class SaveCodec {
         if(version>=7) e.town=TownState.read(in);
         if(version>=8) e.expedition=ExpeditionState.read(in);
         if(version>=9) e.life=PortLifeState.read(in);
+        if(version>=11) e.market.read(in);
     }
     private static boolean valid(Engine e) {
         if (!World.validPort(e.port) || !range(e.level,1,3) || !range(e.chapter,0,Story.REVEALS.length)) return false;
         if (!range(e.gold,0,100000000) || !range(e.day,1,10000000)) return false;
-        return validProgress(e) && validCargo(e) && validInfluence(e) && validExtras(e);
+        return validProgress(e) && validCargo(e) && validInfluence(e) && validExtras(e) && e.market.valid(e.day);
     }
     private static boolean validExtras(Engine e) { return e.adventure.valid() && e.crew.valid(e.chapter) && e.refits.valid(e.level) && e.rivals.valid(e) && e.town.valid(e) && e.expedition.valid(e) && e.life.valid(e); }
     private static boolean validProgress(Engine e) {

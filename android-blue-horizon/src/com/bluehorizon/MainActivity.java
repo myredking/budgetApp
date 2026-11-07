@@ -776,6 +776,8 @@ public final class MainActivity extends Activity {
         if(protectedCargo>0) label(box,"◆ 목표용 "+protectedCargo+"개 · 판매 주문에서 기본 보관",13,TEAL);
         label(box,GoodsCatalog.description(good),14,INK);
         label(box,"오늘의 단가  ·  매입 "+game.buyPrice(good)+" G  /  판매 "+game.sellPrice(good)+" G",15,GOLD);
+        if(MarketPressure.applies(game.port,good)) label(box,getString(R.string.ui_market_pilot,
+            MarketPressure.discount(game,game.port,good),GoodsCatalog.MARKET_RECOVERY),12,TEAL);
         label(box,"주문서에서 수량·예산·최대 수량을 선택하고 결제 내역을 확인하세요.",12,MUTED);
         tradeHint(box,good);
         LinearLayout buttons=row(); box.addView(buttons);

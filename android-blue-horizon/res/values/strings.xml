@@ -1,5 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
+    <string name="ui_market_pilot">현지 시세 · 판매가 %1$d%% 하락 · %2$d일마다 한 단계 회복</string>
     <string name="good_wood_name">목재</string>
     <string name="good_wood_description">곧게 뻗은 원목. 항구의 조선공과 건축가들이 찾는 기본 교역품입니다.</string>
     <string name="good_cloth_name">직물</string>

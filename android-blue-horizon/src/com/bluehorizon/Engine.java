@@ -5,6 +5,7 @@ import java.util.List;
 
 /** Deterministic offline simulation; Android-independent for JVM tests. */
 public final class Engine {
+    public final MarketPressure market=new MarketPressure();
     public transient int battleEnemyAfter=-1;
     public static final String[] PORTS = World.PORTS;
     public static final String[] GOODS = GoodsCatalog.names();
@@ -36,7 +37,8 @@ public final class Engine {
     public int sellPriceAt(int harbor,int good) {
         int quote=World.price(harbor,good)*Math.min(94,CrewAbilities.salePercent(this,harbor)+Rivals.saleBonus(this,harbor))/100;
         int cheapest=World.price(harbor,good)*95/100;
-        return Math.min(quote,Math.max(1,cheapest-1));
+        int base=Math.min(quote,Math.max(1,cheapest-1));
+        return base*(100-MarketPressure.discount(this,harbor,good))/100;
     }
     public int sellPrice(int good) { return sellPriceAt(port,good); }
     public boolean hasVisited(int harbor) { return World.validPort(harbor) && (visited & (1L << harbor))!=0; }
@@ -61,7 +63,7 @@ public final class Engine {
         int earned = sellPrice(good) * amount;
         inventory[good] -= amount; gold += earned; profit += earned;
         fame += Math.max(1, amount / 5);
-        Rivals.onSale(this,amount);
+        Rivals.onSale(this,amount);market.recordSale(this,good,amount);
         note(GOODS[good] + " " + amount + "개 판매 · +" + earned + " G");
         deliveryStory(good, amount);
         advanceStory();
