@@ -1,4 +1,4 @@
-"""Compose two original synthesized nautical loops and six short game cues."""
+"""Compose original nautical loops and contextual game effects."""
 from array import array
 import math
 import random
@@ -86,6 +86,29 @@ def cannon() -> None:
     write("cannon", samples)
 
 
+def impact(name: str, frequency: float, count: int) -> None:
+    rng = random.Random(1206)
+    samples = array("f", [0]) * round(.8 * RATE)
+    for hit in range(count):
+        offset = round(hit * .17 * RATE)
+        for index in range(min(round(.3 * RATE), len(samples) - offset)):
+            time = index / RATE
+            noise = rng.uniform(-1, 1)
+            body = math.sin(math.tau * frequency * time) + .3 * noise
+            samples[offset + index] += body * math.exp(-22 * time) * min(1, time / .003)
+    write(name, samples)
+
+
+def feedback_effects() -> None:
+    cue("arrival", [74,81,86], .14, .5)
+    cue("retreat", [74,69,62], .1, .25)
+    cue("victory", [62,66,69,74,81,86], .12, .55)
+    cue("defeat", [57,53,50,45], .16, .45)
+    cue("rest", [69,74,78,81], .13, .5)
+    impact("repair", 170, 3)
+    impact("defend", 760, 1)
+
+
 def main() -> None:
     ASSETS.mkdir(exist_ok=True)
     arrangement("harbor", 100, [[50,54,57],[55,59,62],[47,50,54],[45,49,52]],
@@ -102,7 +125,8 @@ def main() -> None:
     cue("upgrade", [57,62,66,69,74], .075, .32)
     cue("discovery", [74,81,86,90], .08, .3)
     cannon()
-    print("Created 2 original music loops and 8 effects (mono PCM, 22050 Hz).")
+    feedback_effects()
+    print("Created 2 original music loops and 15 effects (mono PCM, 22050 Hz).")
 
 
 if __name__ == "__main__":

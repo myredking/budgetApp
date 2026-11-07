@@ -23,6 +23,9 @@ public final class PresentationTest {
         check(!audio.playing() && out.effects==effects,"focus loss stops music and effects");
         audio.focus(true,false);check(audio.playing(),"focus regained while active");
         float normal=out.volume;audio.focus(true,true);check(out.volume<normal,"ducking lowers music");
+        audio.musicLevel(50);check(Math.abs(out.volume-.035f)<.001,"chosen volume remains ducked");
+        audio.focus(true,false);check(Math.abs(out.volume-.12f)<.001,"focus gain preserves chosen volume");
+        audio.musicLevel(0);check(out.volume==0,"zero volume remains silent");
         audio.pause();audio.focus(true,false);
         check(!audio.playing(),"late focus gain after background does not restart");
         audio.resume(false);check(!audio.playing(),"focus denied stays silent");

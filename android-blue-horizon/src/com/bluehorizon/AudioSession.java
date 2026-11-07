@@ -11,6 +11,7 @@ public final class AudioSession {
     private final Output output;
     private boolean active,focused,ducked,bgm,sfx;
     private String scene="sea",running="";
+    private int musicLevel=100;
     public AudioSession(Output sink,boolean music,boolean effects) { output=sink;bgm=music;sfx=effects; }
     public boolean playing() { return !running.isEmpty(); }
     public void resume(boolean focusGranted) { active=true;focused=focusGranted;ducked=false;sync(); }
@@ -19,6 +20,7 @@ public final class AudioSession {
     public void focus(boolean granted,boolean duck) { focused=granted;ducked=duck;sync(); }
     public void musicEnabled(boolean enabled) { bgm=enabled;sync(); }
     public void effectsEnabled(boolean enabled) { sfx=enabled; }
+    public void musicLevel(int value) { musicLevel=AudioMix.level(value);sync(); }
     public void scene(String next) {
         if(!next.equals("sea") && !next.equals("harbor")) throw new IllegalArgumentException("Unknown audio scene");
         scene=next;sync();
@@ -27,6 +29,6 @@ public final class AudioSession {
     private void sync() {
         if(!active || !focused || !bgm) { output.pauseMusic();running="";return; }
         if(!running.equals(scene)) running=output.startMusic(scene)?scene:"";
-        output.volume(ducked?.07f:.24f);
+        output.volume(AudioMix.music(musicLevel,ducked));
     }
 }

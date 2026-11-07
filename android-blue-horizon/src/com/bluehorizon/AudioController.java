@@ -34,6 +34,7 @@ public final class AudioController implements AudioSession.Output {
         attributes=new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME)
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build();
         session=new AudioSession(this,musicEnabled(),effectsEnabled());
+        session.musicLevel(musicVolume());
         focusRequest=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(attributes)
             .setAcceptsDelayedFocusGain(true).setWillPauseWhenDucked(false)
             .setOnAudioFocusChangeListener(change->focusChanged(change),new Handler(Looper.getMainLooper())).build();
@@ -42,7 +43,7 @@ public final class AudioController implements AudioSession.Output {
         loadEffects();
     }
     private void loadEffects() {
-        for(String name:new String[]{"click","trade","depart","chapter","error","upgrade","cannon","discovery"}) {
+        for(String name:new String[]{"click","trade","depart","chapter","error","upgrade","cannon","discovery","arrival","repair","defend","retreat","victory","defeat","rest"}) {
             try(AssetFileDescriptor file=context.getAssets().openFd(name+".wav")) {
                 ids.put(name,sounds.load(file,1));
             } catch(IOException ex) { android.util.Log.w("BlueHorizon","Effect unavailable: "+name,ex); }
@@ -50,6 +51,15 @@ public final class AudioController implements AudioSession.Output {
     }
     public boolean musicEnabled() { return prefs.getBoolean("music_enabled",true); }
     public boolean effectsEnabled() { return prefs.getBoolean("effects_enabled",true); }
+    public int musicVolume() { return AudioMix.level(prefs.getInt("music_volume",100)); }
+    public int effectsVolume() { return AudioMix.level(prefs.getInt("effects_volume",100)); }
+    public void musicVolume(int value) {
+        prefs.edit().putInt("music_volume",AudioMix.level(value)).apply();session.musicLevel(value);
+    }
+    public void effectsVolume(int value) {
+        prefs.edit().putInt("effects_volume",AudioMix.level(value)).apply();
+        if(value<=0) stopEffects();
+    }
     public void musicEnabled(boolean value) {
         prefs.edit().putBoolean("music_enabled",value).apply();session.musicEnabled(value);refreshFocus();
     }
@@ -83,7 +93,8 @@ public final class AudioController implements AudioSession.Output {
         try(AssetFileDescriptor file=context.getAssets().openFd(scene+".wav")) {
             player.setAudioAttributes(attributes);
             player.setDataSource(file.getFileDescriptor(),file.getStartOffset(),file.getLength());
-            player.setLooping(true);player.setVolume(.24f,.24f);player.prepare();
+            float gain=AudioMix.music(musicVolume(),false);
+            player.setLooping(true);player.setVolume(gain,gain);player.prepare();
             player.setOnErrorListener((failed,what,extra)->{if(music==failed) session.failed();return true;});
             music=player;player.start();return true;
         } catch(IOException | RuntimeException ex) {
@@ -96,7 +107,8 @@ public final class AudioController implements AudioSession.Output {
     @Override public void volume(float value) { if(music!=null) music.setVolume(value,value); }
     @Override public void effect(String name) {
         Integer id=ids.get(name);if(id==null || !ready.contains(id)) return;
-        int stream=sounds.play(id,.45f,.45f,1,0,1);
+        float gain=AudioMix.effect(effectsVolume());if(gain==0) return;
+        int stream=sounds.play(id,gain,gain,1,0,1);
         if(stream!=0) streams.add(stream);
         while(streams.size()>8) sounds.stop(streams.remove(0));
     }

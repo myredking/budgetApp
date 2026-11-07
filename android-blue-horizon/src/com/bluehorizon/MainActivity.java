@@ -186,7 +186,7 @@ public final class MainActivity extends Activity {
         scene("facility-scenes-v1.png",7);
         npc("주점 주인","어서 와요, 선장님. 따뜻한 식사와 먼 항구의 소문이 기다리고 있어요.");
         label(content,"일행 사기 "+game.town.morale+" / 100",16,TEAL);
-        fullAction(content,"식사와 휴식 · 60 G / 하루 / 사기 +25",()->changed(TownRpg.rest(game)),true);
+        fullAction(content,"식사와 휴식 · 60 G / 하루 / 사기 +25",()->changed(TownRpg.rest(game),"rest"),true);
         fullAction(content,"현지 소문 듣기 · 첫 방문 명성 +1",()->{
             boolean success=TownRpg.hearRumor(game);changed(success);
             if(success) dialog("주점에서 들은 이야기",game.message);
@@ -228,7 +228,7 @@ public final class MainActivity extends Activity {
     private void finishSailing() {
         if(!game.town.moving()) return;
         if(sailing!=null) sailing.stop();sailing=null;
-        int previous=TravelFlow.arrive(game);tab=7;save();render();audio.play("discovery");
+        int previous=TravelFlow.arrive(game);tab=7;save();render();audio.play("arrival");
         if(game.chapter>previous) storyReveal(previous);
         else if(game.adventure.pending>=0) showEvent();
     }
@@ -429,8 +429,9 @@ public final class MainActivity extends Activity {
     }
     private void chooseBoss(int choice) {
         if(eventDialog!=null) { eventDialog.dismiss();eventDialog=null; }
-        int chapter=game.chapter;
-        boolean success=RegionBoss.choose(game,choice);changed(success,"cannon");
+        int chapter=game.chapter,battles=game.adventure.battles;
+        boolean success=RegionBoss.choose(game,choice);
+        changed(success,GameFeedback.battle(success,choice,game.expedition.active(),game.adventure.battles>battles));
         if(success && !game.expedition.active() && game.chapter==chapter) dialog("해역 전투 결과",game.message);
     }
     private void chooseBossTurn(int choice,int expected) {
@@ -441,7 +442,28 @@ public final class MainActivity extends Activity {
         LinearLayout box=card(content);label(box,"음악과 효과음",18,GOLD);
         label(box,"항해 지도와 항구 화면에서 서로 다른 창작 연주곡이 재생됩니다. 앱을 벗어나면 소리가 멈춥니다.",13,INK);
         soundSwitch(box,"배경음악",audio.musicEnabled(),true);
+        volumeSlider(box,true);
         soundSwitch(box,"효과음",audio.effectsEnabled(),false);
+        volumeSlider(box,false);
+        label(box,"미리 듣기도 효과음 켜기와 볼륨 설정을 따릅니다. 휴대폰 미디어 음량도 확인하세요.",12,MUTED);
+        LinearLayout previews=row();box.addView(previews);
+        action(previews,"입항 종소리 듣기",()->audio.play("arrival"),false);
+        action(previews,"포격음 듣기",()->audio.play("cannon"),false);
+    }
+    private void volumeSlider(LinearLayout parent,boolean music) {
+        int value=music?audio.musicVolume():audio.effectsVolume();
+        TextView caption=text((music?"음악":"효과음")+" 볼륨 · "+value+"%",13,GOLD);parent.addView(caption);
+        android.widget.SeekBar slider=new android.widget.SeekBar(this);slider.setMax(100);slider.setProgress(value);
+        slider.setTag(music?"music-volume":"effects-volume");slider.setContentDescription(music?"배경음악 볼륨":"효과음 볼륨");
+        slider.setMinimumHeight(dp(48));parent.addView(slider,new LinearLayout.LayoutParams(-1,dp(48)));
+        slider.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(android.widget.SeekBar bar,int progress,boolean user) {
+                if(music) audio.musicVolume(progress);else audio.effectsVolume(progress);
+                caption.setText((music?"음악":"효과음")+" 볼륨 · "+progress+"%");
+            }
+            @Override public void onStartTrackingTouch(android.widget.SeekBar bar) { }
+            @Override public void onStopTrackingTouch(android.widget.SeekBar bar) { if(!music) audio.play("trade"); }
+        });
     }
     private void soundSwitch(LinearLayout parent,String title,boolean checked,boolean music) {
         Switch toggle=new Switch(this);toggle.setText(title);toggle.setTextSize(16);toggle.setTextColor(INK);
@@ -532,10 +554,10 @@ public final class MainActivity extends Activity {
     }
     private void resolveEvent(int choice) {
         if(isFinishing() || isDestroyed()) return;
-        int chapter=game.chapter,souvenirs=game.adventure.souvenirs;
+        int chapter=game.chapter,souvenirs=game.adventure.souvenirs,battles=game.adventure.battles;
         boolean battle=game.adventure.battleHP>0;
         boolean success=VoyageEvents.choose(game,choice);
-        String sound=battle && choice<2?"cannon":"trade";
+        String sound=battle?GameFeedback.battle(success,choice,game.adventure.battleHP>0,game.adventure.battles>battles):"trade";
         if(game.adventure.souvenirs!=souvenirs) sound="discovery";
         changed(success,sound);
         if(success && game.adventure.pending<0 && game.chapter==chapter) dialog("항해 사건 결과",game.message);
@@ -691,7 +713,7 @@ public final class MainActivity extends Activity {
         label(ship,ShipPerformance.description(game.level),12,TEAL);
         label(ship,"선체 "+game.hull+" / "+game.maxHull()+"   ·   적재량 "+game.capacity()+"개",15,INK);
         label(ship,"항해마다 선체가 소모됩니다. 25 미만이면 수리가 필요해요.",13,MUTED);
-        fullAction(ship,"선체 수리 · "+game.repairCost()+" G",()->changed(game.repair()),false);
+        fullAction(ship,"선체 수리 · "+game.repairCost()+" G",()->changed(game.repair(),"repair"),false);
         String upgrade=game.level==3?"최고 등급 선박":Engine.SHIPS[game.level]+" 구입 · "+game.upgradeCost()+" G";
         fullAction(ship,upgrade,()->changed(game.upgrade(),"upgrade"),true);
         refitCards();
