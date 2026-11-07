@@ -18,6 +18,7 @@ public final class UiSmoke extends Instrumentation {
             final Throwable[] failure={null};
             runOnMainSync(()->{try { checkImport(activity); } catch(Throwable error) { failure[0]=error; }});
             if(failure[0]!=null) throw new AssertionError(failure[0]);
+            ChromeUiChecks.run(activity,this);
             TownUiChecks.run(activity,this);
             screenshot(activity,"v0.8-town.png");
             TradeUiChecks.run(activity,this);

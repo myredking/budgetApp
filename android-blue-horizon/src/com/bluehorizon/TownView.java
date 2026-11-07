@@ -21,11 +21,19 @@ public final class TownView extends SceneView {
         paint.setTextSize(getResources().getDisplayMetrics().scaledDensity*14);
         for(int i=0;i<4;i++) {
             float[] point=TownLayout.point(i);float x=point[0]*getWidth(),y=point[1]*getHeight();
-            float half=paint.measureText(TownLayout.NAMES[i])/2+14;
-            paint.setColor(0xe6101f30);canvas.drawRoundRect(x-half,y-24,x+half,y+12,9,9,paint);
+            RectF plaque=labelBounds(i);
+            paint.setColor(0xe6101f30);canvas.drawRoundRect(plaque,9,9,paint);
             paint.setColor(0xffffdda0);canvas.drawText(TownLayout.NAMES[i],x,y,paint);
         }
         captain(canvas);
+    }
+    RectF labelBounds(int location) {
+        paint.setTextSize(getResources().getDisplayMetrics().scaledDensity*14);
+        paint.setTypeface(Typeface.create(Typeface.DEFAULT,Typeface.BOLD));
+        Paint.FontMetrics metrics=paint.getFontMetrics();float d=getResources().getDisplayMetrics().density;
+        float[] point=TownLayout.point(location);float x=point[0]*getWidth(),y=point[1]*getHeight();
+        float half=paint.measureText(TownLayout.NAMES[location])/2+6*d;
+        return new RectF(x-half,y+metrics.ascent-4*d,x+half,y+metrics.descent+4*d);
     }
     public void walkTo(int location) {
         if(walking!=null || !isAttachedToWindow()) return;
@@ -55,10 +63,14 @@ public final class TownView extends SceneView {
     }
     @Override public boolean onTouchEvent(MotionEvent event) {
         if(event.getAction()==MotionEvent.ACTION_UP) {
-            int location=TownLayout.hit(event.getX()/getWidth(),event.getY()/getHeight());
+            int location=hitLocation(event.getX(),event.getY());
             if(location>=0) { performClick();walkTo(location); }
         }
         return true;
+    }
+    int hitLocation(float x,float y) {
+        for(int i=0;i<4;i++) if(labelBounds(i).contains(x,y)) return i;
+        return TownLayout.hit(x/getWidth(),y/getHeight());
     }
     @Override public boolean performClick() { super.performClick();return true; }
 }

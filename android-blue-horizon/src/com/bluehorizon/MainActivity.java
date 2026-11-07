@@ -94,7 +94,7 @@ public final class MainActivity extends Activity {
     }
     private void render() {
         shownChapter=game.chapter;
-        root=column(); root.setBackgroundColor(NAVY); root.setPadding(dp(16),dp(8),dp(16),dp(4));
+        root=column(); root.setBackgroundColor(NAVY); root.setPadding(dp(12),dp(4),dp(12),dp(4));
         applyInsets(root);
         setContentView(root); header();
         ScrollView scroll=new ScrollView(this); scroll.setFillViewport(true);
@@ -123,16 +123,19 @@ public final class MainActivity extends Activity {
     }
     private void town() {
         label(content,World.PORTS[game.port]+" · 항구 마을",26,GOLD);
-        planCard();
         townView=new TownView(this,TownRpg.style(game.port),location->enterBuilding(location));
-        content.addView(townView,new LinearLayout.LayoutParams(-1,dp(250)));
+        content.addView(townView,new LinearLayout.LayoutParams(-1,dp(275)));
         label(content,TownRpg.FLAVORS[TownRpg.style(game.port)],12,MUTED);
         for(int line=0;line<2;line++) {
             LinearLayout buildings=row();content.addView(buildings);
             for(int col=0;col<2;col++) {
-                final int location=line*2+col;action(buildings,TownLayout.NAMES[location],()->townView.walkTo(location),false);
+                final int location=line*2+col;
+                Button entry=button(TownLayout.NAMES[location],false);icon(entry,new int[]{GameIcon.CARGO,GameIcon.TOOLS,GameIcon.CUP,GameIcon.COMPASS}[location],30,false);
+                entry.setOnClickListener(v->{audio.play("click");townView.walkTo(location);});
+                LinearLayout.LayoutParams params=buttonParams();params.width=0;params.weight=1;buildings.addView(entry,params);
             }
         }
+        planCard();
         LinearLayout progress=card(content);label(progress,"선장 등급 "+TownRpg.rank(game)+" · 사기 "+game.town.morale+" / 100",16,TEAL);
         growthBar(progress);
         label(progress,"방문 "+game.visitedCount()+" / 56 · 이야기 "+game.chapter+" / 8 · 의뢰 "+game.adventure.deliveries+"회",13,INK);
@@ -240,11 +243,24 @@ public final class MainActivity extends Activity {
     private void header() {
         LinearLayout title=row(); root.addView(title);
         TextView logo=text("푸른 수평선",23,GOLD); logo.setTypeface(Typeface.SERIF,Typeface.BOLD);
+        icon(logo,GameIcon.COMPASS,32,false);logo.setGravity(Gravity.CENTER_VERTICAL);
         title.addView(logo,new LinearLayout.LayoutParams(0,dp(42),1));
         TextView day=text("항해 "+game.day+"일",13,MUTED); day.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
         title.addView(day,new LinearLayout.LayoutParams(dp(95),dp(42)));
-        TextView stats=text(String.format(java.util.Locale.KOREA,"%,d G   ·   화물 %d/%d   ·   명성 %d",game.gold,game.cargo(),game.capacity(),game.fame),14,INK);
-        stats.setPadding(0,dp(4),0,dp(9)); root.addView(stats);
+        LinearLayout stats=row();stats.setPadding(0,dp(3),0,dp(5));root.addView(stats);
+        hud(stats,String.format(java.util.Locale.KOREA,"%,d G",game.gold),"gold",GameIcon.COIN,"금화");
+        hud(stats,game.cargo()+"/"+game.capacity(),"cargo",GameIcon.CARGO,"화물");
+        hud(stats,String.valueOf(game.fame),"fame",GameIcon.STAR,"명성");
+    }
+    private void icon(TextView view,int kind,int size,boolean above) {
+        GameIcon art=new GameIcon(kind);art.setBounds(0,0,dp(size),dp(size));
+        view.setCompoundDrawables(above?null:art,above?art:null,null,null);view.setCompoundDrawablePadding(dp(4));
+    }
+    private void hud(LinearLayout parent,String value,String tag,int kind,String name) {
+        TextView item=text(value,13,INK);item.setTag("hud-"+tag);item.setContentDescription(name+" "+value);
+        item.setGravity(Gravity.CENTER_VERTICAL);item.setPadding(dp(5),dp(4),dp(3),dp(4));icon(item,kind,24,false);
+        item.setBackground(new GameSurface(false));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);
+        p.setMargins(dp(2),0,dp(2),0);parent.addView(item,p);
     }
     private void guideCard() {
         int person=Crew.guidePerson(game.chapter);LinearLayout box=card(content),line=row();box.addView(line);
@@ -731,10 +747,16 @@ public final class MainActivity extends Activity {
     }
     private void navigation() {
         status=text(saved?"● 기기에 자동 저장됨 · 오프라인":"저장 실패 · 백업 필요",11,saved?TEAL:GOLD);
-        status.setPadding(0,dp(5),0,dp(3)); root.addView(status);
+        status.setTextSize(10);status.setPadding(0,dp(3),0,dp(2)); root.addView(status);
         LinearLayout nav=row(); root.addView(nav);
         String[] names={"마을","항해","교역","동료","일지"};int[] pages={7,0,1,3,4};
-        for(int i=0;i<5;i++) { final int index=pages[i]; action(nav,names[i],()->{tab=index;render();},tab==index); }
+        for(int i=0;i<5;i++) navigationItem(nav,names[i],pages[i],i);
+    }
+    private void navigationItem(LinearLayout nav,String name,int page,int kind) {
+        Button item=button(name,tab==page);item.setTag("nav-"+name);item.setTextSize(11);
+        icon(item,kind,30,true);item.setPadding(dp(3),dp(5),dp(3),dp(5));
+        item.setOnClickListener(v->{audio.play("click");tab=page;render();});
+        LinearLayout.LayoutParams p=buttonParams();p.width=0;p.weight=1;p.setMargins(dp(2),dp(3),dp(2),0);nav.addView(item,p);
     }
     private void newGame() {
         new AlertDialog.Builder(this).setTitle("새 항해를 시작할까요?")
@@ -811,7 +833,7 @@ public final class MainActivity extends Activity {
     }
     private LinearLayout card(LinearLayout parent) {
         LinearLayout box=column();box.setPadding(dp(14),dp(10),dp(14),dp(12));
-        box.setBackground(background(PANEL,0xff2b4655));
+        box.setBackground(new GameSurface(false));
         LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(-1,-2);params.setMargins(0,dp(10),0,dp(2));
         parent.addView(box,params);return box;
     }
@@ -820,7 +842,7 @@ public final class MainActivity extends Activity {
         button.setSoundEffectsEnabled(false);
         button.setTextColor(active?NAVY:INK);button.setMinHeight(dp(48));button.setMinimumWidth(0);
         button.setPadding(dp(6),dp(6),dp(6),dp(6));
-        button.setBackground(background(active?GOLD:0xff234151,active?GOLD:0xff3c5b68));
+        button.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x4477c9c0),new GameSurface(active),null));
         return button;
     }
     private LinearLayout.LayoutParams buttonParams() {
