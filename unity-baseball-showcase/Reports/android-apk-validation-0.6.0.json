@@ -1,0 +1,85 @@
+{
+  "apk_bytes": 37912791,
+  "sha256": "96d27b59840cb95678426e8b7e091667c6c9db84f4cc80c62f8ed201bdabe15b",
+  "package": "com.deckball.unity2026",
+  "version": "0.6.0",
+  "signature_v2_verified": true,
+  "zipalign_16kb_verified": true,
+  "libraries": [
+    {
+      "file": "lib/arm64-v8a/lib_burst_generated.so",
+      "machine": 183,
+      "load_alignment": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "supports_16kb": true
+    },
+    {
+      "file": "lib/arm64-v8a/libc++_shared.so",
+      "machine": 183,
+      "load_alignment": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "supports_16kb": true
+    },
+    {
+      "file": "lib/arm64-v8a/libil2cpp.so",
+      "machine": 183,
+      "load_alignment": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "supports_16kb": true
+    },
+    {
+      "file": "lib/arm64-v8a/libmain.so",
+      "machine": 183,
+      "load_alignment": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "supports_16kb": true
+    },
+    {
+      "file": "lib/arm64-v8a/libswappywrapper.so",
+      "machine": 183,
+      "load_alignment": [
+        16384,
+        16384,
+        16384
+      ],
+      "supports_16kb": true
+    },
+    {
+      "file": "lib/arm64-v8a/libunity.so",
+      "machine": 183,
+      "load_alignment": [
+        16384,
+        16384,
+        16384,
+        16384
+      ],
+      "supports_16kb": true
+    }
+  ],
+  "physical_device_tested": false,
+  "emulator_runtime_tested": false,
+  "minimum_sdk": 26,
+  "target_sdk": 36,
+  "minimum_gles": "3.1",
+  "launch_activity": "com.unity3d.player.UnityPlayerActivity",
+  "version_code": 2,
+  "scouting_included": true,
+  "previous_signing_certificate_matches": true,
+  "signing_certificate_sha256": "06a8e0e37444d8ab68de363edfa30e18d23770aa60d4acd5f8f066647afb5347"
+}

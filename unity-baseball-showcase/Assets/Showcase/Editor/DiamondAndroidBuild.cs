@@ -39,9 +39,10 @@ namespace DeckBall.Showcase.Editor
         {
             PlayerSettings.companyName = "DeckBall";
             PlayerSettings.productName = "DeckBall 2026";
-            PlayerSettings.bundleVersion = "0.5.0";
+            PlayerSettings.bundleVersion = "0.6.0";
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android,"com.deckball.unity2026");
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android,ScriptingImplementation.IL2CPP);
+            PlayerSettings.Android.bundleVersionCode = 2;
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.applicationEntry = AndroidApplicationEntry.Activity;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
