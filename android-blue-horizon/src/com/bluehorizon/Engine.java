@@ -7,7 +7,7 @@ import java.util.List;
 public final class Engine {
     public transient int battleEnemyAfter=-1;
     public static final String[] PORTS = World.PORTS;
-    public static final String[] GOODS = {"목재", "직물", "도자기", "향신료", "차", "은"};
+    public static final String[] GOODS = GoodsCatalog.names();
     public static final String[] SHIPS = {"바람돛 슬루프", "새벽빛 캐러벨", "푸른별 갤리온"};
     public int gold = 1800, port = 0, day = 1, hull = 100, level = 1;
     public int fame = 0, chapter = 0, profit = 0;

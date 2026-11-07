@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="good_wood_name">목재</string>
+    <string name="good_wood_description">곧게 뻗은 원목. 항구의 조선공과 건축가들이 찾는 기본 교역품입니다.</string>
+    <string name="good_cloth_name">직물</string>
+    <string name="good_cloth_description">바닷길을 건너온 직물. 색과 결을 살펴 다음 항구의 수요를 읽어 보세요.</string>
+    <string name="good_ceramics_name">도자기</string>
+    <string name="good_ceramics_description">정성스럽게 구운 도자기. 먼 항구의 상인들이 기다리는 생활 공예품입니다.</string>
+    <string name="good_spices_name">향신료</string>
+    <string name="good_spices_description">향이 깊은 향신료. 바다를 건너는 긴 항해에 어울리는 귀한 상품입니다.</string>
+    <string name="good_tea_name">차</string>
+    <string name="good_tea_description">선원과 상인들이 즐기는 차. 찻잎 상자에 먼 지역의 향이 담겨 있습니다.</string>
+    <string name="good_silver_name">은</string>
+    <string name="good_silver_description">은빛을 띤 귀금속. 높은 단가만큼 화물과 보급 예산을 함께 살펴보세요.</string>
+</resources>

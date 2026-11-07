@@ -42,16 +42,7 @@ public final class World {
         if(region<0) { int[] all=new int[COUNT];for(int i=0;i<COUNT;i++) all[i]=i;return all; }
         int[] ports=new int[8];for(int i=0;i<8;i++) ports[i]=region*8+i;return ports;
     }
-    public static int price(int port,int good) {
-        if(port==0 && good==0) return 24;
-        if(port==1 && good==0) return 65;
-        int[] base={65,80,115,145,100,190};
-        int[] regional={0,2,0,3,3,4,5};
-        int specialty=regional[region(port)];
-        if(good==specialty) return 28+(port%8)*2;
-        if(good==(specialty+1)%6) return 42+(port%4)*4;
-        return base[good]+((port*13+good*7)%35);
-    }
+    public static int price(int port,int good) { return GoodsCatalog.price(port,good); }
     public static String marketTip(int port) {
         int good=0;
         for(int i=1;i<6;i++) if(price(port,i)<price(port,good)) good=i;

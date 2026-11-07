@@ -774,8 +774,7 @@ public final class MainActivity extends Activity {
         label(box,Engine.GOODS[good]+"     보유 "+game.inventory[good]+"개",23,GOLD);
         int protectedCargo=MissionCargo.held(game,good);
         if(protectedCargo>0) label(box,"◆ 목표용 "+protectedCargo+"개 · 판매 주문에서 기본 보관",13,TEAL);
-        String[] descriptions={"곧게 뻗은 원목. 항구의 조선공과 건축가들이 찾는 기본 교역품입니다.","바닷길을 건너온 직물. 색과 결을 살펴 다음 항구의 수요를 읽어 보세요.","정성스럽게 구운 도자기. 먼 항구의 상인들이 기다리는 생활 공예품입니다.","향이 깊은 향신료. 바다를 건너는 긴 항해에 어울리는 귀한 상품입니다.","선원과 상인들이 즐기는 차. 찻잎 상자에 먼 지역의 향이 담겨 있습니다.","은빛을 띤 귀금속. 높은 단가만큼 화물과 보급 예산을 함께 살펴보세요."};
-        label(box,descriptions[good],14,INK);
+        label(box,GoodsCatalog.description(good),14,INK);
         label(box,"오늘의 단가  ·  매입 "+game.buyPrice(good)+" G  /  판매 "+game.sellPrice(good)+" G",15,GOLD);
         label(box,"주문서에서 수량·예산·최대 수량을 선택하고 결제 내역을 확인하세요.",12,MUTED);
         tradeHint(box,good);

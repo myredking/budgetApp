@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import subprocess
 import zipfile
+import runpy
 
 PROJECT = Path(__file__).resolve().parents[1]
 TOOLS = Path.home() / ".codex/android-deckball-tools"
@@ -18,6 +19,11 @@ def run(args: list[str | Path]) -> None:
     subprocess.run([str(arg) for arg in args], check=True, env=env, cwd=PROJECT)
 
 
+def goods_source() -> Path:
+    generator = runpy.run_path(str(PROJECT / "tools/generate_goods.py"))["generate"]
+    return generator(PROJECT, BUILD / "generated/GoodsCatalog.java")
+
+
 def test() -> None:
     target = BUILD / "test"
     target.mkdir(parents=True, exist_ok=True)
@@ -25,7 +31,7 @@ def test() -> None:
              "AdventureState", "Adventure", "VoyageEvents", "SeaBattle", "EventCatalog", "Contract", "Contracts", "Achievements", "CrewState", "CrewAbilities", "RefitState", "Refits", "RivalState", "Rivals", "TradeRace", "TownState", "TravelFlow", "TownLayout", "TownRpg", "ShipMotion", "TradeOrder", "CaptainPlan", "TownWalk", "ExpeditionState", "Expeditions", "CrewConversations", "RegionBoss", "ShipPerformance", "MissionCargo", "VoyageTimeline", "FundingPlan"]
     sources = [PROJECT / f"src/com/bluehorizon/{name}.java" for name in names]
     run([JAVA / "javac.exe", "-encoding", "UTF-8", "-d", target,
-         *sources, *list((PROJECT / "tests").glob("*.java"))])
+         goods_source(), *sources, *list((PROJECT / "tests").glob("*.java"))])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.EngineTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.WorldTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.SeaRouteTest"])
@@ -48,13 +54,14 @@ def test() -> None:
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.AudioMixTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.BattleFrameTest"])
     run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.PortLifeTest"])
+    run([JAVA / "java.exe", "-cp", target, "com.bluehorizon.GoodsCatalogTest"])
 
 
 def compile_app() -> Path:
     classes, dex = BUILD / "classes", BUILD / "dex"
     classes.mkdir(parents=True, exist_ok=True)
     dex.mkdir(parents=True, exist_ok=True)
-    sources = list((PROJECT / "src").rglob("*.java"))
+    sources = [goods_source(), *list((PROJECT / "src").rglob("*.java"))]
     run([JAVA / "javac.exe", "-encoding", "UTF-8", "-source", "8", "-target", "8",
          "-classpath", ANDROID, "-d", classes, *sources])
     run([JAVA / "java.exe", "-cp", SDK / "lib/d8.jar", "com.android.tools.r8.D8",
