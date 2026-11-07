@@ -44,6 +44,7 @@ public final class MarketPressureTest {
         int normal=game.sellPrice(good);
         if(!game.buy(good,10)) throw new AssertionError("stock purchase failed");
         TradeOrder order=TradeOrder.quote(game,good,true,0,5,0);
+        verifyForecast(game,order,normal);
         if(order.total!=5*normal || !order.execute(game)) throw new AssertionError("first sale repriced");
         int reduced=game.sellPrice(good);
         if(reduced!=normal*95/100) throw new AssertionError("five units should reduce the next price");
@@ -53,6 +54,12 @@ public final class MarketPressureTest {
         if(restored.sellPrice(good)!=normal) throw new AssertionError("price did not recover");
         if(MarketPressure.discount(game,1,good)!=0 || MarketPressure.discount(game,2,0)!=0) {
             throw new AssertionError("pressure leaked to another market");
+        }
+    }
+
+    private static void verifyForecast(Engine game,TradeOrder order,int normal) {
+        if(order.nextSaleUnit!=normal*95/100 || game.sellPrice(order.good)!=normal) {
+            throw new AssertionError("forecast must use projected sale without mutating market");
         }
     }
 

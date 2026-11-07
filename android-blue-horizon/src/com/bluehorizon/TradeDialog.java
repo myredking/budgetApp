@@ -131,7 +131,12 @@ public final class TradeDialog {
         return (quote.reserved>0?"목표용 보관        "+quote.reserved+"개\n":"")+"수량                  "+quote.quantity+"개\n단가                  "+money(quote.unit)
             +"\n────────────────\n"+(selling?"받는 금액          ":"결제 금액          ")+money(quote.total)
             +(quote.bonusGold>0?"\n이야기 완료 보상   +"+money(quote.bonusGold):"")
+            +forecastText()
             +"\n거래 후 금화       "+money(quote.goldAfter)+"\n화물 공간            "+quote.cargoAfter+" / "+game.capacity();
+    }
+    private String forecastText() {
+        if(quote.nextSaleUnit<0) return "";
+        return "\n"+activity.getString(R.string.ui_trade_next_sale,money(quote.nextSaleUnit));
     }
     private String detail(int value) {
         if(mode==1) return "예산 "+money(value)+" 중 "+money(quote.total)+" 사용 · 남는 예산 "+money(value-quote.total)+"\n금화·비상금·화물 공간을 모두 반영한 정수 수량입니다.";

@@ -4,6 +4,7 @@ package com.bluehorizon;
 public final class TradeOrder {
     public final int good,quantity,unit,total,goldAfter,cargoAfter,maximum,bonusGold,reserved;
     public final boolean selling;
+    public final int nextSaleUnit;
     public final String error;
     private final String snapshot;
     private boolean used;
@@ -12,10 +13,15 @@ public final class TradeOrder {
         unit=item<0?0:(sale?e.sellPrice(item):e.buyPrice(item));total=unit*amount;
         snapshot=e.encode();
         Engine projected=project(e);
+        nextSaleUnit=forecast(e,projected);
         goldAfter=projected.gold;cargoAfter=projected.cargo();
         bonusGold=valid()?goldAfter-(e.gold+(sale?total:-total)):0;
     }
     public boolean valid() { return error.isEmpty(); }
+    private int forecast(Engine source,Engine projected) {
+        if(!valid() || !selling || projected==source || !MarketPressure.applies(source.port,good)) return -1;
+        return projected.sellPriceAt(source.port,good);
+    }
     private Engine project(Engine source) {
         Engine copy=Engine.decode(snapshot);
         if(copy==null) return source;

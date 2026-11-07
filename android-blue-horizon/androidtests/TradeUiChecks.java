@@ -16,8 +16,19 @@ public final class TradeUiChecks {
     private static void check(boolean value,String text) { if(!value) throw new AssertionError(text); }
     public static void run(MainActivity activity,Instrumentation runner) throws Exception {
         final Throwable[] failure={null};
-        runner.runOnMainSync(()->{try { quantityAndBudget(activity); } catch(Throwable error) { failure[0]=error; }});
+        runner.runOnMainSync(()->{try { quantityAndBudget(activity);marketForecast(activity); } catch(Throwable error) { failure[0]=error; }});
         if(failure[0]!=null) throw new AssertionError(failure[0]);
+    }
+    private static void marketForecast(MainActivity activity) throws Exception {
+        Engine game=new Engine();game.port=2;game.visited=5;
+        check(game.buy(2,5),"buy pilot goods");
+        TradeDialog popup=new TradeDialog(activity,game,2,true,5,success->{});
+        popup.show();
+        try {
+            String receipt=((TextView)field(popup,"receipt")).getText().toString();
+            check(receipt.contains("이번 판매 후 예상 단가 · 96 G"),"forecast appears in sale receipt");
+            check(game.inventory[2]==5 && MarketPressure.discount(game,2,2)==0,"preview keeps stock and current price");
+        } finally { ((AlertDialog)field(popup,"dialog")).dismiss(); }
     }
     private static void quantityAndBudget(MainActivity activity) throws Exception {
         Engine game=new Engine();int gold=game.gold;
